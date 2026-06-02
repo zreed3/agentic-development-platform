@@ -32,6 +32,10 @@ cp -R skills/agentic-build-runner  ~/.codex/skills/
 
 Invoke with `$agentic-traceability` / `$agentic-build-runner` in an agent session.
 
+For the static ADG setup guide, see [`../docs/setup.html`](../docs/setup.html).
+It includes the manual install path, skill installation options, adoption steps,
+and Otterblock contact details.
+
 ## Use with other agent runtimes
 
 The skills are plain Markdown with YAML frontmatter (`name`, `description`) and an
