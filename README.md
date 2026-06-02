@@ -139,13 +139,13 @@ ci:governance`. Full steps in
 [PolyForm Noncommercial License 1.0.0](LICENSE) — free to use, modify, and share for
 any **non-commercial** purpose.
 
-**All commercial rights are reserved by Otterblock Pty Ltd**, which retains full
-ownership of and all rights in this software. Commercial use requires a separate
-commercial license — contact **zach@otterblock.com.au**.
+**All commercial rights are reserved by Otterblock Pty Ltd** (ABN 91 614 672 794),
+which retains full ownership of and all rights in this software. Commercial use
+requires a separate commercial license — contact **zach@otterblock.com.au**.
 
 (Note: a non-commercial restriction makes this *source-available* rather than OSI
 "open source." The label is deliberate.)
 
 ---
 
-© 2026 Otterblock Pty Ltd. All rights reserved.
+© 2026 Otterblock Pty Ltd · ABN 91 614 672 794 · ACN 614 672 794. All rights reserved.
