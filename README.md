@@ -1,4 +1,4 @@
-# Agentic Development Platform
+# Agentic Development Governance (ADG)
 
 **Governance, traceability, and bounded context for agent-assisted software
 development — in a handful of Node scripts and one SQLite file.**
@@ -68,7 +68,8 @@ reproduce it: [`docs/token-reduction.md`](docs/token-reduction.md).
 ## Quickstart
 
 ```sh
-# Requirements: Node >= 20 and the sqlite3 CLI on PATH. No npm install needed.
+# Requirements: Node >= 20 and the sqlite3 CLI on PATH.
+# ADG is not currently published on npm; copy or clone it into your development folder.
 npm run setup            # build data/backlog.sqlite from schema + seed + audit log
 npm run ci:governance    # the full gate: backlog, audit, guardrails, evals, dora, broker
 
@@ -95,6 +96,8 @@ npm run context:item -- --item S07-TASK-01 --workflow route --format toon
 - [`AGENTS.md`](AGENTS.md) — the agent rulebook / per-repo template.
 - [`docs/architecture/governance-model.md`](docs/architecture/governance-model.md) — the five design principles.
 - [`docs/architecture/agentic-application-development-pipeline.md`](docs/architecture/agentic-application-development-pipeline.md) — the end-to-end pipeline and benchmark sources.
+- [`docs/roadmap-review-overview.md`](docs/roadmap-review-overview.md) — the external review summary and ADG roadmap.
+- [`docs/setup.html`](docs/setup.html) — static setup page with manual install and Otterblock contact details.
 - [`docs/sql-data-layer.md`](docs/sql-data-layer.md) — the SQL "server": schema, views, and the item lifecycle.
 - [`docs/token-reduction.md`](docs/token-reduction.md) — how context stays cheap, with measured numbers.
 - [`docs/reference/`](docs/reference/) — the context-tooling design record and extraction/provenance notes.
@@ -103,7 +106,7 @@ npm run context:item -- --item S07-TASK-01 --workflow route --format toon
 ## Repository layout
 
 ```
-agentic-development-platform/
+agentic-development-governance/
 ├── AGENTS.md                      # agent rulebook + per-repo template
 ├── package.json                   # governance gate + lifecycle commands (npm run ...)
 ├── config/agentic/
@@ -141,7 +144,7 @@ any **non-commercial** purpose.
 
 **All commercial rights are reserved by Otterblock Pty Ltd** (ABN 91 614 672 794),
 which retains full ownership of and all rights in this software. Commercial use
-requires a separate commercial license — contact **zach+github@otterblock.com.au**.
+requires a separate commercial license — contact **zach+github@otterblock.com**.
 
 (Note: a non-commercial restriction makes this *source-available* rather than OSI
 "open source." The label is deliberate.)

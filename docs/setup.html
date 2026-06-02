@@ -1,0 +1,715 @@
+<!doctype html>
+<html lang="en-AU">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="author" content="Otterblock Pty Ltd">
+    <meta
+      name="description"
+      content="Setup guide for Agentic Development Governance (ADG): a local SQL-first governance layer for agent-assisted development."
+    >
+    <title>Setup Agentic Development Governance (ADG) | Otterblock</title>
+    <style>
+      :root {
+        --ink: #172026;
+        --muted: #52616b;
+        --paper: #f7f5ef;
+        --surface: #ffffff;
+        --line: #d8d2c4;
+        --teal: #0f766e;
+        --teal-dark: #134e4a;
+        --gold: #c98212;
+        --red: #b4533a;
+        --code: #101820;
+        --code-soft: #1c2a33;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html {
+        scroll-behavior: smooth;
+      }
+
+      body {
+        margin: 0;
+        color: var(--ink);
+        background: var(--paper);
+        font-family:
+          Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+          "Segoe UI", sans-serif;
+        line-height: 1.55;
+      }
+
+      a {
+        color: var(--teal-dark);
+        text-underline-offset: 0.18em;
+      }
+
+      .page-shell {
+        width: min(1120px, calc(100% - 32px));
+        margin: 0 auto;
+      }
+
+      .site-header {
+        border-bottom: 1px solid var(--line);
+        background: rgba(247, 245, 239, 0.94);
+        position: sticky;
+        top: 0;
+        z-index: 10;
+        backdrop-filter: blur(12px);
+      }
+
+      .site-header .page-shell {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 20px;
+        min-height: 68px;
+      }
+
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        color: var(--ink);
+        font-weight: 750;
+        text-decoration: none;
+      }
+
+      .mark {
+        display: grid;
+        place-items: center;
+        width: 42px;
+        height: 38px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        color: var(--teal-dark);
+        background: var(--surface);
+        font-size: 14px;
+        font-weight: 850;
+      }
+
+      nav {
+        display: flex;
+        align-items: center;
+        gap: 18px;
+        font-size: 14px;
+      }
+
+      nav a {
+        color: var(--muted);
+        font-weight: 650;
+        text-decoration: none;
+      }
+
+      nav a:hover,
+      nav a:focus-visible {
+        color: var(--ink);
+        text-decoration: underline;
+      }
+
+      main {
+        padding-bottom: 56px;
+      }
+
+      .hero {
+        padding: 72px 0 32px;
+      }
+
+      .hero-grid {
+        display: grid;
+        grid-template-columns: minmax(0, 1.05fr) minmax(320px, 0.95fr);
+        align-items: center;
+        gap: 40px;
+      }
+
+      .eyebrow {
+        margin: 0 0 14px;
+        color: var(--teal-dark);
+        font-size: 13px;
+        font-weight: 800;
+        letter-spacing: 0;
+        text-transform: uppercase;
+      }
+
+      h1,
+      h2,
+      h3 {
+        margin: 0;
+        line-height: 1.08;
+        letter-spacing: 0;
+      }
+
+      h1 {
+        max-width: 760px;
+        font-size: clamp(42px, 8vw, 84px);
+      }
+
+      h2 {
+        font-size: clamp(28px, 5vw, 46px);
+      }
+
+      h3 {
+        font-size: 19px;
+      }
+
+      p {
+        margin: 0;
+      }
+
+      .lede {
+        max-width: 760px;
+        margin-top: 20px;
+        color: var(--muted);
+        font-size: 20px;
+      }
+
+      .hero-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        margin-top: 28px;
+      }
+
+      .button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 44px;
+        padding: 0 18px;
+        border: 1px solid var(--teal-dark);
+        border-radius: 8px;
+        color: #ffffff;
+        background: var(--teal-dark);
+        font-weight: 750;
+        text-decoration: none;
+      }
+
+      .button.secondary {
+        color: var(--teal-dark);
+        background: transparent;
+      }
+
+      .system-map {
+        padding: 22px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: var(--surface);
+        box-shadow: 0 24px 70px rgba(23, 32, 38, 0.08);
+      }
+
+      .map-row {
+        display: grid;
+        grid-template-columns: 1fr auto 1fr;
+        align-items: center;
+        gap: 12px;
+        margin: 10px 0;
+      }
+
+      .map-node {
+        min-height: 72px;
+        padding: 14px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: #fbfaf7;
+      }
+
+      .map-node strong {
+        display: block;
+        margin-bottom: 4px;
+      }
+
+      .map-node span {
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      .arrow {
+        color: var(--gold);
+        font-size: 24px;
+        font-weight: 800;
+      }
+
+      .note {
+        margin-top: 20px;
+        padding: 18px;
+        border-left: 4px solid var(--gold);
+        background: #fff8e8;
+      }
+
+      .note strong {
+        display: block;
+        margin-bottom: 6px;
+      }
+
+      .section {
+        padding: 52px 0;
+        border-top: 1px solid var(--line);
+      }
+
+      .section-header {
+        display: grid;
+        grid-template-columns: minmax(0, 0.85fr) minmax(260px, 1fr);
+        gap: 28px;
+        margin-bottom: 28px;
+      }
+
+      .section-header p {
+        color: var(--muted);
+        font-size: 18px;
+      }
+
+      .checklist,
+      .steps {
+        display: grid;
+        gap: 14px;
+      }
+
+      .checklist {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+
+      .steps {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .item,
+      .step {
+        min-width: 0;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: var(--surface);
+      }
+
+      .item {
+        padding: 18px;
+      }
+
+      .item .label {
+        display: inline-flex;
+        align-items: center;
+        min-height: 28px;
+        margin-bottom: 12px;
+        padding: 0 10px;
+        border-radius: 999px;
+        color: var(--teal-dark);
+        background: #dff3ef;
+        font-size: 12px;
+        font-weight: 800;
+      }
+
+      .item p,
+      .step p {
+        color: var(--muted);
+      }
+
+      .step {
+        display: grid;
+        grid-template-columns: 54px minmax(0, 1fr);
+        min-height: 128px;
+        overflow: hidden;
+      }
+
+      .step-number {
+        display: grid;
+        place-items: center;
+        color: #ffffff;
+        background: var(--teal);
+        font-size: 22px;
+        font-weight: 850;
+      }
+
+      .step-body {
+        min-width: 0;
+        padding: 18px;
+      }
+
+      pre {
+        max-width: 100%;
+        margin: 18px 0 0;
+        padding: 18px;
+        overflow-x: auto;
+        border-radius: 8px;
+        color: #e8f4f2;
+        background: var(--code);
+        border: 1px solid var(--code-soft);
+      }
+
+      code {
+        font-family:
+          "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+        font-size: 0.95em;
+      }
+
+      pre code {
+        display: block;
+        min-width: 100%;
+      }
+
+      .callout {
+        padding: 22px;
+        border: 1px solid #e3c87c;
+        border-radius: 8px;
+        background: #fff8e8;
+      }
+
+      .callout h3 {
+        color: #7c4a03;
+      }
+
+      .content-grid {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(300px, 0.8fr);
+        gap: 18px;
+      }
+
+      .review-list {
+        margin: 14px 0 0;
+        padding-left: 20px;
+        color: var(--muted);
+      }
+
+      .review-list li + li {
+        margin-top: 8px;
+      }
+
+      .site-footer {
+        border-top: 1px solid var(--line);
+        padding: 28px 0;
+        color: var(--muted);
+        background: #efebe0;
+      }
+
+      .site-footer .page-shell {
+        display: flex;
+        justify-content: space-between;
+        gap: 20px;
+        flex-wrap: wrap;
+      }
+
+      @media (max-width: 820px) {
+        .site-header {
+          position: static;
+        }
+
+        .site-header .page-shell,
+        .hero-grid,
+        .section-header,
+        .content-grid {
+          grid-template-columns: minmax(0, 1fr);
+        }
+
+        .site-header .page-shell {
+          display: grid;
+          padding: 14px 0;
+        }
+
+        nav {
+          flex-wrap: wrap;
+        }
+
+        .hero {
+          padding-top: 48px;
+        }
+
+        .checklist,
+        .steps {
+          grid-template-columns: minmax(0, 1fr);
+        }
+      }
+
+      @media (max-width: 560px) {
+        .page-shell {
+          width: min(100% - 24px, 1120px);
+        }
+
+        .map-row {
+          grid-template-columns: 1fr;
+        }
+
+        .arrow {
+          transform: rotate(90deg);
+          text-align: center;
+        }
+
+        .hero-actions {
+          display: grid;
+        }
+
+        .button {
+          width: 100%;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="page-shell">
+        <a class="brand" href="#top" aria-label="Agentic Development Governance setup">
+          <span class="mark" aria-hidden="true">ADG</span>
+          <span>Agentic Development Governance</span>
+        </a>
+        <nav aria-label="Setup sections">
+          <a href="#requirements">Requirements</a>
+          <a href="#install">Install</a>
+          <a href="#skills">Skills</a>
+          <a href="#contact">Contact</a>
+        </nav>
+      </div>
+    </header>
+
+    <main id="top">
+      <section class="hero">
+        <div class="page-shell hero-grid">
+          <div>
+            <p class="eyebrow">Setup guide</p>
+            <h1>Agentic Development Governance (ADG)</h1>
+            <p class="lede">
+              A GitHub-ready setup guide for running agent-assisted development
+              with local guardrails, bounded context, an append-only audit trail,
+              and SQL-first backlog governance.
+            </p>
+            <div class="hero-actions">
+              <a class="button" href="#install">Manual install</a>
+              <a class="button secondary" href="#contact">Business details</a>
+            </div>
+            <div class="note" aria-label="Manual installation note">
+              <strong>Manual install only</strong>
+              ADG is not currently published on npm. Copy the repository into your
+              development folder, run the local setup commands, and reach out if you
+              hit bugs.
+            </div>
+          </div>
+
+          <aside class="system-map" aria-label="Platform flow diagram">
+            <div class="map-row">
+              <div class="map-node">
+                <strong>Backlog</strong>
+                <span>Feature intent, routes, items, claims</span>
+              </div>
+              <div class="arrow" aria-hidden="true">-&gt;</div>
+              <div class="map-node">
+                <strong>Context</strong>
+                <span>Small packet, anchored files, denied bulk reads</span>
+              </div>
+            </div>
+            <div class="map-row">
+              <div class="map-node">
+                <strong>Guardrails</strong>
+                <span>Deny-by-default risk classes</span>
+              </div>
+              <div class="arrow" aria-hidden="true">-&gt;</div>
+              <div class="map-node">
+                <strong>Audit</strong>
+                <span>Append-only evidence and decisions</span>
+              </div>
+            </div>
+            <div class="map-row">
+              <div class="map-node">
+                <strong>Evals</strong>
+                <span>Prompt-injection and agency checks</span>
+              </div>
+              <div class="arrow" aria-hidden="true">-&gt;</div>
+              <div class="map-node">
+                <strong>Metrics</strong>
+                <span>Delivery signals from local history</span>
+              </div>
+            </div>
+          </aside>
+        </div>
+      </section>
+
+      <section class="section" id="requirements">
+        <div class="page-shell">
+          <div class="section-header">
+            <h2>Requirements</h2>
+            <p>
+              The platform is deliberately small. You need a shell, Node.js 20 or
+              newer, and the SQLite command-line tool. There are no runtime
+              dependencies to install.
+            </p>
+          </div>
+
+          <div class="checklist">
+            <article class="item">
+              <span class="label">Node</span>
+              <h3>Node.js 20+</h3>
+              <p>All governance scripts run with the built-in Node runtime.</p>
+            </article>
+            <article class="item">
+              <span class="label">SQLite</span>
+              <h3><code>sqlite3</code> on PATH</h3>
+              <p>The backlog database is generated locally and queried from the CLI.</p>
+            </article>
+            <article class="item">
+              <span class="label">Repo</span>
+              <h3>Tracked text sources</h3>
+              <p>Seed data, audit JSONL, scripts, config, docs, and skills are versioned.</p>
+            </article>
+          </div>
+
+          <pre><code>node --version
+sqlite3 --version</code></pre>
+        </div>
+      </section>
+
+      <section class="section" id="install">
+        <div class="page-shell">
+          <div class="section-header">
+            <h2>Manual install</h2>
+            <p>
+              ADG is not distributed as an npm package right now. Install it by
+              copying or cloning the repository into your development folder, then
+              run the local npm scripts that ship with the repo.
+            </p>
+          </div>
+
+          <div class="steps">
+            <article class="step">
+              <div class="step-number">1</div>
+              <div class="step-body">
+                <h3>Copy it into development</h3>
+                <p>Use GitHub clone, a downloaded zip, or a local folder copy.</p>
+                <pre><code>mkdir -p ~/Development
+cd ~/Development
+git clone &lt;repo-url&gt; agentic-development-governance
+cd agentic-development-governance</code></pre>
+              </div>
+            </article>
+
+            <article class="step">
+              <div class="step-number">2</div>
+              <div class="step-body">
+                <h3>Build the database</h3>
+                <p>Regenerate <code>data/backlog.sqlite</code> from source files.</p>
+                <pre><code>npm run setup</code></pre>
+              </div>
+            </article>
+
+            <article class="step">
+              <div class="step-number">3</div>
+              <div class="step-body">
+                <h3>Run the full gate</h3>
+                <p>Validate backlog, audit, guardrails, evals, metrics, and broker.</p>
+                <pre><code>npm run ci:governance</code></pre>
+              </div>
+            </article>
+
+            <article class="step">
+              <div class="step-number">4</div>
+              <div class="step-body">
+                <h3>Ask for bounded context</h3>
+                <p>Use SQL-selected packets before opening source files.</p>
+                <pre><code>npm run context:feature -- --feature S07 --workflow route
+npm run context:item -- --item S07-TASK-01 --workflow route --format toon</code></pre>
+              </div>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="skills">
+        <div class="page-shell">
+          <div class="section-header">
+            <h2>Install the agent skills</h2>
+            <p>
+              The portable skills teach an agent to keep the SQL backlog and
+              append-only audit trail current while it works. Symlink them for live
+              edits, or copy them for a frozen snapshot.
+            </p>
+          </div>
+
+          <div class="content-grid">
+            <div class="item">
+              <h3>Symlink for live edits</h3>
+              <pre><code>mkdir -p ~/.codex/skills
+ln -s "$(pwd)/skills/agentic-traceability" ~/.codex/skills/agentic-traceability
+ln -s "$(pwd)/skills/agentic-build-runner" ~/.codex/skills/agentic-build-runner</code></pre>
+            </div>
+
+            <div class="item">
+              <h3>Copy for a snapshot</h3>
+              <pre><code>mkdir -p ~/.codex/skills
+cp -R skills/agentic-traceability ~/.codex/skills/
+cp -R skills/agentic-build-runner ~/.codex/skills/</code></pre>
+            </div>
+          </div>
+
+          <div class="callout" style="margin-top: 18px;">
+            <h3>Use the skills during work</h3>
+            <p>
+              Invoke <code>$agentic-traceability</code> when recording audit or
+              backlog evidence. Invoke <code>$agentic-build-runner</code> when an
+              agent should claim, build, test, complete, and verify backlog work.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="adopt">
+        <div class="page-shell">
+          <div class="section-header">
+            <h2>Adopt in another repo</h2>
+            <p>
+              Copy the governance layer into a host project, replace the demo
+              backlog with the host project's real plan, and fill in the Project
+              Profile in <code>AGENTS.md</code>.
+            </p>
+          </div>
+
+          <pre><code>cp -R config scripts tooling data/schema.sql AGENTS.md &lt;host-repo&gt;/
+cp -R skills &lt;host-repo&gt;/
+
+cd &lt;host-repo&gt;
+# Replace data/seed/backlog.seed.json with the host project's features and routes.
+# Fill in the Project Profile section in AGENTS.md.
+npm run setup
+npm run ci:governance</code></pre>
+        </div>
+      </section>
+
+      <section class="section" id="contact">
+        <div class="page-shell">
+          <div class="section-header">
+            <h2>Business details</h2>
+            <p>
+              ADG is maintained by Otterblock Pty Ltd. For bugs, setup questions,
+              or commercial licensing, use the project contact below.
+            </p>
+          </div>
+
+          <div class="content-grid">
+            <div class="item">
+              <h3>Otterblock Pty Ltd</h3>
+              <ul class="review-list">
+                <li>ABN 91 614 672 794</li>
+                <li>ACN 614 672 794</li>
+                <li>Australian Private Company, active from 22 Dec 2017</li>
+                <li><a href="https://abr.business.gov.au/ABN/View?id=91614672794">ABN Lookup record</a></li>
+              </ul>
+            </div>
+
+            <div class="item">
+              <h3>Support and links</h3>
+              <p>
+                Bugs or setup questions:
+                <a href="mailto:zach+github@otterblock.com">zach+github@otterblock.com</a>.
+                Personal resume:
+                <a href="https://www.zachreeder.com.au">zachreeder.com.au</a>.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="page-shell">
+        <p>Otterblock Pty Ltd · ABN 91 614 672 794 · ACN 614 672 794</p>
+        <p><a href="mailto:zach+github@otterblock.com">zach+github@otterblock.com</a></p>
+      </div>
+    </footer>
+  </body>
+</html>
