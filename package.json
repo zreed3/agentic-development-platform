@@ -35,5 +35,6 @@
     "ci:governance": "npm run backlog:validate && npm run audit:validate && npm run guardrails:check && npm run agent:evals && npm run metrics:dora && npm run test:agent-context",
     "prepush": "npm run ci:governance"
   },
-  "license": "MIT"
+  "author": "Otterblock Pty Ltd",
+  "license": "SEE LICENSE IN LICENSE"
 }

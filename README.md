@@ -1,41 +1,76 @@
 # Agentic Development Platform
 
-A **SQL-first, deny-by-default governance layer for agent-assisted software
-development.** It gives an AI collaborator the apparatus of a regulated engineering
-org — risk-class guardrails, an append-only audit trail, AI-security evals, delivery
-metrics, and a SQL backlog — and a **context broker** that keeps token usage bounded
-by refusing to bulk-load the very artifacts that blow up a context window.
+**Governance, traceability, and bounded context for agent-assisted software
+development — in a handful of Node scripts and one SQLite file.**
 
-It runs on nothing but **Node (≥ 20) and the `sqlite3` CLI**. No SaaS, no agent
-framework, no vector database. Everything is grep-able, diffable, offline, and fast.
+Hand an AI agent your codebase and two failure modes dominate: it does too much
+(unbounded, unaudited, occasionally destructive actions), or it drowns in context
+(you paste the whole tracker into the prompt and burn six figures of tokens before
+it writes a line). This platform is a small, local control plane that fixes both. It
+gives an AI collaborator the apparatus of a regulated engineering org — deny-by-default
+guardrails, an append-only audit trail, AI-security evals, delivery metrics, and a
+SQL-first backlog — plus a **context broker** that keeps token usage bounded by
+*refusing* to load the artifacts that blow up a context window.
 
-> This repo is the governance *model* extracted from a real product and generalized
-> into a reusable sub-app for future agentic work. See
-> [`docs/reference/extraction-notes.md`](docs/reference/extraction-notes.md).
+It runs on nothing but **Node (≥ 20) and the `sqlite3` CLI.** No SaaS, no agent
+framework, no vector database, no API keys. Everything is grep-able, diffable,
+offline, and the full gate runs in seconds.
 
-## The core idea
+## The idea in one line
 
-The intuitive move — "feed the agent the whole tracker so it's well-informed" — is a
-trap. Generated trackers, SQL dumps, and dashboards are exactly what overflows a
-context window. So this platform **inverts it: SQLite *selects* the context.** A task
-is classified into a workflow, the broker runs a few capped SQL queries, and the
-agent gets a small packet of pointers — and an explicit "do not bulk read" list.
+> **SQLite *selects* the context.** Your richest generated artifacts are treated as
+> hazards, not assets — and a relational backlog database hands the agent a few-KB
+> packet of pointers instead.
 
 ```text
 task -> classify -> SQL lookup -> capped context packet -> anchored files -> targeted checks
 ```
 
-Measured on the seeded demo backlog: a context packet is **~2 KB (TOON) / ~2.8 KB
-(markdown)** versus the **~26 KB SQL dump and ~164 KB database** it replaces — and at
-real-project scale that is the difference between **a few thousand tokens and
-hundreds of thousands**. See [`docs/token-reduction.md`](docs/token-reduction.md).
+## What makes it different
+
+Most of the ingredients here exist somewhere. The combination, and one specific
+inversion, are uncommon:
+
+- **Generated artifacts are context *hazards*.** The mainstream context tools
+  (Repomix, code2prompt, files-to-prompt) maximize what they pack in. This does the
+  opposite: the full SQL dump, JSON mirrors, and generated HTML sit on a
+  `forbiddenBulkFiles` denylist, and the database returns the same information in
+  bounded form. Aider's repo map is the closest cousin — but it ranks *code symbols*;
+  this selects by *project intent and traceability* (feature → items → routes →
+  anchors → audit).
+- **Governance whose audience is an agent, not an auditor.** The audit log, DORA
+  metrics, and `decision` events with reason/risk/rollback are enterprise-SDLC
+  machinery — applied so that a *non-human collaborator's* work is non-repudiable,
+  even for a team of one. "If no reviewer is available, enforce strict solo-dev gates."
+- **Security as a pre-merge gate, for your own agent.** Tools are deny-by-default,
+  and prompt-injection / excessive-agency / resilience scenarios (mapped to OWASP LLM
+  and NIST AI-RMF) run *before* work is "done" — the agent is treated as an untrusted
+  insider, not a trusted teammate.
+- **Append-only by construction.** The audit log is event-sourced; current state
+  (a feature's status, an item's lifecycle) is always *derived* via SQL views, never
+  edited in place. Neither the agent nor a future you can quietly launder history.
+- **Deliberately small.** `node` + `sqlite3` + JSONL. The richest part of the system
+  is a stance, not a dependency tree.
+
+This is an honest "uncommon," not "unprecedented": it's an assembly of known
+patterns executed with unusual discipline, plus the context inversion, which is the
+genuinely fresh part.
+
+## Why bounded context pays off
+
+Measured on the seeded demo backlog, a context packet is **~2.0 KB (TOON) / ~2.8 KB
+(markdown)** versus the **~26 KB SQL dump and ~164 KB database** it stands in for. At
+real-project scale the gap is the decisive one: the source project's generated
+mirrors ran to **multiple megabytes** each — *hundreds of thousands of tokens* — while
+the bounded instruction set stayed around **4–7k tokens**. The full method and how to
+reproduce it: [`docs/token-reduction.md`](docs/token-reduction.md).
 
 ## Quickstart
 
 ```sh
 # Requirements: Node >= 20 and the sqlite3 CLI on PATH. No npm install needed.
 npm run setup            # build data/backlog.sqlite from schema + seed + audit log
-npm run ci:governance    # run the full gate (backlog, audit, guardrails, evals, dora, broker)
+npm run ci:governance    # the full gate: backlog, audit, guardrails, evals, dora, broker
 
 # Ask the broker for a bounded packet instead of opening files blind:
 npm run context:feature -- --feature S07 --workflow route
@@ -100,4 +135,17 @@ ci:governance`. Full steps in
 
 ## License
 
-MIT — see [`LICENSE`](LICENSE).
+**Source-available, non-commercial.** Licensed under the
+[PolyForm Noncommercial License 1.0.0](LICENSE) — free to use, modify, and share for
+any **non-commercial** purpose.
+
+**All commercial rights are reserved by Otterblock Pty Ltd**, which retains full
+ownership of and all rights in this software. Commercial use requires a separate
+commercial license — contact **zach@otterblock.com.au**.
+
+(Note: a non-commercial restriction makes this *source-available* rather than OSI
+"open source." The label is deliberate.)
+
+---
+
+© 2026 Otterblock Pty Ltd. All rights reserved.
