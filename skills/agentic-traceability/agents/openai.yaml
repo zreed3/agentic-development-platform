@@ -1,0 +1,4 @@
+interface:
+  display_name: "Agentic Traceability"
+  short_description: "Maintain the append-only audit log and SQL backlog"
+  default_prompt: "Use $agentic-traceability to record an audit event for this work and keep the SQL backlog current."

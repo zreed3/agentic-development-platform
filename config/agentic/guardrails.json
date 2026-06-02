@@ -1,0 +1,119 @@
+{
+  "schemaVersion": 1,
+  "policyVersion": "adp-agentic-guardrails-2026-06-02",
+  "defaultDecision": "deny",
+  "riskClasses": {
+    "read-only": {
+      "requiresConfirmation": false,
+      "description": "Read files, inspect docs, query the local backlog/audit databases, and run non-mutating checks."
+    },
+    "generated-artifact": {
+      "requiresConfirmation": false,
+      "description": "Regenerate docs, database mirrors, reports, and audit-safe artifacts."
+    },
+    "code-change": {
+      "requiresConfirmation": false,
+      "description": "Edit application, test, script, docs, and config files in the local repo."
+    },
+    "migration": {
+      "requiresConfirmation": true,
+      "description": "Create or modify database migrations or schema-affecting code."
+    },
+    "secrets": {
+      "requiresConfirmation": true,
+      "description": "Read, write, rotate, export, or reference secret material."
+    },
+    "billing": {
+      "requiresConfirmation": true,
+      "description": "Mutate billing, payment, plan, discount, or invoice state."
+    },
+    "production": {
+      "requiresConfirmation": true,
+      "description": "Deploy, push, run production commands, or alter production/provider state."
+    },
+    "destructive": {
+      "requiresConfirmation": true,
+      "description": "Delete, reset, force-push, wipe, drop, or irreversibly mutate state."
+    }
+  },
+  "tools": [
+    {
+      "name": "repo.read",
+      "riskClass": "read-only",
+      "mode": "read",
+      "allowed": true,
+      "requiredEvidence": ["command-or-file-path"]
+    },
+    {
+      "name": "docs.generate",
+      "riskClass": "generated-artifact",
+      "mode": "write",
+      "allowed": true,
+      "requiredEvidence": ["generated-path", "validation-command"]
+    },
+    {
+      "name": "tracker.update",
+      "riskClass": "generated-artifact",
+      "mode": "write",
+      "allowed": true,
+      "requiredEvidence": ["audit-event-id"]
+    },
+    {
+      "name": "code.edit",
+      "riskClass": "code-change",
+      "mode": "write",
+      "allowed": true,
+      "requiredEvidence": ["changed-file", "validation-command"]
+    },
+    {
+      "name": "db.migration",
+      "riskClass": "migration",
+      "mode": "write",
+      "allowed": true,
+      "requiredEvidence": ["migration-path", "migration-validation"],
+      "requiresConfirmation": true
+    },
+    {
+      "name": "secrets.change",
+      "riskClass": "secrets",
+      "mode": "write",
+      "allowed": true,
+      "requiredEvidence": ["rotation-plan", "no-secret-values"],
+      "requiresConfirmation": true
+    },
+    {
+      "name": "billing.change",
+      "riskClass": "billing",
+      "mode": "write",
+      "allowed": true,
+      "requiredEvidence": ["rollback-note", "audit-event-id"],
+      "requiresConfirmation": true
+    },
+    {
+      "name": "production.change",
+      "riskClass": "production",
+      "mode": "write",
+      "allowed": true,
+      "requiredEvidence": ["approval-note", "rollback-note"],
+      "requiresConfirmation": true
+    },
+    {
+      "name": "destructive.command",
+      "riskClass": "destructive",
+      "mode": "write",
+      "allowed": false,
+      "requiredEvidence": ["explicit-user-request"],
+      "requiresConfirmation": true
+    }
+  ],
+  "redactFields": [
+    "password",
+    "secret",
+    "token",
+    "apiKey",
+    "authorization",
+    "cookie",
+    "privateKey",
+    "webhookSecret"
+  ]
+}

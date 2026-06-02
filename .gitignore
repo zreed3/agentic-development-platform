@@ -1,0 +1,17 @@
+node_modules/
+*.log
+.DS_Store
+
+# Generated SQLite databases. These are rebuilt from the tracked text sources
+# (data/schema.sql, data/seed/, data/audit/) via `npm run setup` and the
+# governance scripts. SQLite is treated as generated, not canonical -- so it is
+# not version-controlled. The reviewable .sql / .schema mirrors are tracked.
+data/*.sqlite
+data/.backlog-*.sql
+data/.backlog-setup.sql
+
+# Per-run gate outputs (timestamps change every run). The scripts regenerate them.
+data/agent-evals.sql
+data/agent-evals.json
+data/delivery-metrics.sql
+data/delivery-metrics.json

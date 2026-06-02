@@ -1,0 +1,110 @@
+version: 1
+
+# Context profiles decide, per workflow, which SQL queries run and how much the
+# context broker is allowed to return. The point is to keep packets small and to
+# keep the large generated mirrors out of model context. See docs/token-reduction.md.
+
+defaults:
+  maxAuditEvents: 5
+  maxBacklogEvents: 5
+  maxBacklogItems: 12
+  maxRoutes: 12
+  maxFiles: 8
+  # Files the broker must never name in a packet. These are the generated mirrors
+  # of data the broker already returns in bounded form via SQL. Reading them in
+  # bulk is what blows up the context window.
+  forbiddenBulkFiles:
+    - data/backlog-source.sql
+    - data/backlog.json
+    - data/audit/audit-log.jsonl
+    - docs/generated/**
+
+workflows:
+  route:
+    maxFiles: 8
+    queries:
+      - feature_current_status
+      - backlog_items_by_feature
+      - routes_by_feature
+      - recent_audit
+    requiredChecks:
+      - npm run backlog:validate
+    guidance:
+      - Query SQLite before opening any planning or generated docs.
+      - Inspect route files only after the packet names them.
+
+  rbac:
+    maxFiles: 10
+    queries:
+      - feature_current_status
+      - backlog_items_by_feature
+      - persona_workflows_by_feature
+      - recent_audit
+    requiredChecks:
+      - npm run agent:evals
+    guidance:
+      - Prefer permission, entitlement, and scope anchors over broad docs.
+      - Include negative-test files before broad UI files.
+
+  db-migration:
+    maxFiles: 10
+    queries:
+      - feature_current_status
+      - backlog_items_by_feature
+      - recent_backlog_events
+    requiredChecks:
+      - npm run backlog:validate
+    guidance:
+      - Inspect schema, migration, and repository files named by anchors.
+      - Do not run destructive database commands from this packet.
+
+  ui:
+    maxFiles: 10
+    queries:
+      - feature_current_status
+      - backlog_items_by_feature
+      - routes_by_feature
+      - recent_audit
+    requiredChecks:
+      - npm run test:agent-context
+    guidance:
+      - Keep generated planning docs out of context unless the task is docs-only.
+      - Inspect components and tests named by route/file anchors first.
+
+  integration:
+    maxFiles: 10
+    queries:
+      - feature_current_status
+      - backlog_items_by_feature
+      - integrations_by_feature
+      - recent_audit
+    requiredChecks:
+      - npm run guardrails:check
+    guidance:
+      - Prefer registry, credential-boundary, and webhook files over generated docs.
+      - Do not inspect or print secret material.
+
+  docs:
+    maxFiles: 12
+    queries:
+      - feature_current_status
+      - backlog_items_by_feature
+      - recent_audit
+    requiredChecks:
+      - npm run audit:validate
+    guidance:
+      - For generated docs, update generators or source config first.
+      - Use SQLite summaries instead of bulk-loading generated mirrors.
+
+  agentic-tooling:
+    maxFiles: 12
+    queries:
+      - feature_current_status
+      - backlog_items_by_feature
+      - recent_audit
+    requiredChecks:
+      - npm run guardrails:check
+      - npm run test:agent-context
+    guidance:
+      - Treat context tooling as bounded, deterministic, and reversible.
+      - Do not emit audit events for throwaway tooling experiments.

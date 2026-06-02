@@ -1,0 +1,39 @@
+{
+  "name": "agentic-development-platform",
+  "version": "0.1.0",
+  "private": true,
+  "description": "A SQL-first, deny-by-default governance layer for agent-assisted software development: guardrails, append-only audit, AI-security evals, DORA metrics, and a context broker that keeps token usage bounded.",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "setup": "node scripts/backlog-db.mjs setup",
+    "backlog:validate": "node scripts/backlog-db.mjs validate",
+    "backlog:export": "node scripts/backlog-db.mjs export",
+    "backlog:list": "node scripts/backlog-db.mjs list",
+    "backlog:next": "node scripts/backlog-db.mjs next",
+    "backlog:show": "node scripts/backlog-db.mjs show",
+    "backlog:claim": "node scripts/backlog-db.mjs claim",
+    "backlog:start": "node scripts/backlog-db.mjs start",
+    "backlog:block": "node scripts/backlog-db.mjs block",
+    "backlog:complete": "node scripts/backlog-db.mjs complete",
+    "backlog:verify": "node scripts/backlog-db.mjs verify",
+    "backlog:release": "node scripts/backlog-db.mjs release",
+    "backlog:active": "node scripts/backlog-db.mjs active",
+    "context:feature": "node scripts/agent-context.mjs feature",
+    "context:item": "node scripts/agent-context.mjs item",
+    "context:audit": "node scripts/agent-context.mjs audit",
+    "agent:next": "node scripts/agent-context.mjs next",
+    "agent:loop": "node scripts/agent-context.mjs loop",
+    "test:agent-context": "node tooling/agent-context/test-agent-context.mjs",
+    "audit:validate": "node scripts/validate-audit.mjs",
+    "audit:record": "node scripts/record-audit.mjs",
+    "guardrails:check": "node scripts/guardrail-check.mjs",
+    "agent:evals": "node scripts/run-agent-evals.mjs",
+    "metrics:dora": "node scripts/dora-metrics.mjs",
+    "ci:governance": "npm run backlog:validate && npm run audit:validate && npm run guardrails:check && npm run agent:evals && npm run metrics:dora && npm run test:agent-context",
+    "prepush": "npm run ci:governance"
+  },
+  "license": "MIT"
+}

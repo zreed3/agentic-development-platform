@@ -1,0 +1,4 @@
+# Context packet manifests are local working state.
+*.json
+*.jsonl
+!.gitignore

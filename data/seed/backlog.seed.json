@@ -1,0 +1,314 @@
+{
+  "metadata": {
+    "initiative": "Agentic Development Platform",
+    "source": "seed",
+    "note": "Demo backlog. It is intentionally self-referential: the backlog items describe the platform's own governance components, so `npm run setup` produces a database you can immediately query and a worked example of the SQL-first model."
+  },
+  "labels": ["governance", "security", "tooling", "docs", "metrics", "context"],
+  "epics": [
+    {
+      "id": "EPIC-GOV",
+      "name": "Governance Core",
+      "summary": "Risk-class guardrails, append-only audit, AI-security evals, and delivery metrics.",
+      "labels": ["governance", "security"]
+    },
+    {
+      "id": "EPIC-CTX",
+      "name": "Context Discipline",
+      "summary": "SQL-first backlog and the context broker that selects bounded, cheap context packets.",
+      "labels": ["context", "tooling"]
+    }
+  ],
+  "features": [
+    {
+      "id": "S01",
+      "epicId": "EPIC-GOV",
+      "featureKey": "GOV-GUARDRAILS",
+      "title": "Risk-class guardrail policy",
+      "priority": 0,
+      "estimate": 3,
+      "releaseBand": "P0",
+      "classification": "internal",
+      "category": "agentic-tooling",
+      "slug": "guardrail-policy",
+      "architecture": "Declarative deny-by-default policy in config/agentic/guardrails.json, validated by a standalone checker. Risk classes map tools to confirmation requirements and required evidence.",
+      "labels": ["governance", "security"],
+      "personas": ["agent", "maintainer"],
+      "permissions": ["governance.read", "governance.write"],
+      "anchors": ["config/agentic/guardrails.json", "scripts/guardrail-check.mjs"],
+      "dependsOn": [],
+      "tasks": [
+        "Define risk classes and default-deny decision",
+        "Map tools to risk classes, evidence, and confirmation requirements",
+        "Validate the policy shape in scripts/guardrail-check.mjs"
+      ],
+      "testCases": [
+        "Policy with defaultDecision other than deny fails validation",
+        "A tool whose risk class requires confirmation but is missing requiresConfirmation fails validation"
+      ],
+      "successCriteria": [
+        "guardrails:check exits non-zero on an invalid policy",
+        "destructive tools are denied by default"
+      ],
+      "useCases": [
+        "An agent checks whether an action it is about to take is allowed and whether it needs confirmation"
+      ],
+      "routes": [
+        { "path": "cli:guardrails:check", "kind": "cli", "realm": "local-dev", "status": "live", "filePath": "scripts/guardrail-check.mjs", "permission": "governance.read", "rbacRoles": "maintainer", "notes": "Validates and queries the policy." }
+      ],
+      "integrations": [],
+      "personaWorkflows": [
+        { "personaId": "agent", "rbacRole": "owner", "realm": "local-dev", "accessLevel": "allowed", "workflow": "Check a tool decision before acting", "expectedState": "allow-or-deny", "primaryRoute": "cli:guardrails:check", "notes": "", "status": "planned" }
+      ]
+    },
+    {
+      "id": "S02",
+      "epicId": "EPIC-GOV",
+      "featureKey": "GOV-AUDIT",
+      "title": "Append-only audit log",
+      "priority": 0,
+      "estimate": 3,
+      "releaseBand": "P0",
+      "classification": "internal",
+      "category": "agentic-tooling",
+      "slug": "append-only-audit",
+      "architecture": "Event-sourced JSONL log mirrored into the audit_events table. Never rewritten; corrections are appended as comment/decision events.",
+      "labels": ["governance"],
+      "personas": ["agent", "maintainer"],
+      "permissions": ["governance.write"],
+      "anchors": ["scripts/validate-audit.mjs", "scripts/record-audit.mjs", "data/audit/audit-log.jsonl"],
+      "dependsOn": ["S05"],
+      "tasks": [
+        "Append events to data/audit/audit-log.jsonl with stable ids",
+        "Validate parseability, required fields, unique ids, and basic secret redaction",
+        "Mirror the log into the audit_events table on setup"
+      ],
+      "testCases": [
+        "A non-parseable line fails audit:validate",
+        "A duplicate event id fails audit:validate",
+        "A summary containing an obvious secret token is flagged"
+      ],
+      "successCriteria": [
+        "audit:validate exits non-zero on a malformed log",
+        "audit events survive a database rebuild because they live in the JSONL"
+      ],
+      "useCases": [
+        "A future reviewer reconstructs why a gate was waived from the audit decision event"
+      ],
+      "routes": [
+        { "path": "cli:audit:validate", "kind": "cli", "realm": "local-dev", "status": "live", "filePath": "scripts/validate-audit.mjs", "permission": "governance.read", "rbacRoles": "maintainer", "notes": "" }
+      ],
+      "integrations": [],
+      "personaWorkflows": [
+        { "personaId": "agent", "rbacRole": "owner", "realm": "local-dev", "accessLevel": "allowed", "workflow": "Record an audit event before finishing material work", "expectedState": "appended", "primaryRoute": "cli:audit:record", "notes": "", "status": "planned" }
+      ]
+    },
+    {
+      "id": "S03",
+      "epicId": "EPIC-GOV",
+      "featureKey": "GOV-EVALS",
+      "title": "Agent evals and AI-security scenarios",
+      "priority": 1,
+      "estimate": 5,
+      "releaseBand": "P1",
+      "classification": "internal",
+      "category": "agentic-tooling",
+      "slug": "agent-evals",
+      "architecture": "Scenario fixtures mapped to OWASP LLM and NIST AI-RMF risks, scored against the guardrail policy. Results mirrored into SQLite/SQL/JSON.",
+      "labels": ["security", "governance"],
+      "personas": ["agent", "maintainer"],
+      "permissions": ["governance.read"],
+      "anchors": ["scripts/run-agent-evals.mjs", "tooling/agent-evals/scenarios"],
+      "dependsOn": ["S01"],
+      "tasks": [
+        "Author deny scenarios for prompt injection and destructive commands",
+        "Author allow scenarios for read-only and degraded-safe paths",
+        "Score scenarios against the guardrail policy and fail on mismatch"
+      ],
+      "testCases": [
+        "prompt-injection-deny resolves to a blocked decision",
+        "destructive-command-deny requires confirmation and is denied",
+        "tenant-read-success is allowed without confirmation"
+      ],
+      "successCriteria": [
+        "agent:evals exits non-zero if any scenario expectation is violated"
+      ],
+      "useCases": [
+        "A change to the guardrail policy is regression-tested against known adversarial inputs"
+      ],
+      "routes": [
+        { "path": "cli:agent:evals", "kind": "cli", "realm": "local-dev", "status": "live", "filePath": "scripts/run-agent-evals.mjs", "permission": "governance.read", "rbacRoles": "maintainer", "notes": "" }
+      ],
+      "integrations": [],
+      "personaWorkflows": [
+        { "personaId": "maintainer", "rbacRole": "admin", "realm": "local-dev", "accessLevel": "allowed", "workflow": "Run AI-security scenarios in the local gate", "expectedState": "pass", "primaryRoute": "cli:agent:evals", "notes": "", "status": "planned" }
+      ]
+    },
+    {
+      "id": "S04",
+      "epicId": "EPIC-GOV",
+      "featureKey": "GOV-DORA",
+      "title": "DORA-style delivery metrics",
+      "priority": 2,
+      "estimate": 3,
+      "releaseBand": "P2",
+      "classification": "internal",
+      "category": "metrics",
+      "slug": "dora-metrics",
+      "architecture": "Local proxies for deployment frequency, change lead time, and change failure rate derived from git history and the audit log.",
+      "labels": ["metrics", "governance"],
+      "personas": ["maintainer"],
+      "permissions": ["governance.read"],
+      "anchors": ["scripts/dora-metrics.mjs", "data/audit/audit-log.jsonl"],
+      "dependsOn": ["S02"],
+      "tasks": [
+        "Derive deployment-frequency and lead-time proxies from git and the audit log",
+        "Derive a change-failure-rate proxy from failure/rollback signals",
+        "Mirror metrics into SQLite/SQL/JSON"
+      ],
+      "testCases": [
+        "metrics:dora produces a JSON payload even with an empty audit log"
+      ],
+      "successCriteria": [
+        "metrics:dora runs offline against local git and the audit log"
+      ],
+      "useCases": [
+        "A solo maintainer tracks delivery health without an external DevOps platform"
+      ],
+      "routes": [
+        { "path": "cli:metrics:dora", "kind": "cli", "realm": "local-dev", "status": "live", "filePath": "scripts/dora-metrics.mjs", "permission": "governance.read", "rbacRoles": "maintainer", "notes": "" }
+      ],
+      "integrations": [],
+      "personaWorkflows": [
+        { "personaId": "maintainer", "rbacRole": "admin", "realm": "local-dev", "accessLevel": "allowed", "workflow": "Capture delivery metrics", "expectedState": "captured", "primaryRoute": "cli:metrics:dora", "notes": "", "status": "planned" }
+      ]
+    },
+    {
+      "id": "S05",
+      "epicId": "EPIC-CTX",
+      "featureKey": "CTX-BACKLOG",
+      "title": "SQL-first backlog engine",
+      "priority": 0,
+      "estimate": 8,
+      "releaseBand": "P0",
+      "classification": "internal",
+      "category": "agentic-tooling",
+      "slug": "sql-backlog",
+      "architecture": "Single local SQLite database rebuilt from a JSON seed and the audit log. Items move through a claim/start/complete/verify lifecycle recorded as immutable events. SQL/.schema dumps are the reviewable mirrors.",
+      "labels": ["context", "tooling", "governance"],
+      "personas": ["agent", "maintainer"],
+      "permissions": ["backlog.read", "backlog.write"],
+      "anchors": ["scripts/backlog-db.mjs", "data/schema.sql", "data/seed/backlog.seed.json"],
+      "dependsOn": [],
+      "tasks": [
+        "Define the schema: features, items, routes, integrations, persona workflows, events, claims",
+        "Build setup that rebuilds the database from text sources",
+        "Implement the claim/start/complete/verify/release lifecycle",
+        "Export reviewable .sql and .schema mirrors on every mutation"
+      ],
+      "testCases": [
+        "setup rebuilds the database deterministically from seed",
+        "claiming an already-claimed item fails without --force",
+        "validate fails when a feature has no task or no test case"
+      ],
+      "successCriteria": [
+        "backlog:validate passes on the seeded database",
+        "the database can be deleted and rebuilt in well under a second"
+      ],
+      "useCases": [
+        "An agent selects the next unblocked, unclaimed item and claims a narrow write scope"
+      ],
+      "routes": [
+        { "path": "cli:backlog", "kind": "cli", "realm": "local-dev", "status": "live", "filePath": "scripts/backlog-db.mjs", "permission": "backlog.read", "rbacRoles": "maintainer", "notes": "Lifecycle and query commands." }
+      ],
+      "integrations": [],
+      "personaWorkflows": [
+        { "personaId": "agent", "rbacRole": "owner", "realm": "local-dev", "accessLevel": "allowed", "workflow": "Claim and progress a backlog item", "expectedState": "claimed-then-verified", "primaryRoute": "cli:backlog", "notes": "", "status": "planned" }
+      ]
+    },
+    {
+      "id": "S06",
+      "epicId": "EPIC-GOV",
+      "featureKey": "GOV-SKILLS",
+      "title": "Reusable Codex skills",
+      "priority": 2,
+      "estimate": 2,
+      "releaseBand": "P2",
+      "classification": "internal",
+      "category": "agentic-tooling",
+      "slug": "codex-skills",
+      "architecture": "Two skills, traceability and build-runner, installable into ~/.codex/skills. They encode the audit and lifecycle disciplines so they survive across repos and agents.",
+      "labels": ["governance", "docs"],
+      "personas": ["agent"],
+      "permissions": ["governance.read"],
+      "anchors": ["skills/agentic-traceability/SKILL.md", "skills/agentic-build-runner/SKILL.md", "skills/README.md"],
+      "dependsOn": ["S02", "S05"],
+      "tasks": [
+        "Write the traceability skill that keeps the audit log current",
+        "Write the build-runner skill that executes backlog items end to end",
+        "Document installation into the agent's skills directory"
+      ],
+      "testCases": [
+        "Each SKILL.md has valid frontmatter with name and description"
+      ],
+      "successCriteria": [
+        "The skills reference only generic, portable platform commands"
+      ],
+      "useCases": [
+        "A new repo adopts the model by installing the two skills and an AGENTS.md"
+      ],
+      "routes": [
+        { "path": "skill:agentic-traceability", "kind": "skill", "realm": "local-dev", "status": "live", "filePath": "skills/agentic-traceability/SKILL.md", "permission": "", "rbacRoles": "", "notes": "" }
+      ],
+      "integrations": [],
+      "personaWorkflows": [
+        { "personaId": "agent", "rbacRole": "owner", "realm": "local-dev", "accessLevel": "allowed", "workflow": "Load the traceability skill before finishing work", "expectedState": "loaded", "primaryRoute": "skill:agentic-traceability", "notes": "", "status": "planned" }
+      ]
+    },
+    {
+      "id": "S07",
+      "epicId": "EPIC-CTX",
+      "featureKey": "CTX-BROKER",
+      "title": "Context broker and workflow profiles",
+      "priority": 0,
+      "estimate": 8,
+      "releaseBand": "P0",
+      "classification": "internal",
+      "category": "agentic-tooling",
+      "slug": "context-broker",
+      "architecture": "SQLite chooses the context. A workflow profile picks the queries and caps; the broker emits a bounded packet (feature, items, routes, recent audit, next files) in markdown, json, or toon, and forbids bulk-loading generated mirrors.",
+      "ux": "CLI packet output intended to be pasted into, or read by, an agent before it opens any source files.",
+      "labels": ["context", "tooling"],
+      "personas": ["agent"],
+      "permissions": ["backlog.read"],
+      "anchors": ["scripts/agent-context.mjs", "config/agentic/context-profiles.yaml", "tooling/agent-context/README.md"],
+      "dependsOn": ["S05"],
+      "tasks": [
+        "Load workflow profiles and merge with defaults",
+        "Query SQLite for a bounded packet and derive next files from anchors and routes",
+        "Render markdown, json, and toon and write a packet manifest",
+        "Audit packet manifests for forbidden bulk files and file-count caps"
+      ],
+      "testCases": [
+        "context:feature for S07 on the route workflow emits a packet whose nextFiles exclude forbidden bulk files",
+        "context:item for S07-TASK-01 emits a toon packet with context, backlogItems, and routes sections",
+        "context:audit reports the last manifest as valid"
+      ],
+      "successCriteria": [
+        "The packet never names a forbidden bulk file",
+        "The packet file count never exceeds the profile cap"
+      ],
+      "useCases": [
+        "An agent asks for the route-workflow packet for a feature and reads only the files it names"
+      ],
+      "routes": [
+        { "path": "cli:context:feature", "kind": "cli", "realm": "local-dev", "status": "live", "filePath": "scripts/agent-context.mjs", "permission": "backlog.read", "rbacRoles": "agent", "notes": "Feature-scoped packet." },
+        { "path": "cli:context:item", "kind": "cli", "realm": "local-dev", "status": "live", "filePath": "scripts/agent-context.mjs", "permission": "backlog.read", "rbacRoles": "agent", "notes": "Item-scoped packet." }
+      ],
+      "integrations": [],
+      "personaWorkflows": [
+        { "personaId": "agent", "rbacRole": "owner", "realm": "local-dev", "accessLevel": "allowed", "workflow": "Generate a bounded context packet before reading files", "expectedState": "packet-emitted", "primaryRoute": "cli:context:feature", "notes": "Stay within nextFiles unless evidence points elsewhere.", "status": "planned" }
+      ]
+    }
+  ]
+}
