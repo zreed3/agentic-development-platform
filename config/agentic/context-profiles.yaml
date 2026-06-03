@@ -18,6 +18,15 @@ defaults:
     - data/backlog.json
     - data/audit/audit-log.jsonl
     - docs/generated/**
+  deliveryFlow:
+    - "Plan: choose one feature slice, inspect the bounded packet, and name the exact items/routes/contracts in scope."
+    - "Design: decide RBAC/scope/state behavior and test seams before editing code."
+    - "Build: edit only the scoped files plus directly related tests; defer generated docs until the slice is stable."
+    - "Test: run targeted checks first, record failed results once, and run full governance only at feature or release checkpoints."
+  verificationPolicy:
+    - "Prefer one consolidated verification event per feature slice instead of repeated micro-events for the same command evidence."
+    - "Use npm run backlog:fail when a test command fails so the backlog is not success-biased."
+    - "Do not run npm run ci:governance for every small item; reserve it for feature completion, process/tooling changes, or pre-push."
 
 workflows:
   route:
@@ -108,3 +117,22 @@ workflows:
     guidance:
       - Treat context tooling as bounded, deterministic, and reversible.
       - Do not emit audit events for throwaway tooling experiments.
+
+  delivery-slice:
+    maxFiles: 6
+    maxBacklogEvents: 3
+    maxAuditEvents: 3
+    maxBacklogItems: 16
+    queries:
+      - feature_current_status
+      - backlog_items_by_feature
+      - persona_workflows_by_feature
+      - routes_by_feature
+      - recent_audit
+    requiredChecks:
+      - npm run backlog:validate
+      - npm run test:agent-context
+    guidance:
+      - Use this profile for fast complete-dev work where token cost matters.
+      - Batch plan, design, build, and test into one feature slice before recording evidence.
+      - Run only targeted checks during implementation; run npm run ci:governance only at a feature/release checkpoint or after tooling/policy changes.

@@ -19,6 +19,7 @@
     "backlog:block": "node scripts/backlog-db.mjs block",
     "backlog:complete": "node scripts/backlog-db.mjs complete",
     "backlog:verify": "node scripts/backlog-db.mjs verify",
+    "backlog:fail": "node scripts/backlog-db.mjs fail",
     "backlog:release": "node scripts/backlog-db.mjs release",
     "backlog:active": "node scripts/backlog-db.mjs active",
     "context:feature": "node scripts/agent-context.mjs feature",

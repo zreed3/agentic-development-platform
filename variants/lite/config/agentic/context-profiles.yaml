@@ -1,0 +1,76 @@
+version: 1
+
+defaults:
+  maxAuditEvents: 3
+  maxBacklogEvents: 3
+  maxBacklogItems: 16
+  maxRoutes: 8
+  maxFiles: 6
+  forbiddenBulkFiles:
+    - data/backlog-source.sql
+    - data/backlog.json
+    - data/audit/audit-log.jsonl
+    - docs/generated/**
+    - docs/interactive/**
+  deliveryFlow:
+    - "Plan: choose one feature slice, inspect the bounded packet, and name the exact items/routes/contracts in scope."
+    - "Design: decide permission, scope, state behavior, and test seams before editing code."
+    - "Build: edit only scoped implementation files plus directly related tests."
+    - "Test: run targeted checks first, record failed results once, and run full gates only at checkpoints."
+  verificationPolicy:
+    - "Prefer one consolidated verification event per feature slice."
+    - "Use backlog:fail when a test command fails."
+    - "Reserve full gates for feature completion, release checkpoints, process/tooling changes, or before push."
+
+workflows:
+  delivery-slice:
+    queries:
+      - feature_current_status
+      - backlog_items_by_feature
+      - routes_by_feature
+      - recent_audit
+    requiredChecks:
+      - backlog:validate
+    guidance:
+      - Use this profile as the default complete-dev workflow.
+      - Keep context small and code-facing.
+      - Do not read generated mirrors.
+
+  rbac-slice:
+    maxFiles: 8
+    queries:
+      - feature_current_status
+      - backlog_items_by_feature
+      - persona_workflows_by_feature
+      - recent_audit
+    requiredChecks:
+      - targeted-rbac-tests
+    guidance:
+      - Use for auth, permission, entitlement, tenant, or business-scope work.
+      - Include negative tests for insufficient role and cross-scope denial.
+
+  db-slice:
+    maxFiles: 8
+    queries:
+      - feature_current_status
+      - backlog_items_by_feature
+      - recent_backlog_events
+    requiredChecks:
+      - migration-validation
+      - targeted-db-tests
+    guidance:
+      - Use for schema, migration, RLS, repository, and persistence changes.
+      - Avoid destructive database commands unless explicitly requested.
+
+  docs-slice:
+    maxFiles: 4
+    queries:
+      - feature_current_status
+      - backlog_items_by_feature
+      - recent_audit
+    requiredChecks:
+      - audit-validate
+    guidance:
+      - Update source docs or generators, not generated mirrors by hand.
+      - Keep documentation edits concise and evidence-linked.
+

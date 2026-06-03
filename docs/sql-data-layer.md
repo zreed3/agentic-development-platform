@@ -75,9 +75,14 @@ npm run backlog:claim  -- --item S07-TASK-01 --actor agent --ttl-hours 8 --scope
 npm run backlog:start  -- --item S07-TASK-01 --summary "Started"
 npm run backlog:complete -- --item S07-TASK-01 --summary "Implemented" --evidence scripts/agent-context.mjs
 npm run backlog:verify -- --item S07-TASK-01 --summary "Verified" --evidence "npm run test:agent-context"
+npm run backlog:fail -- --item S07-TASK-01 --summary "Targeted check failed" --evidence "npm run test:agent-context"
 npm run backlog:release -- --item S07-TASK-01    # give up a claim
 npm run backlog:active                            # list unexpired claims
 ```
+
+`backlog:fail` records a `test-result` with status `failed` so failures are visible
+in the SQL backlog instead of only appearing in prose. Failed items are eligible for
+`backlog:next` once the active claim expires or is released.
 
 Claims have a TTL and a write scope. `backlog:next` skips items with an active claim,
 so parallel agents can each take disjoint work without colliding — the database is

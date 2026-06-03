@@ -40,7 +40,10 @@ scenarios, DORA-style metrics, a context broker, and repeatable gate commands.
    evals, AI-security scenarios, DORA metrics.
 9. Use the **context broker** to select bounded context packets instead of
    bulk-loading generated artifacts.
-10. Verify generated output and record audit evidence before finishing material work.
+10. Deliver feature slices with `plan -> design -> build -> test`: plan one bounded
+    slice, design behavior and checks, build scoped code/tests, then run targeted
+    checks before broader gates.
+11. Verify generated output and record audit evidence before finishing material work.
 
 ## Maturity Summary
 

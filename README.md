@@ -26,6 +26,11 @@ offline, and the full gate runs in seconds.
 task -> classify -> SQL lookup -> capped context packet -> anchored files -> targeted checks
 ```
 
+For delivery speed, the default operating unit is a **feature slice**:
+`plan -> design -> build -> test`. The slice profile keeps context tighter, runs
+targeted checks during implementation, records failures explicitly, and reserves the
+full governance gate for feature/release checkpoints.
+
 ## What makes it different
 
 Most of the ingredients here exist somewhere. The combination, and one specific
@@ -76,6 +81,7 @@ npm run ci:governance    # the full gate: backlog, audit, guardrails, evals, dor
 # Ask the broker for a bounded packet instead of opening files blind:
 npm run context:feature -- --feature S07 --workflow route
 npm run context:item -- --item S07-TASK-01 --workflow route --format toon
+npm run context:feature -- --feature S07 --workflow delivery-slice
 ```
 
 ## What's inside

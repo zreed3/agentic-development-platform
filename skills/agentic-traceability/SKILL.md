@@ -68,7 +68,7 @@ In the repo root:
 - `scope-change` — feature, route, integration, or release-band scope changed.
 
 Suggested status values: `planned`, `in-progress`, `blocked`, `implemented`,
-`verified`, `deferred`, `superseded`.
+`verified`, `failed`, `deferred`, `superseded`.
 
 ## Audit Rules
 
@@ -77,7 +77,10 @@ Suggested status values: `planned`, `in-progress`, `blocked`, `implemented`,
 - Never put secrets, credentials, tokens, or customer data in audit
   summaries/details/evidence. `npm run audit:validate` will flag likely secrets.
 - Prefer file paths, PRs, commits, test commands, and doc paths as evidence.
-- Use one concise event for small changes; multiple events for separate decisions.
+- Use one concise event for a feature slice when the same evidence covers multiple
+  tasks, tests, use cases, or success criteria.
+- Record failed test runs as `test-result` / `failed`; do not hide them in a
+  passing verification summary.
 
 ## Useful Queries
 

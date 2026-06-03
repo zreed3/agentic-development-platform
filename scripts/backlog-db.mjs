@@ -91,6 +91,7 @@ function usage() {
   node scripts/backlog-db.mjs block --item S07-TASK-01 --summary "Blocked by ..."
   node scripts/backlog-db.mjs complete --item S07-TASK-01 --summary "..." [--evidence path]
   node scripts/backlog-db.mjs verify --item S07-TASK-01 --summary "..." [--evidence command-or-path]
+  node scripts/backlog-db.mjs fail --item S07-TASK-01 --summary "Failed because ..." [--evidence command-or-path]
   node scripts/backlog-db.mjs release --item S07-TASK-01 [--summary "..."]
   node scripts/backlog-db.mjs active               Active (unexpired) claims
 
@@ -397,7 +398,7 @@ function nextItems(args) {
   const limit = Number(value(args, "limit", "10"));
   const feature = value(args, "feature");
   const type = value(args, "type");
-  const filters = ["s.current_status in ('planned','deferred')", "coalesce(s.active_claim_actor, '') = ''"];
+  const filters = ["s.current_status in ('planned','deferred','failed')", "coalesce(s.active_claim_actor, '') = ''"];
   if (feature) filters.push(`i.feature_id = ${sqlString(feature)}`);
   if (type) filters.push(`i.item_type = ${sqlString(type)}`);
   if (args.flags.has("strict-dependencies")) {
@@ -468,6 +469,7 @@ try {
   else if (args.command === "block") transitionItem(args, "status", "blocked", `Blocked ${value(args, "item", "backlog item")}`);
   else if (args.command === "complete") transitionItem(args, "status", "implemented", `Completed ${value(args, "item", "backlog item")}`);
   else if (args.command === "verify") transitionItem(args, "test-result", "verified", `Verified ${value(args, "item", "backlog item")}`);
+  else if (args.command === "fail") transitionItem(args, "test-result", "failed", `Failed ${value(args, "item", "backlog item")}`);
   else if (args.command === "release") releaseItem(args);
   else if (args.command === "active") activeClaims();
   else usage();

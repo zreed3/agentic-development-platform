@@ -306,6 +306,8 @@ function buildPacket({ featureId, itemId = "", workflowName, format }) {
       maxRoutes: profile.maxRoutes,
       maxFiles: profile.maxFiles,
       queries: profile.queries ?? [],
+      deliveryFlow: profile.deliveryFlow ?? [],
+      verificationPolicy: profile.verificationPolicy ?? [],
     },
     feature,
     selectedItem,
@@ -424,6 +426,14 @@ ${markdownTable(packet.auditEvents, [
 
 ${packet.requiredChecks.map((check) => `- ${check}`).join("\n") || "- None"}
 
+## Plan Design Build Test
+
+${packet.profile.deliveryFlow?.map((line) => `- ${line}`).join("\n") || "- Use the feature's normal workflow."}
+
+## Verification Policy
+
+${packet.profile.verificationPolicy?.map((line) => `- ${line}`).join("\n") || "- Record evidence according to project policy."}
+
 ## Do Not Bulk Read
 
 ${packet.forbiddenBulkFiles.map((file) => `- ${file}`).join("\n")}
@@ -462,6 +472,8 @@ function renderToon(packet) {
     renderToonRows("routes", packet.routes, ["path", "status", "realm", "file_path"]),
     renderToonRows("auditEvents", packet.auditEvents, ["occurred_at", "event_type", "status", "summary"]),
     renderToonRows("requiredChecks", packet.requiredChecks.map((check) => ({ check })), ["check"]),
+    renderToonRows("deliveryFlow", (packet.profile.deliveryFlow ?? []).map((step) => ({ step })), ["step"]),
+    renderToonRows("verificationPolicy", (packet.profile.verificationPolicy ?? []).map((policy) => ({ policy })), ["policy"]),
     renderToonRows("forbiddenBulkFiles", packet.forbiddenBulkFiles.map((pathValue) => ({ path: pathValue })), ["path"]),
   ].join("\n");
 }
@@ -510,7 +522,7 @@ function auditManifest() {
 }
 
 function selectNextItems({ featureId, itemType, maxItems }) {
-  const filters = ["i.current_status in ('planned', 'in-progress')"];
+  const filters = ["i.current_status in ('planned', 'in-progress', 'deferred', 'failed')"];
   if (featureId) filters.push(`i.feature_id = ${sqlString(featureId)}`);
   if (itemType) filters.push(`i.item_type = ${sqlString(itemType)}`);
   return sqliteJson(
