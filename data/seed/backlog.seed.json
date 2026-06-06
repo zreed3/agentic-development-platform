@@ -309,6 +309,49 @@
       "personaWorkflows": [
         { "personaId": "agent", "rbacRole": "owner", "realm": "local-dev", "accessLevel": "allowed", "workflow": "Generate a bounded context packet before reading files", "expectedState": "packet-emitted", "primaryRoute": "cli:context:feature", "notes": "Stay within nextFiles unless evidence points elsewhere.", "status": "planned" }
       ]
+    },
+    {
+      "id": "S08",
+      "epicId": "EPIC-GOV",
+      "featureKey": "GOV-MCP-ADAPTER",
+      "title": "Read-only MCP adapter for ChatGPT Apps review",
+      "priority": 3,
+      "estimate": 5,
+      "releaseBand": "P3",
+      "classification": "external",
+      "category": "agentic-tooling",
+      "slug": "mcp-app-adapter",
+      "architecture": "Future MCP server adapter that exposes ADG read-only governance packets and validation reports with explicit tool annotations, output schemas, and review-ready test cases.",
+      "ux": "ChatGPT Apps reviewers and users can request bounded ADG reports without mutating the governed repo.",
+      "labels": ["governance", "tooling", "mcp"],
+      "personas": ["agent", "maintainer", "reviewer"],
+      "permissions": ["governance.read"],
+      "anchors": ["plugins/adg-codex-plugin/README.md", "plugins/adg-codex-plugin/agentic-plugin.manifest.json"],
+      "dependsOn": ["S07"],
+      "tasks": [
+        "Expose context slice, elicitation graph, UX validation, standards matrix, and deliverable audit as read-only MCP tools",
+        "Declare readOnlyHint, openWorldHint, destructiveHint, and outputSchema for every tool",
+        "Generate chatgpt-app-submission.json only after tool descriptors match implementation behavior"
+      ],
+      "testCases": [
+        "Each MCP tool descriptor has explicit safety hints and an outputSchema",
+        "Submission test cases cover the main read-only governance workflows",
+        "Negative test cases do not trigger ADG tools for unrelated app requests"
+      ],
+      "successCriteria": [
+        "No MCP tool mutates the governed repo",
+        "ChatGPT Apps submission metadata is generated from inspected tool descriptors"
+      ],
+      "useCases": [
+        "A reviewer asks ChatGPT for the ADG standards matrix and receives a bounded read-only report"
+      ],
+      "routes": [],
+      "integrations": [
+        { "name": "ChatGPT Apps MCP", "status": "planned", "notes": "Deferred until the Codex plugin package is published." }
+      ],
+      "personaWorkflows": [
+        { "personaId": "reviewer", "rbacRole": "reader", "realm": "chatgpt-app", "accessLevel": "allowed", "workflow": "Inspect read-only ADG evidence through MCP tools", "expectedState": "report-returned", "primaryRoute": "mcp:adg:read-only", "notes": "Tool annotations and output schemas are required before submission.", "status": "planned" }
+      ]
     }
   ]
 }

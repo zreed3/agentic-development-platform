@@ -57,6 +57,7 @@ dependencies to install.
 - UX-as-code validation: `npm run ux:validate`
 - Standards/control validation: `npm run standards:validate`
 - Deliverable audit validation: `npm run deliverable:audit`
+- Package the standalone Codex plugin: `npm run plugin:package`
 - ADG plugin validation: `npm run plugin:validate`
 - Maturity validation / scorecard: `npm run maturity:validate` / `npm run maturity:score`
 - Skill manifest validation: `npm run skills:validate`
@@ -94,6 +95,12 @@ Requirements-to-UX lineage is projected as a SQL graph: feature → story → us
 → requirement → criteria → scenario → experience contract → journey/test evidence.
 Use this graph to keep agents on the relevant build slice, reduce rework, and make
 bugs traceable back to the requirement and UX contract that produced them.
+
+The Codex plugin package in `plugins/adg-codex-plugin/` is a vendored
+distribution artifact. Keep the root scripts canonical, regenerate the plugin
+snapshot with `npm run plugin:package`, and validate packaged commands and skill
+references before publishing. Do not generate a ChatGPT Apps submission until an
+MCP server adapter with explicit tool hints and output schemas exists.
 
 Use the item lifecycle (`backlog:next` → `claim` → `start` → `complete` → `verify`)
 and keep current state *derived* from events, never hand-edited. See

@@ -1,0 +1,21 @@
+{
+  "name": "adg-codex-plugin-marketplace",
+  "interface": {
+    "displayName": "ADG Codex Plugin"
+  },
+  "plugins": [
+    {
+      "name": "adg-codex-plugin",
+      "source": {
+        "source": "url",
+        "url": "https://github.com/zreed3/adg-codex-plugin.git",
+        "ref": "main"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    }
+  ]
+}

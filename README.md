@@ -109,7 +109,7 @@ npm run context:feature -- --feature S07 --workflow delivery-slice
 | **Standards as code** | `config/agentic/standards-map.json`, `scripts/adg-standards.mjs` | Local control evidence mapped to global ISMS, secure SDLC, AI-risk, and GenAI security references. |
 | **Deliverable auditability** | `config/agentic/deliverables.json`, `scripts/adg-deliverable.mjs` | Records source inputs, graph slices, files, tests, decisions, and evidence for bug and rework triage. |
 | **Maturity as code** | `config/agentic/maturity.json`, `scripts/adg-maturity.mjs` | 1.0-5.0 scorecards for required ADG domains, with evidence and gaps. |
-| **Governance plugin** | `plugins/adg-governance/` | Codex plugin package plus neutral manifest for future agent clients; deterministic controls, not a runtime. |
+| **Codex plugin package** | `plugins/adg-codex-plugin/` | Standalone Codex plugin package plus neutral manifest for future agent clients; deterministic controls, not a runtime. |
 | **Agent skills** | `skills/agentic-*`, `skills/adg-*`, `config/agentic/skill-manifest.json` | Portable disciplines plus generic as-code skills validated by manifest. |
 | **Rulebook** | `AGENTS.md` | What every agent reads first; also a per-repo template. |
 
@@ -157,6 +157,11 @@ Copy `config/`, `scripts/`, `tooling/`, `data/schema.sql`, and `AGENTS.md`; repl
 Profile* in `AGENTS.md`; install the skills; then `npm run setup && npm run
 ci:governance`. Full steps in
 [`docs/reference/extraction-notes.md`](docs/reference/extraction-notes.md).
+
+For Codex marketplace distribution, use the standalone package in
+[`plugins/adg-codex-plugin`](plugins/adg-codex-plugin). It vendors the
+deterministic core scripts and includes marketplace metadata for the dedicated
+`zreed3/adg-codex-plugin` repository.
 
 ## License
 

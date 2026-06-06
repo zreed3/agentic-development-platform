@@ -1,13 +1,18 @@
 {
-  "name": "adg-governance",
-  "version": "0.2.0",
-  "description": "Deterministic ADG governance workflows for bounded agent delivery, requirements-to-UX lineage, standards evidence, and auditable deliverables.",
+  "name": "adg-codex-plugin",
+  "version": "0.3.0",
+  "description": "Deterministic ADG workflows for bounded Codex delivery, requirements-to-UX lineage, standards evidence, and auditable deliverables.",
   "author": {
-    "name": "Otterblock Pty Ltd"
+    "name": "Otterblock Pty Ltd",
+    "email": "zach+github@otterblock.com.au"
   },
+  "homepage": "https://github.com/zreed3/adg-codex-plugin",
+  "repository": "https://github.com/zreed3/adg-codex-plugin",
+  "license": "PolyForm-Noncommercial-1.0.0",
+  "keywords": ["agentic-development", "codex", "governance", "traceability"],
   "skills": "./skills/",
   "interface": {
-    "displayName": "ADG Governance",
+    "displayName": "ADG Codex Plugin",
     "shortDescription": "Bound agents to auditable feature slices.",
     "longDescription": "ADG Governance provides deterministic planning, validation, and evidence workflows that reduce rework by connecting requirements, UX contracts, RBAC, standards, tests, and deliverables before code is edited.",
     "developerName": "Otterblock Pty Ltd",

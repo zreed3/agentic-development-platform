@@ -9,11 +9,13 @@ Use this when product intent must become buildable UX.
 
 ## Workflow
 
-1. Run `node scripts/adg-elicitation.mjs graph --feature <id>`.
-2. Run `node scripts/adg-ux.mjs validate --feature <id>`.
+1. Run `node <adg-codex-plugin>/scripts/adg-elicitation.mjs graph --feature <id>`.
+2. Run `node <adg-codex-plugin>/scripts/adg-ux.mjs validate --feature <id>`.
 3. Confirm each requirement maps to use case, criteria, contract, journey, scenario, and test evidence.
 4. Confirm each contract names persona, role, surface, primary action, fallback action, and evidence.
 5. Stop if graph edges dangle or required journey outcomes are missing.
+
+Run bundled commands from the host repo as the working directory so validation uses the host repo's ADG configuration.
 
 ## Output
 

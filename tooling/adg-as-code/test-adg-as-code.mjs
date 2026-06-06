@@ -100,4 +100,43 @@ const pluginValidation = JSON.parse(run("node scripts/adg-plugin.mjs validate"))
 assert.equal(pluginValidation.valid, true);
 assert.ok(pluginValidation.skills >= 3);
 
+const pluginRoot = "plugins/adg-codex-plugin";
+const pluginScript = (name) => `node ${pluginRoot}/scripts/${name}`;
+const pluginGraph = JSON.parse(run(`${pluginScript("adg-elicitation.mjs")} graph --feature S07 --format json`));
+assert.equal(pluginGraph.valid, true);
+assert.equal(pluginGraph.summary.danglingEdges, 0);
+
+const pluginContextSlice = JSON.parse(run(`${pluginScript("adg-context.mjs")} slice --feature S07 --workflow agentic-tooling --format json`));
+assert.equal(pluginContextSlice.valid, true);
+assert.equal(pluginContextSlice.efficiency.forbiddenNamed.length, 0);
+
+const pluginUx = JSON.parse(run(`${pluginScript("adg-ux.mjs")} validate --feature S07 --format json`));
+assert.equal(pluginUx.valid, true);
+
+const pluginStandards = JSON.parse(run(`${pluginScript("adg-standards.mjs")} matrix --format json`));
+assert.equal(pluginStandards.valid, true);
+
+const pluginDeliverables = JSON.parse(run(`${pluginScript("adg-deliverable.mjs")} audit --format json`));
+assert.equal(pluginDeliverables.valid, true);
+
+const marketplace = JSON.parse(fs.readFileSync(`${pluginRoot}/.agents/plugins/marketplace.json`, "utf8"));
+const marketplaceEntry = marketplace.plugins.find((entry) => entry.name === "adg-codex-plugin");
+assert.equal(marketplaceEntry.source.source, "url");
+assert.equal(marketplaceEntry.source.url, "https://github.com/zreed3/adg-codex-plugin.git");
+assert.equal(marketplaceEntry.policy.installation, "AVAILABLE");
+assert.equal(marketplaceEntry.policy.authentication, "ON_INSTALL");
+assert.equal(marketplaceEntry.category, "Productivity");
+
+for (const skillFile of fs.readdirSync(`${pluginRoot}/skills`).map((name) => `${pluginRoot}/skills/${name}/SKILL.md`)) {
+  const text = fs.readFileSync(skillFile, "utf8");
+  assert.doesNotMatch(text, /node scripts\//u);
+  assert.doesNotMatch(text, /bord\.room|bordroom|V4\.1|pnpm/u);
+}
+
+const pluginFiles = run(`find ${pluginRoot} -type f`).trim().split(/\r?\n/u).filter(Boolean);
+for (const file of pluginFiles) {
+  const text = fs.readFileSync(file, "utf8");
+  assert.doesNotMatch(text, /node scripts\//u, `${file} must not assume host root scripts`);
+}
+
 console.log("ADG as-code checks passed");
