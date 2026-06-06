@@ -24,6 +24,14 @@
   ],
   "requiredScenarioOutcomes": ["happy", "sad", "denial", "recovery"],
   "requiredContractFields": ["persona", "role", "surface", "primaryAction", "fallbackAction", "requirementIds", "scenarioIds", "testEvidence"],
+  "requiredJourneyFields": ["featureId", "routePattern", "persona", "expectedState", "primaryAction", "fallbackAction", "evidenceCommand"],
+  "featureTruthClassifications": ["live", "partial", "hidden", "staged", "broken"],
+  "journeyExpectedStates": ["live", "read-only", "hidden", "forbidden", "entitlement-locked", "empty", "error", "staged", "broken"],
+  "browserSmokePersonas": ["owner", "admin", "manager", "staff", "viewer"],
+  "validationModes": {
+    "structural": "Required rows, links, and traceability edges exist.",
+    "substantive": "Route/persona/state journeys have specific evidence, actions, and smoke evidence where applicable."
+  },
   "requiredTraceability": [
     "feature_to_story",
     "story_to_use_case",

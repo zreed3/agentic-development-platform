@@ -1,7 +1,7 @@
 {
   "name": "adg-governance",
-  "version": "0.2.0",
-  "description": "Deterministic ADG governance workflows for bounded agent delivery, requirements-to-UX lineage, standards evidence, and auditable deliverables.",
+  "version": "0.3.1",
+  "description": "Deterministic ADG governance workflows for bounded agent delivery, route/persona UX truth passes, standards evidence, and auditable deliverables.",
   "author": {
     "name": "Otterblock Pty Ltd"
   },
@@ -15,6 +15,7 @@
     "capabilities": [
       "Generate bounded context slices",
       "Validate requirements-to-UX lineage",
+      "Classify route/persona journey truth",
       "Map governance controls to standards",
       "Audit deliverables and bug evidence"
     ],

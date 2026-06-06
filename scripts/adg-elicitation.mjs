@@ -50,12 +50,14 @@ function sqlString(input) {
 
 function usage() {
   console.log(`Usage:
-  node scripts/adg-elicitation.mjs validate [--config config/agentic/elicitation.json] [--feature S07] [--format json|markdown|toon] [--no-sqlite]
+  node scripts/adg-elicitation.mjs validate [--config config/agentic/elicitation.json] [--feature S07] [--format json|markdown|toon] [--no-sqlite|--check|--read-only]
   node scripts/adg-elicitation.mjs packet --feature S07 [--format json|markdown|toon]
   node scripts/adg-elicitation.mjs graph [--feature S07] [--format json|markdown|toon]
 
 The validator treats elicitation coverage gaps as advisory unless config policy
-marks them as hard-gated. Invalid config shape still exits non-zero.`);
+marks them as hard-gated. Invalid config shape still exits non-zero. By default
+validate refreshes the SQLite projection for the default config; --check and
+--read-only compare the existing projection without writing.`);
 }
 
 function loadConfig(configPath) {
@@ -68,6 +70,41 @@ function asArray(valueToCheck) {
 
 function byId(rows) {
   return new Set(asArray(rows).map((row) => row.id).filter(Boolean));
+}
+
+function asMap(rows) {
+  return new Map(asArray(rows).map((row) => [row.id, row]));
+}
+
+function deriveRoutePattern(surface = "") {
+  const text = String(surface ?? "");
+  if (/^(?:route|page|screen):/u.test(text)) return text.replace(/^(?:route|page|screen):/u, "");
+  return text;
+}
+
+function enrichJourney(feature, journey) {
+  const contracts = asMap(feature.experienceContracts);
+  const scenarios = asMap(feature.scenarios);
+  const contract = contracts.get(journey.contractId) ?? {};
+  const scenario = asArray(contract.scenarioIds)
+    .map((id) => scenarios.get(id))
+    .find((row) => row?.outcome === journey.outcome) ?? {};
+  const surface = journey.surface ?? contract.surface ?? "";
+  return {
+    ...journey,
+    featureId: feature.id,
+    routeId: journey.routeId ?? journey.routePattern ?? deriveRoutePattern(surface),
+    routePattern: journey.routePattern ?? deriveRoutePattern(surface),
+    tenantRole: journey.tenantRole ?? journey.role ?? contract.role ?? "",
+    platformRole: journey.platformRole ?? "",
+    businessScope: journey.businessScope ?? "",
+    entitlement: journey.entitlement ?? "",
+    expectedState: journey.expectedState ?? journey.state ?? "",
+    primaryAction: journey.primaryAction ?? contract.primaryAction ?? "",
+    fallbackAction: journey.fallbackAction ?? contract.fallbackAction ?? "",
+    evidencePath: journey.evidencePath ?? "",
+    evidenceCommand: journey.evidenceCommand ?? journey.testEvidence ?? scenario.testEvidence ?? asArray(contract.testEvidence)[0] ?? "",
+  };
 }
 
 function makeGap({ featureId, domain, severity = "medium", summary, remediation = "", blocksImplementation = false, channel = "gap-register" }) {
@@ -188,7 +225,7 @@ function flatten(config, validation) {
     antiSuccessCriteria: features.flatMap((feature) => asArray(feature.antiSuccessCriteria).map((row) => ({ featureId: feature.id, type: "anti-success", ...row }))),
     contracts: features.flatMap((feature) => asArray(feature.experienceContracts).map((row) => ({ featureId: feature.id, ...row }))),
     scenarios: features.flatMap((feature) => asArray(feature.scenarios).map((row) => ({ featureId: feature.id, ...row }))),
-    journeyMatrix: features.flatMap((feature) => asArray(feature.journeyMatrix).map((row) => ({ featureId: feature.id, ...row }))),
+    journeyMatrix: features.flatMap((feature) => asArray(feature.journeyMatrix).map((row) => enrichJourney(feature, row))),
     gaps: validation.gaps,
   };
 }
@@ -265,8 +302,8 @@ function buildGraph(config, validation, featureId = "") {
         edges.push(graphEdge("scenario_to_test_evidence", "scenario", scenario.id, "test_evidence", evidenceId, feature.id));
       }
     }
-    for (const journey of asArray(feature.journeyMatrix)) {
-      nodes.push(graphNode("journey_row", journey.id, journey.expectedExperience, feature.id, { persona: journey.persona ?? "", role: journey.role ?? "", state: journey.state ?? "", outcome: journey.outcome ?? "" }));
+    for (const journey of asArray(feature.journeyMatrix).map((row) => enrichJourney(feature, row))) {
+      nodes.push(graphNode("journey_row", journey.id, journey.expectedExperience, feature.id, { persona: journey.persona ?? "", role: journey.role ?? "", routePattern: journey.routePattern ?? "", expectedState: journey.expectedState ?? "", primaryAction: journey.primaryAction ?? "", fallbackAction: journey.fallbackAction ?? "", state: journey.state ?? "", outcome: journey.outcome ?? "" }));
       if (journey.contractId) edges.push(graphEdge("contract_to_journey", "experience_contract", journey.contractId, "journey_row", journey.id, feature.id, { outcome: journey.outcome ?? "" }));
     }
   }
@@ -316,7 +353,7 @@ function writeSqlite(config, validation) {
     "CREATE TABLE elicitation_criteria (id TEXT PRIMARY KEY, feature_id TEXT NOT NULL, type TEXT NOT NULL, requirement_ids_json TEXT NOT NULL, statement TEXT NOT NULL);",
     "CREATE TABLE elicitation_experience_contracts (id TEXT PRIMARY KEY, feature_id TEXT NOT NULL, title TEXT NOT NULL, use_case_id TEXT NOT NULL, persona TEXT NOT NULL, role TEXT NOT NULL, intent TEXT NOT NULL, surface TEXT NOT NULL, primary_action TEXT NOT NULL, fallback_action TEXT NOT NULL, ui_states_json TEXT NOT NULL, expected_copy TEXT NOT NULL, data_touched_json TEXT NOT NULL, audit_behavior TEXT NOT NULL, requirement_ids_json TEXT NOT NULL, scenario_ids_json TEXT NOT NULL, test_evidence_json TEXT NOT NULL);",
     "CREATE TABLE elicitation_scenarios (id TEXT PRIMARY KEY, feature_id TEXT NOT NULL, contract_id TEXT NOT NULL, outcome TEXT NOT NULL, given_text TEXT NOT NULL, when_text TEXT NOT NULL, then_text TEXT NOT NULL, test_evidence TEXT NOT NULL);",
-    "CREATE TABLE elicitation_journey_matrix (id TEXT PRIMARY KEY, feature_id TEXT NOT NULL, contract_id TEXT NOT NULL, persona TEXT NOT NULL, role TEXT NOT NULL, state TEXT NOT NULL, outcome TEXT NOT NULL, expected_experience TEXT NOT NULL, test_evidence TEXT NOT NULL);",
+    "CREATE TABLE elicitation_journey_matrix (id TEXT PRIMARY KEY, feature_id TEXT NOT NULL, contract_id TEXT NOT NULL, route_id TEXT NOT NULL, route_pattern TEXT NOT NULL, persona TEXT NOT NULL, role TEXT NOT NULL, tenant_role TEXT NOT NULL, platform_role TEXT NOT NULL, business_scope TEXT NOT NULL, entitlement TEXT NOT NULL, state TEXT NOT NULL, expected_state TEXT NOT NULL, outcome TEXT NOT NULL, primary_action TEXT NOT NULL, fallback_action TEXT NOT NULL, expected_experience TEXT NOT NULL, test_evidence TEXT NOT NULL, evidence_path TEXT NOT NULL, evidence_command TEXT NOT NULL);",
     "CREATE TABLE elicitation_gaps (id TEXT PRIMARY KEY, feature_id TEXT NOT NULL, domain TEXT NOT NULL, severity TEXT NOT NULL, summary TEXT NOT NULL, remediation TEXT NOT NULL, channel TEXT NOT NULL, blocks_implementation INTEGER NOT NULL);",
     "CREATE TABLE elicitation_graph_nodes (id TEXT PRIMARY KEY, feature_id TEXT NOT NULL, type TEXT NOT NULL, source_id TEXT NOT NULL, label TEXT NOT NULL, attributes_json TEXT NOT NULL);",
     "CREATE TABLE elicitation_graph_edges (id TEXT PRIMARY KEY, feature_id TEXT NOT NULL, type TEXT NOT NULL, from_node TEXT NOT NULL, to_node TEXT NOT NULL, attributes_json TEXT NOT NULL);",
@@ -332,7 +369,7 @@ function writeSqlite(config, validation) {
   for (const row of [...flat.successCriteria, ...flat.antiSuccessCriteria]) statements.push(`INSERT INTO elicitation_criteria VALUES (${sqlString(row.id)}, ${sqlString(row.featureId)}, ${sqlString(row.type)}, ${sqlString(JSON.stringify(row.requirementIds ?? []))}, ${sqlString(row.statement)});`);
   for (const row of flat.contracts) statements.push(`INSERT INTO elicitation_experience_contracts VALUES (${sqlString(row.id)}, ${sqlString(row.featureId)}, ${sqlString(row.title)}, ${sqlString(row.useCaseId)}, ${sqlString(row.persona)}, ${sqlString(row.role)}, ${sqlString(row.intent)}, ${sqlString(row.surface)}, ${sqlString(row.primaryAction)}, ${sqlString(row.fallbackAction)}, ${sqlString(JSON.stringify(row.uiStates ?? []))}, ${sqlString(row.expectedCopy)}, ${sqlString(JSON.stringify(row.dataTouched ?? []))}, ${sqlString(row.auditBehavior)}, ${sqlString(JSON.stringify(row.requirementIds ?? []))}, ${sqlString(JSON.stringify(row.scenarioIds ?? []))}, ${sqlString(JSON.stringify(row.testEvidence ?? []))});`);
   for (const row of flat.scenarios) statements.push(`INSERT INTO elicitation_scenarios VALUES (${sqlString(row.id)}, ${sqlString(row.featureId)}, ${sqlString(row.contractId)}, ${sqlString(row.outcome)}, ${sqlString(row.given)}, ${sqlString(row.when)}, ${sqlString(row.then)}, ${sqlString(row.testEvidence)});`);
-  for (const row of flat.journeyMatrix) statements.push(`INSERT INTO elicitation_journey_matrix VALUES (${sqlString(row.id)}, ${sqlString(row.featureId)}, ${sqlString(row.contractId)}, ${sqlString(row.persona)}, ${sqlString(row.role)}, ${sqlString(row.state)}, ${sqlString(row.outcome)}, ${sqlString(row.expectedExperience)}, ${sqlString(row.testEvidence)});`);
+  for (const row of flat.journeyMatrix) statements.push(`INSERT INTO elicitation_journey_matrix VALUES (${sqlString(row.id)}, ${sqlString(row.featureId)}, ${sqlString(row.contractId)}, ${sqlString(row.routeId)}, ${sqlString(row.routePattern)}, ${sqlString(row.persona)}, ${sqlString(row.role)}, ${sqlString(row.tenantRole)}, ${sqlString(row.platformRole)}, ${sqlString(row.businessScope)}, ${sqlString(row.entitlement)}, ${sqlString(row.state)}, ${sqlString(row.expectedState)}, ${sqlString(row.outcome)}, ${sqlString(row.primaryAction)}, ${sqlString(row.fallbackAction)}, ${sqlString(row.expectedExperience)}, ${sqlString(row.testEvidence)}, ${sqlString(row.evidencePath)}, ${sqlString(row.evidenceCommand)});`);
   for (const gap of flat.gaps) statements.push(`INSERT INTO elicitation_gaps VALUES (${sqlString(gap.id)}, ${sqlString(gap.featureId)}, ${sqlString(gap.domain)}, ${sqlString(gap.severity)}, ${sqlString(gap.summary)}, ${sqlString(gap.remediation)}, ${sqlString(gap.channel ?? "gap-register")}, ${gap.blocksImplementation ? 1 : 0});`);
   const graph = buildGraph(config, validation);
   for (const node of graph.nodes) statements.push(`INSERT OR REPLACE INTO elicitation_graph_nodes VALUES (${sqlString(node.id)}, ${sqlString(node.featureId)}, ${sqlString(node.type)}, ${sqlString(node.sourceId)}, ${sqlString(node.label)}, ${sqlString(JSON.stringify(node.attributes ?? {}))});`);
@@ -342,8 +379,65 @@ function writeSqlite(config, validation) {
   execFileSync("sqlite3", [abs(sqlitePath)], { cwd: root, input: `${statements.join("\n")}\n`, encoding: "utf8" });
 }
 
+function readSqliteJson(sql) {
+  if (!fs.existsSync(abs(sqlitePath))) return null;
+  try {
+    const output = execFileSync("sqlite3", ["-json", abs(sqlitePath), sql], { cwd: root, encoding: "utf8" }).trim();
+    return output ? JSON.parse(output) : [];
+  } catch {
+    return null;
+  }
+}
+
+function validateSqlProjection(config, validation) {
+  const failures = [];
+  const flat = flatten(config, validation);
+  const contractRows = readSqliteJson("select id, primary_action, fallback_action from elicitation_experience_contracts order by id");
+  const journeyRows = readSqliteJson("select id, route_pattern, expected_state, primary_action, fallback_action, evidence_command from elicitation_journey_matrix order by id");
+  if (!contractRows || !journeyRows) {
+    return {
+      checked: true,
+      valid: false,
+      failures: [`${sqlitePath}: missing or incompatible SQL projection; run validation without --check to regenerate it first.`],
+    };
+  }
+  const sqlContracts = new Map(contractRows.map((row) => [row.id, row]));
+  for (const contract of flat.contracts) {
+    const sqlContract = sqlContracts.get(contract.id);
+    if (!sqlContract) {
+      failures.push(`${contract.id}: missing SQL contract projection`);
+      continue;
+    }
+    if ((contract.primaryAction ?? "") !== (sqlContract.primary_action ?? "")) failures.push(`${contract.id}: primaryAction diverges from SQL primary_action`);
+    if ((contract.fallbackAction ?? "") !== (sqlContract.fallback_action ?? "")) failures.push(`${contract.id}: fallbackAction diverges from SQL fallback_action`);
+  }
+  const sqlJourneys = new Map(journeyRows.map((row) => [row.id, row]));
+  for (const journey of flat.journeyMatrix) {
+    const sqlJourney = sqlJourneys.get(journey.id);
+    if (!sqlJourney) {
+      failures.push(`${journey.id}: missing SQL journey projection`);
+      continue;
+    }
+    for (const [jsonKey, sqlKey] of [
+      ["routePattern", "route_pattern"],
+      ["expectedState", "expected_state"],
+      ["primaryAction", "primary_action"],
+      ["fallbackAction", "fallback_action"],
+      ["evidenceCommand", "evidence_command"],
+    ]) {
+      if ((journey[jsonKey] ?? "") !== (sqlJourney[sqlKey] ?? "")) failures.push(`${journey.id}: ${jsonKey} diverges from SQL ${sqlKey}`);
+    }
+  }
+  return {
+    checked: true,
+    valid: failures.length === 0,
+    failures,
+  };
+}
+
 function featurePacket(config, validation, featureId) {
-  const feature = asArray(config.features).find((row) => row.id === featureId);
+  const sourceFeature = asArray(config.features).find((row) => row.id === featureId);
+  const feature = sourceFeature ? { ...sourceFeature, journeyMatrix: asArray(sourceFeature.journeyMatrix).map((row) => enrichJourney(sourceFeature, row)) } : null;
   if (!feature) throw new Error(`Unknown elicitation feature ${featureId}`);
   const gaps = validation.gaps.filter((gap) => gap.featureId === featureId);
   return {
@@ -389,7 +483,7 @@ function renderToon(packet) {
     renderRows("criteria", criteria, ["id", "type", "statement"]),
     renderRows("experienceContracts", asArray(feature.experienceContracts), ["id", "title", "persona", "role", "surface", "intent"]),
     renderRows("scenarios", asArray(feature.scenarios), ["id", "contractId", "outcome", "then"]),
-    renderRows("journeyMatrix", asArray(feature.journeyMatrix), ["id", "contractId", "persona", "role", "state", "outcome", "expectedExperience"]),
+    renderRows("journeyMatrix", asArray(feature.journeyMatrix), ["id", "contractId", "routePattern", "persona", "role", "expectedState", "outcome", "primaryAction", "fallbackAction", "evidenceCommand"]),
     renderRows("gaps", packet.status.gaps, ["id", "domain", "severity", "summary", "remediation"]),
   ].join("\n");
 }
@@ -444,11 +538,14 @@ ${markdownTable(asArray(feature.experienceContracts), [
 
 ${markdownTable(asArray(feature.journeyMatrix), [
   { key: "id", label: "ID" },
+  { key: "routePattern", label: "Route" },
   { key: "persona", label: "Persona" },
   { key: "role", label: "Role" },
-  { key: "state", label: "State" },
+  { key: "expectedState", label: "Expected State" },
   { key: "outcome", label: "Outcome" },
-  { key: "expectedExperience", label: "Expected Experience" },
+  { key: "primaryAction", label: "Primary Action" },
+  { key: "fallbackAction", label: "Fallback" },
+  { key: "evidenceCommand", label: "Evidence" },
 ])}
 
 ## Gaps
@@ -523,20 +620,24 @@ function main() {
   const config = loadConfig(configPath);
   const validation = validateConfig(config);
   if (args.command === "validate") {
-    if (!args.flags.has("no-sqlite") && configPath === defaultConfigPath) writeSqlite(config, validation);
+    const readOnly = args.flags.has("check") || args.flags.has("read-only");
+    if (!args.flags.has("no-sqlite") && !readOnly && configPath === defaultConfigPath) writeSqlite(config, validation);
+    const sqlProjection = configPath === defaultConfigPath && readOnly ? validateSqlProjection(config, validation) : { checked: false, valid: true, failures: [] };
     const featureId = value(args, "feature");
     const featureGaps = featureId ? validation.gaps.filter((gap) => gap.featureId === featureId) : validation.gaps;
     const result = {
       configPath,
-      valid: validation.valid,
+      valid: validation.valid && sqlProjection.valid,
+      readOnly,
       features: asArray(config.features).length,
-      failures: validation.failures,
+      failures: [...validation.failures, ...sqlProjection.failures],
       advisoryGaps: featureGaps.filter((gap) => !gap.blocksImplementation),
       hardGaps: featureGaps.filter((gap) => gap.blocksImplementation),
-      sqlite: configPath === defaultConfigPath && !args.flags.has("no-sqlite") ? sqlitePath : null,
+      sqlite: configPath === defaultConfigPath && !args.flags.has("no-sqlite") && !readOnly ? sqlitePath : null,
+      sqlProjection,
     };
     process.stdout.write(renderPacket({ kind: "elicitation-validation", generatedAt: new Date().toISOString(), ...result, feature: { id: featureId || "" }, status: { gaps: featureGaps, advisoryGapCount: featureGaps.length } }, format));
-    if (!validation.valid) process.exitCode = 1;
+    if (!result.valid) process.exitCode = 1;
     return;
   }
 

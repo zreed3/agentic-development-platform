@@ -12,16 +12,36 @@ function run(command) {
   });
 }
 
+function runResult(command) {
+  try {
+    return { status: 0, stdout: run(command), stderr: "" };
+  } catch (error) {
+    return {
+      status: error.status ?? 1,
+      stdout: String(error.stdout ?? ""),
+      stderr: String(error.stderr ?? ""),
+    };
+  }
+}
+
 const elicitationValidation = JSON.parse(run("node scripts/adg-elicitation.mjs validate --format json"));
 assert.equal(elicitationValidation.valid, true);
 assert.equal(elicitationValidation.features, 1);
 assert.equal(elicitationValidation.hardGaps.length, 0);
+assert.equal(elicitationValidation.sqlProjection.checked, false);
+
+const elicitationCheck = JSON.parse(run("node scripts/adg-elicitation.mjs validate --format json --check"));
+assert.equal(elicitationCheck.valid, true);
+assert.equal(elicitationCheck.readOnly, true);
+assert.equal(elicitationCheck.sqlProjection.valid, true);
 
 const elicitationToon = run("node scripts/adg-elicitation.mjs packet --feature S07 --format toon");
 assert.match(elicitationToon, /experienceContracts\[/u);
 assert.match(elicitationToon, /journeyMatrix\[/u);
 assert.match(elicitationToon, /S07-SCEN-HAPPY-01/u);
 assert.match(elicitationToon, /S07-SCEN-SAD-01/u);
+assert.match(elicitationToon, /primaryAction/u);
+assert.match(elicitationToon, /fallbackAction/u);
 
 const elicitationGraph = JSON.parse(run("node scripts/adg-elicitation.mjs graph --feature S07 --format json"));
 assert.equal(elicitationGraph.valid, true);
@@ -81,6 +101,107 @@ assert.ok(contextSlice.efficiency.nextFileCount < contextSlice.efficiency.repoFi
 const uxValidation = JSON.parse(run("node scripts/adg-ux.mjs validate --feature S07 --format json"));
 assert.equal(uxValidation.valid, true);
 assert.equal(uxValidation.summary.contracts, 1);
+assert.equal(uxValidation.readOnly, true);
+assert.equal(uxValidation.validationClasses.structural.valid, true);
+assert.equal(uxValidation.validationClasses.substantive.valid, true);
+
+const truthPass = JSON.parse(run("node scripts/adg-ux.mjs truth-pass --feature S07 --format json --check"));
+assert.equal(truthPass.valid, true);
+assert.equal(truthPass.kind, "adg-truth-pass-report");
+assert.ok(truthPass.featureResults[0].journeyMatrix.every((row) => row.primaryAction && row.fallbackAction));
+
+const truthPassMarkdown = run("node scripts/adg-ux.mjs truth-pass --feature S07 --format markdown --check");
+assert.match(truthPassMarkdown, /Route \/ Persona Journey Matrix/u);
+
+const downgradeReport = JSON.parse(run("node scripts/adg-ux.mjs downgrade --feature S07 --format json"));
+assert.equal(downgradeReport.kind, "adg-truth-pass-report");
+assert.ok(Array.isArray(downgradeReport.downgradeRecommendations));
+
+const genericConfig = structuredClone(config);
+genericConfig.features[0].experienceContracts = [
+  {
+    ...genericConfig.features[0].experienceContracts[0],
+    id: "S07-XC-GENERIC-ROUTE",
+    surface: "route:/dashboard",
+    scenarioIds: ["S07-SCEN-HAPPY-01", "S07-SCEN-SAD-01", "S07-SCEN-DENY-01", "S07-SCEN-RECOVERY-01"],
+  },
+];
+genericConfig.features[0].scenarios = genericConfig.features[0].scenarios.map((scenario) => ({
+  ...scenario,
+  contractId: "S07-XC-GENERIC-ROUTE",
+}));
+genericConfig.features[0].journeyMatrix = [
+  {
+    id: "S07-JM-LIVE-OWNER",
+    contractId: "S07-XC-GENERIC-ROUTE",
+    routePattern: "/dashboard",
+    persona: "owner",
+    role: "owner",
+    expectedState: "live",
+    outcome: "happy",
+    primaryAction: "Open dashboard",
+    fallbackAction: "Show support action",
+    expectedExperience: "Owner can use the live dashboard.",
+    testEvidence: "npm run smoke:dashboard -- --persona owner --route /dashboard",
+  },
+  {
+    id: "S07-JM-LIVE-STAFF",
+    contractId: "S07-XC-GENERIC-ROUTE",
+    routePattern: "/dashboard",
+    persona: "staff",
+    role: "staff",
+    expectedState: "live",
+    outcome: "happy",
+    primaryAction: "Open dashboard",
+    fallbackAction: "Show support action",
+    expectedExperience: "Staff can use the live dashboard.",
+    testEvidence: "npm run smoke:dashboard -- --persona staff --route /dashboard",
+  },
+  {
+    id: "S07-JM-DENIED",
+    contractId: "S07-XC-GENERIC-ROUTE",
+    routePattern: "/dashboard",
+    persona: "anonymous",
+    role: "anonymous",
+    expectedState: "forbidden",
+    outcome: "denial",
+    primaryAction: "Open dashboard",
+    fallbackAction: "Show sign-in action",
+    expectedExperience: "Anonymous visitors are denied.",
+    testEvidence: "npm run smoke:dashboard -- --persona anonymous --route /dashboard",
+  },
+  {
+    id: "S07-JM-RECOVERY",
+    contractId: "S07-XC-GENERIC-ROUTE",
+    routePattern: "/dashboard",
+    persona: "owner",
+    role: "owner",
+    expectedState: "error",
+    outcome: "recovery",
+    primaryAction: "Retry dashboard",
+    fallbackAction: "Show support action",
+    expectedExperience: "Owner can recover from an error.",
+    testEvidence: "npm run smoke:dashboard -- --persona owner --route /dashboard --state error",
+  },
+  {
+    id: "S07-JM-EMPTY",
+    contractId: "S07-XC-GENERIC-ROUTE",
+    routePattern: "/dashboard",
+    persona: "manager",
+    role: "manager",
+    expectedState: "empty",
+    outcome: "sad",
+    primaryAction: "Open dashboard",
+    fallbackAction: "Create first record",
+    expectedExperience: "Manager sees an empty state.",
+    testEvidence: "npm run smoke:dashboard -- --persona manager --route /dashboard --state empty",
+  },
+];
+const genericConfigPath = path.join(tempDir, "generic-route.json");
+fs.writeFileSync(genericConfigPath, `${JSON.stringify(genericConfig, null, 2)}\n`);
+const genericValidation = runResult(`node scripts/adg-ux.mjs validate --config ${JSON.stringify(genericConfigPath)} --feature S07 --format json`);
+assert.notEqual(genericValidation.status, 0);
+assert.match(genericValidation.stdout, /one generic route contract covers/u);
 
 const standardsValidation = JSON.parse(run("node scripts/adg-standards.mjs validate --format json"));
 assert.equal(standardsValidation.valid, true);

@@ -41,6 +41,8 @@
     "context:slice": "node scripts/adg-context.mjs slice",
     "ux:validate": "node scripts/adg-ux.mjs validate",
     "ux:packet": "node scripts/adg-ux.mjs packet",
+    "ux:truth-pass": "node scripts/adg-ux.mjs truth-pass",
+    "ux:downgrade": "node scripts/adg-ux.mjs downgrade",
     "standards:validate": "node scripts/adg-standards.mjs validate",
     "standards:matrix": "node scripts/adg-standards.mjs matrix",
     "deliverable:audit": "node scripts/adg-deliverable.mjs audit",
