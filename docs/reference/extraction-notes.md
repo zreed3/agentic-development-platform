@@ -59,7 +59,7 @@ guardrails, evals, DORA, context-broker test) rather than the product's broader
 2. Replace `data/seed/backlog.seed.json` with the host project's backlog.
 3. Fill in the "Project Profile" section of `AGENTS.md`.
 4. Install the skills (see [`../../skills/README.md`](../../skills/README.md)).
-5. `npm run setup && npm run ci:governance`.
+5. `npm run setup` for an empty host database, or `npm run ci:governance` for the bundled ADG worked-example checks.
 6. Add host-specific gates (route registry, typecheck, lint, tests) to `ci:governance`.
 
 ## Reversibility

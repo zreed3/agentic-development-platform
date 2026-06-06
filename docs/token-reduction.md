@@ -102,7 +102,7 @@ comfortably and one that cannot run at all.
 A rough rule of thumb: **tokens ≈ bytes ÷ 4** for English/JSON text.
 
 ```sh
-npm run setup
+npm run setup:demo
 
 # packet size in each format
 for fmt in markdown json toon; do

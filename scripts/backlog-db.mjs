@@ -9,9 +9,9 @@
 //   - SQLite is generated and queryable; it is rebuilt from text sources.
 //   - data/backlog-source.sql (.dump) and data/schema.sql (.schema) are the
 //     reviewable, diffable, version-controlled mirrors.
-//   - data/seed/backlog.seed.json is the human-editable seed.
-//   - data/audit/audit-log.jsonl is the append-only audit source, mirrored into
-//     the audit_events table.
+//   - data/seed/backlog.seed.json is the human-editable empty install seed.
+//   - data/audit/audit-log.jsonl is the append-only audit source, imported only
+//     when setup is run with --with-audit.
 //
 // The database is intentionally cheap to throw away and rebuild: `setup` drops
 // and recreates it from the text sources in a few hundred milliseconds.
@@ -25,7 +25,7 @@ const root = process.cwd();
 const dbPath = "data/backlog.sqlite";
 const dumpPath = "data/backlog-source.sql";
 const schemaPath = "data/schema.sql";
-const seedPath = "data/seed/backlog.seed.json";
+const defaultSeedPath = "data/seed/backlog.seed.json";
 const auditLogPath = "data/audit/audit-log.jsonl";
 
 function abs(file) {
@@ -80,7 +80,8 @@ function values(args, key) {
 
 function usage() {
   console.log(`Usage:
-  node scripts/backlog-db.mjs setup [--force]      Rebuild SQLite from schema + seed + audit log
+  node scripts/backlog-db.mjs setup [--force] [--seed data/seed/backlog.seed.json] [--with-audit]
+                                                   Rebuild SQLite from schema + seed. Default seed is empty.
   node scripts/backlog-db.mjs export               Re-emit data/backlog-source.sql and data/schema.sql
   node scripts/backlog-db.mjs validate             Structural integrity checks
   node scripts/backlog-db.mjs list                 Backlog summary table
@@ -190,7 +191,6 @@ function seedStatements(seed) {
   const meta = seed.metadata ?? {};
   statements.push(`INSERT INTO metadata VALUES ('source', ${sqlString(meta.source ?? "seed")});`);
   statements.push(`INSERT INTO metadata VALUES ('initiative', ${sqlString(meta.initiative ?? "Agentic Development Platform")});`);
-  statements.push(`INSERT INTO metadata VALUES ('seed_path', ${sqlString(seedPath)});`);
 
   for (const label of seed.labels ?? []) statements.push(`INSERT INTO labels VALUES (${sqlString(label)});`);
   for (const epic of seed.epics ?? []) {
@@ -252,14 +252,16 @@ function exportSql() {
   fs.writeFileSync(abs(schemaPath), `${schema}\n`, "utf8");
 }
 
-function setup(force) {
-  if (fs.existsSync(abs(dbPath)) && !force) {
+function setup(args) {
+  const seedPath = value(args, "seed", defaultSeedPath);
+  if (fs.existsSync(abs(dbPath)) && !args.flags.has("force")) {
     // Rebuild is always safe (it is generated from text sources), but require --force
     // only to avoid surprising an operator who expected an incremental command.
   }
   if (!fs.existsSync(abs(seedPath))) throw new Error(`Seed file not found: ${seedPath}`);
   const seed = JSON.parse(fs.readFileSync(abs(seedPath), "utf8"));
-  const statements = [...schemaStatements(), ...seedStatements(seed), ...auditImportStatements()];
+  const statements = [...schemaStatements(), ...seedStatements(seed), `INSERT INTO metadata VALUES ('seed_path', ${sqlString(seedPath)});`];
+  if (args.flags.has("with-audit")) statements.push(...auditImportStatements());
   fs.mkdirSync(path.dirname(abs(dbPath)), { recursive: true });
   const tempPath = abs("data/.backlog-setup.sql");
   fs.writeFileSync(tempPath, `${statements.join("\n")}\n`, "utf8");
@@ -270,7 +272,7 @@ function setup(force) {
   const featureCount = sqlite("select count(*) as count from features", { json: true })[0]?.count ?? 0;
   const itemCount = sqlite("select count(*) as count from feature_items", { json: true })[0]?.count ?? 0;
   const auditCount = sqlite("select count(*) as count from audit_events", { json: true })[0]?.count ?? 0;
-  console.log(JSON.stringify({ database: dbPath, features: featureCount, items: itemCount, auditEvents: auditCount, dump: dumpPath, schema: schemaPath }, null, 2));
+  console.log(JSON.stringify({ database: dbPath, seed: seedPath, auditImported: args.flags.has("with-audit"), features: featureCount, items: itemCount, auditEvents: auditCount, dump: dumpPath, schema: schemaPath }, null, 2));
 }
 
 function requireDb() {
@@ -455,7 +457,7 @@ function validateBacklog() {
 const args = parseArgs(process.argv.slice(2));
 
 try {
-  if (args.command === "setup") setup(args.flags.has("force"));
+  if (args.command === "setup") setup(args);
   else if (args.command === "export") {
     requireDb();
     exportSql();

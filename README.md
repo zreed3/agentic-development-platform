@@ -77,8 +77,9 @@ reproduce it: [`docs/token-reduction.md`](docs/token-reduction.md).
 ```sh
 # Requirements: Node >= 20 and the sqlite3 CLI on PATH.
 # ADG is not currently published on npm; copy or clone it into your development folder.
-npm run setup            # build data/backlog.sqlite from schema + seed + audit log
-npm run ci:governance    # the full gate: backlog, audit, guardrails, evals, dora, broker
+npm run setup            # build an empty data/backlog.sqlite from schema + empty seed
+npm run setup:demo       # optional: load the self-referential ADG worked example
+npm run ci:governance    # the full gate; loads the demo fixture for governance checks
 npm run elicitation:packet -- --feature S07 --format toon
 npm run elicitation:graph -- --feature S07 --format toon
 npm run context:slice -- --feature S07 --workflow agentic-tooling
@@ -146,16 +147,18 @@ agentic-development-governance/
 └── docs/                          # architecture, governance model, token reduction
 ```
 
-The generated `data/*.sqlite` databases are gitignored; they are rebuilt from the
-tracked text sources by `npm run setup`. This mirrors the platform's own rule:
-SQLite is queried, never treated as canonical.
+The generated `data/*.sqlite` databases are gitignored. A clean install starts
+empty with `npm run setup`; the self-referential worked example is opt-in with
+`npm run setup:demo`. This mirrors the platform's own rule: SQLite is queried,
+never treated as canonical.
 
 ## Adopting it in another repo
 
 Copy `config/`, `scripts/`, `tooling/`, `data/schema.sql`, and `AGENTS.md`; replace
 `data/seed/backlog.seed.json` with your project's backlog; fill in the *Project
-Profile* in `AGENTS.md`; install the skills; then `npm run setup && npm run
-ci:governance`. Full steps in
+Profile* in `AGENTS.md`; install the skills; then `npm run setup` to start from
+an empty SQL database, or `npm run ci:governance` to run the bundled
+worked-example checks. Full steps in
 [`docs/reference/extraction-notes.md`](docs/reference/extraction-notes.md).
 
 For Codex marketplace distribution, use the standalone package in
