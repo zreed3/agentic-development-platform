@@ -1,0 +1,483 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>bord.room V4.1 Development System Wiki</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #111827;
+      --muted: #5b6472;
+      --canvas: #f7f8fb;
+      --paper: #ffffff;
+      --line: #d9dee8;
+      --blue: #2563eb;
+      --green: #15803d;
+      --amber: #b45309;
+      --red: #b91c1c;
+      --violet: #6d28d9;
+      --shadow: 0 18px 44px rgba(17, 24, 39, 0.10);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: var(--canvas);
+      color: var(--ink);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.55;
+    }
+
+    header {
+      background: var(--paper);
+      border-bottom: 1px solid var(--line);
+    }
+
+    .wrap {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 28px 22px;
+    }
+
+    .masthead {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 24px;
+      align-items: end;
+    }
+
+    h1, h2, h3 {
+      margin: 0;
+      line-height: 1.15;
+      letter-spacing: 0;
+    }
+
+    h1 {
+      font-size: clamp(2rem, 5vw, 4.4rem);
+      max-width: 880px;
+    }
+
+    h2 {
+      font-size: 1.45rem;
+      margin-bottom: 12px;
+    }
+
+    h3 {
+      font-size: 1rem;
+      margin-bottom: 8px;
+    }
+
+    p {
+      margin: 0;
+    }
+
+    .lead {
+      max-width: 780px;
+      color: var(--muted);
+      font-size: 1.05rem;
+      margin-top: 16px;
+    }
+
+    .status {
+      display: grid;
+      gap: 8px;
+      min-width: 210px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 14px;
+      background: #fbfcff;
+    }
+
+    .status strong {
+      font-size: 1.8rem;
+      color: var(--green);
+    }
+
+    nav {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 24px;
+    }
+
+    nav a, .tag {
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      color: var(--ink);
+      display: inline-flex;
+      font-size: 0.88rem;
+      padding: 7px 11px;
+      text-decoration: none;
+      background: var(--paper);
+    }
+
+    main {
+      padding: 24px 0 56px;
+    }
+
+    section {
+      margin-top: 22px;
+    }
+
+    .panel {
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+      padding: 22px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .two {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .card {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 16px;
+      background: #fff;
+    }
+
+    .card p, li {
+      color: var(--muted);
+    }
+
+    code {
+      background: #eef2f7;
+      border: 1px solid #dde4ee;
+      border-radius: 5px;
+      color: #1f2937;
+      padding: 1px 5px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 0.92em;
+    }
+
+    pre {
+      overflow-x: auto;
+      background: #111827;
+      color: #f9fafb;
+      border-radius: 8px;
+      padding: 14px;
+    }
+
+    pre code {
+      background: transparent;
+      border: 0;
+      color: inherit;
+      padding: 0;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.94rem;
+    }
+
+    th, td {
+      border-bottom: 1px solid var(--line);
+      padding: 10px 8px;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      color: #374151;
+      background: #f8fafc;
+    }
+
+    .lane {
+      border-left: 4px solid var(--blue);
+    }
+
+    .lane.green {
+      border-left-color: var(--green);
+    }
+
+    .lane.amber {
+      border-left-color: var(--amber);
+    }
+
+    .lane.violet {
+      border-left-color: var(--violet);
+    }
+
+    .lane.red {
+      border-left-color: var(--red);
+    }
+
+    ol, ul {
+      margin: 10px 0 0 22px;
+      padding: 0;
+    }
+
+    .small {
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    @media (max-width: 860px) {
+      .masthead, .grid, .two {
+        grid-template-columns: 1fr;
+      }
+
+      .wrap {
+        padding-inline: 16px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="wrap">
+      <div class="masthead">
+        <div>
+          <p class="tag">development/_system</p>
+          <h1>Token-Optimized V4.1 Development System</h1>
+          <p class="lead">A compact wiki for turning the current bord.room release-hardening process into a 5/5 operating system: queryable sources, explicit experience contracts, focused agent skills, and evidence-backed completion.</p>
+        </div>
+        <aside class="status" aria-label="System status">
+          <span class="small">Target score</span>
+          <strong>5/5</strong>
+          <span class="small">Only when source, tests, evidence, and agent instructions all agree.</span>
+        </aside>
+      </div>
+      <nav aria-label="Wiki navigation">
+        <a href="#quick-start">Quick Start</a>
+        <a href="#rule">5/5 Rule</a>
+        <a href="#assessment">Assessment Delta</a>
+        <a href="#functions">Functions</a>
+        <a href="#skills">Skills</a>
+        <a href="#workflow">Workflow</a>
+        <a href="#files">Files</a>
+        <a href="#verify">Verify</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <section id="quick-start" class="panel">
+      <h2>Quick Start</h2>
+      <div class="grid">
+        <article class="card lane">
+          <h3>1. Start With SQL</h3>
+          <p>Choose a feature and bounded packet before reading broadly.</p>
+          <pre><code>pnpm context:lite -- --feature S30</code></pre>
+        </article>
+        <article class="card lane green">
+          <h3>2. Pick One Function</h3>
+          <p>Open the matching skill in <code>development/_system/skills</code>. Use one skill per job so the context stays small.</p>
+        </article>
+        <article class="card lane amber">
+          <h3>3. Prove The Change</h3>
+          <p>Run the narrowest relevant check, record failed commands, and add release evidence only when the claim is proved.</p>
+        </article>
+      </div>
+    </section>
+
+    <section id="rule" class="panel">
+      <h2>The 5/5 Rule</h2>
+      <div class="grid two">
+        <article class="card">
+          <h3>An area is 5/5 when:</h3>
+          <ul>
+            <li>The source of truth is SQL-queryable or machine-readable.</li>
+            <li>The human docs are generated from or anchored to that source.</li>
+            <li>Live surfaces include allowed, read-only, empty, error, forbidden, locked, and destructive-action states where relevant.</li>
+            <li>Protected operations prove entitlement, permission, tenant scope, business scope, audit behavior, and negative tests.</li>
+          </ul>
+        </article>
+        <article class="card">
+          <h3>An agent is done only when:</h3>
+          <ul>
+            <li>The original requirement is mapped to source files and evidence.</li>
+            <li>The matching skill was used for the function being changed.</li>
+            <li>Checks cover the actual scope, not a smaller nearby claim.</li>
+            <li>Traceability evidence is appended for material process, route, UX, architecture, or release changes.</li>
+          </ul>
+        </article>
+      </div>
+    </section>
+
+    <section id="assessment" class="panel">
+      <h2>Assessment Delta</h2>
+      <p class="small">The first assessment measured the broader repo and product-methodology system. The second assessment narrowed in on development tooling after adding the token-optimized system, validator, wiki, and 14 focused <code>dev-*</code> skills.</p>
+      <table>
+        <thead>
+          <tr>
+            <th>Area</th>
+            <th>First Assessment</th>
+            <th>Current Assessment</th>
+            <th>Delta</th>
+            <th>What Improved</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Overall development system</td>
+            <td>3.7 / 5</td>
+            <td>4.2 / 5</td>
+            <td>+0.5</td>
+            <td>The methodology moved from strong docs and patterns into a validated operating system with source, wiki, skills, and evidence.</td>
+          </tr>
+          <tr>
+            <td>SQL-first traceability</td>
+            <td>4.5 / 5</td>
+            <td>4.7 / 5</td>
+            <td>+0.2</td>
+            <td>Audit events now cover the system creation, skill rename, setup bundle, and failed checkpoint evidence without hiding drift.</td>
+          </tr>
+          <tr>
+            <td>Token-sliced context</td>
+            <td>4.5 / 5</td>
+            <td>4.5 / 5</td>
+            <td>+0.0</td>
+            <td>The existing context profiles were already strong; the new wiki and <code>dev-context-primer</code> make the behavior easier to reuse.</td>
+          </tr>
+          <tr>
+            <td>Agent skills</td>
+            <td>3.0 / 5</td>
+            <td>4.3 / 5</td>
+            <td>+1.3</td>
+            <td>We now have one compact skill per required function, all named <code>dev-*</code>, with manifest and frontmatter validation.</td>
+          </tr>
+          <tr>
+            <td>UX as Code and contracts</td>
+            <td>3.0 / 5</td>
+            <td>3.8 / 5</td>
+            <td>+0.8</td>
+            <td>The system now names experience contracts, surface maps, interaction grammar, and design-system governance as required functions.</td>
+          </tr>
+          <tr>
+            <td>Evidence and checkpointing</td>
+            <td>4.0 / 5</td>
+            <td>4.4 / 5</td>
+            <td>+0.4</td>
+            <td>The workflow now requires evidence commands before completion and records failed broad gates as first-class evidence.</td>
+          </tr>
+          <tr>
+            <td>Docs and drift management</td>
+            <td>4.0 / 5</td>
+            <td>3.8 / 5</td>
+            <td>-0.2</td>
+            <td>The process is clearer, but the current S05 route-registry matrix drift keeps this below 4 until the gate is green.</td>
+          </tr>
+          <tr>
+            <td>Sub-agent readiness</td>
+            <td>3.0 / 5</td>
+            <td>3.7 / 5</td>
+            <td>+0.7</td>
+            <td>The functions are now sliced well enough for sub-agent briefs, but automatic dispatch and handoff templates are still future work.</td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="grid two">
+        <article class="card lane green">
+          <h3>Largest Gain</h3>
+          <p>The biggest jump is agent skills: we moved from broad guidance to 14 focused, validated <code>dev-*</code> skill packages.</p>
+        </article>
+        <article class="card lane amber">
+          <h3>Remaining Gap</h3>
+          <p>To reach 5/5, make experience contracts and surface maps first-class data, then clear route-registry drift and add sub-agent handoff automation.</p>
+        </article>
+      </div>
+    </section>
+
+    <section id="functions" class="panel">
+      <h2>Function Map</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Function</th>
+            <th>Use It For</th>
+            <th>Skill</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>Context primer</td><td>Bounded SQL-backed context before work.</td><td><code>dev-context-primer</code></td></tr>
+          <tr><td>Experience contracts</td><td>User goal to route, action, RBAC, data, audit, and test.</td><td><code>dev-experience-contract-author</code></td></tr>
+          <tr><td>Surface map</td><td>Route, entity, action, and state truthfulness.</td><td><code>dev-surface-map-cartographer</code></td></tr>
+          <tr><td>Interaction grammar</td><td>Forms, dialogs, validation, destructive actions, feedback.</td><td><code>dev-interaction-grammar-governor</code></td></tr>
+          <tr><td>Design system</td><td>Tokens, primitives, accessibility, responsive QA.</td><td><code>dev-design-system-keeper</code></td></tr>
+          <tr><td>Technical contracts</td><td>API, server action, webhook, event, and integration schemas.</td><td><code>dev-technical-contract-librarian</code></td></tr>
+          <tr><td>Data governance</td><td>Retention, privacy, data classes, subprocessors, export/delete.</td><td><code>dev-data-governance-steward</code></td></tr>
+          <tr><td>RBAC and entitlements</td><td>Role, tenant, business, package, and negative access tests.</td><td><code>dev-rbac-entitlement-auditor</code></td></tr>
+          <tr><td>Database and RLS</td><td>Schema, migrations, policies, repository predicates, runtime context.</td><td><code>dev-database-rls-guardian</code></td></tr>
+          <tr><td>Testing evidence</td><td>Targeted checks, UAT proof, failed-command evidence.</td><td><code>dev-testing-evidence-curator</code></td></tr>
+          <tr><td>IaC readiness</td><td>Terraform, environment boundaries, provider evidence, rollback.</td><td><code>dev-iac-deployment-readiness</code></td></tr>
+          <tr><td>Documentation drift</td><td>Source docs, generated mirrors, route matrices, tracker sync.</td><td><code>dev-documentation-drift-reconciler</code></td></tr>
+          <tr><td>Release evidence</td><td>Go/no-go packet, deferrals, owners, risk, rollback, gate proof.</td><td><code>dev-release-evidence-curator</code></td></tr>
+          <tr><td>Skill governance</td><td>Create or revise compact agent skills.</td><td><code>dev-agent-skill-governor</code></td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="skills" class="panel">
+      <h2>How To Use The Skills</h2>
+      <div class="grid two">
+        <article class="card lane violet">
+          <h3>Normal Use</h3>
+          <p>Open exactly one skill folder for the function you are performing. The skill body should be enough to act without loading this whole wiki.</p>
+          <pre><code>sed -n '1,180p' development/_system/skills/dev-rbac-entitlement-auditor/SKILL.md</code></pre>
+        </article>
+        <article class="card lane red">
+          <h3>Discoverable Use</h3>
+          <p>These are complete Codex-style skill packages. To make one auto-discoverable for future Codex runs, mirror the folder into the repo or user skill location used by that environment.</p>
+        </article>
+      </div>
+    </section>
+
+    <section id="workflow" class="panel">
+      <h2>Workflow</h2>
+      <div class="grid">
+        <article class="card"><h3>Context</h3><p>Run the context skill and feature packet. Stop if the feature, route, or evidence path is unclear.</p></article>
+        <article class="card"><h3>Contract</h3><p>Write or update the smallest contract that proves the user experience, authority boundary, and test seam.</p></article>
+        <article class="card"><h3>Build</h3><p>Edit only scoped implementation files and directly related tests. Do not hand-edit generated mirrors.</p></article>
+        <article class="card"><h3>Verify</h3><p>Run targeted checks first. Use DB, security, browser, or traceability gates only when the touched boundary requires them.</p></article>
+        <article class="card"><h3>Evidence</h3><p>Record one consolidated event when the same proof covers multiple rows. Record failed checks as failures.</p></article>
+        <article class="card"><h3>Drift Check</h3><p>Regenerate planning docs and run traceability gates for scope, route, UX, architecture, integration, or release changes.</p></article>
+      </div>
+    </section>
+
+    <section id="files" class="panel">
+      <h2>File Layout</h2>
+      <pre><code>development/_system/
+  index.html
+  system.json
+  validate-system.mjs
+  skills/
+    dev-context-primer/SKILL.md
+    dev-experience-contract-author/SKILL.md
+    dev-surface-map-cartographer/SKILL.md
+    ... one skill per required function</code></pre>
+      <p class="small">The compact machine source is <code>system.json</code>. This HTML page is the wiki. Each skill is intentionally small and can stand alone.</p>
+    </section>
+
+    <section id="verify" class="panel">
+      <h2>Verification</h2>
+      <div class="grid two">
+        <article class="card">
+          <h3>Local System Check</h3>
+          <pre><code>node development/_system/validate-system.mjs</code></pre>
+        </article>
+        <article class="card">
+          <h3>Traceability Check</h3>
+          <pre><code>pnpm audit:validate
+pnpm backlog:validate
+pnpm ci:traceability</code></pre>
+          <p class="small">Use the full traceability gate for process/tooling checkpoints, release evidence, or before push.</p>
+        </article>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

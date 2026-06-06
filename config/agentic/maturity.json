@@ -1,0 +1,243 @@
+{
+  "schemaVersion": 1,
+  "modelVersion": "adg-maturity-2026-06-06",
+  "targetScore": 4.5,
+  "scale": [
+    { "score": 1.0, "meaning": "Intent exists in prose." },
+    { "score": 2.0, "meaning": "Repeatable checklist or skill exists." },
+    { "score": 3.0, "meaning": "Machine-readable source exists and is partially validated." },
+    { "score": 4.0, "meaning": "Automated validation, evidence links, and failure or gap reporting exist." },
+    { "score": 4.5, "meaning": "Domain is queryable, scored, agent-consumable, and included in governance gates; gaps are structured and traceable." },
+    { "score": 5.0, "meaning": "Domain is continuously measured, task-eval tested, linked to runtime traces, and enforced through capability-scoped autonomous execution." }
+  ],
+  "domains": [
+    {
+      "id": "feature_elicitation",
+      "title": "Feature elicitation and requirements traceability",
+      "required": true,
+      "subdomains": [
+        { "id": "feature_brief", "score": 4.5 },
+        { "id": "requirements_graph", "score": 4.5 },
+        { "id": "experience_contracts", "score": 4.5 }
+      ],
+      "evidence": [
+        { "type": "path", "value": "config/agentic/elicitation.json" },
+        { "type": "path", "value": "scripts/adg-elicitation.mjs" },
+        { "type": "command", "value": "npm run elicitation:validate" }
+      ],
+      "gaps": [
+        {
+          "id": "MAT-FEATURE-5-001",
+          "severity": "medium",
+          "summary": "Task-level agent evals should grade elicitation quality before this reaches 5.0.",
+          "remediation": "Add isolated feature-elicitation fixtures with expected contracts and grader output."
+        }
+      ]
+    },
+    {
+      "id": "ux_as_code",
+      "title": "UI/UX as code",
+      "required": true,
+      "subdomains": [
+        { "id": "journey_matrix", "score": 4.5 },
+        { "id": "surface_states", "score": 4.5 },
+        { "id": "test_first_experience_specs", "score": 4.5 }
+      ],
+      "evidence": [
+        { "type": "path", "value": "skills/adg-experience-contract/SKILL.md" },
+        { "type": "path", "value": "skills/adg-surface-map/SKILL.md" },
+        { "type": "command", "value": "npm run elicitation:packet -- --feature S07 --format toon" }
+      ],
+      "gaps": [
+        {
+          "id": "MAT-UX-5-001",
+          "severity": "medium",
+          "summary": "Browser and visual regression evidence should be linked to each experience contract before this reaches 5.0.",
+          "remediation": "Add browser/UAT fixtures and screenshot evidence keyed by contract and journey row."
+        }
+      ]
+    },
+    {
+      "id": "governance_as_code",
+      "title": "Governance as code",
+      "required": true,
+      "subdomains": [
+        { "id": "risk_policy", "score": 4.5 },
+        { "id": "required_evidence", "score": 4.5 },
+        { "id": "gap_policy", "score": 4.5 }
+      ],
+      "evidence": [
+        { "type": "path", "value": "config/agentic/guardrails.json" },
+        { "type": "path", "value": "config/agentic/maturity.json" },
+        { "type": "command", "value": "npm run guardrails:check" }
+      ],
+      "gaps": [
+        {
+          "id": "MAT-GOV-5-001",
+          "severity": "medium",
+          "summary": "Guardrails validate policy but are not yet mandatory wrappers around every risky action.",
+          "remediation": "Route read/edit/exec adapters through guardrail decisions and trace records."
+        }
+      ]
+    },
+    {
+      "id": "data_governance_as_code",
+      "title": "Data governance as code",
+      "required": true,
+      "subdomains": [
+        { "id": "data_classes", "score": 4.5 },
+        { "id": "retention_and_deletion", "score": 4.5 },
+        { "id": "privacy_evidence", "score": 4.5 }
+      ],
+      "evidence": [
+        { "type": "path", "value": "skills/adg-data-governance-as-code/SKILL.md" },
+        { "type": "path", "value": "config/agentic/maturity.json" }
+      ],
+      "gaps": [
+        {
+          "id": "MAT-DATA-5-001",
+          "severity": "medium",
+          "summary": "Host repos should add their own data-map source to reach 5.0.",
+          "remediation": "Adopt a host data-map file and validate it through maturity evidence."
+        }
+      ]
+    },
+    {
+      "id": "cybersecurity_as_code",
+      "title": "Cybersecurity as code",
+      "required": true,
+      "subdomains": [
+        { "id": "secure_defaults", "score": 4.5 },
+        { "id": "prompt_injection_evals", "score": 4.5 },
+        { "id": "negative_security_tests", "score": 4.5 }
+      ],
+      "evidence": [
+        { "type": "path", "value": "skills/adg-cybersecurity-as-code/SKILL.md" },
+        { "type": "path", "value": "tooling/agent-evals/scenarios" },
+        { "type": "command", "value": "npm run agent:evals" }
+      ],
+      "gaps": [
+        {
+          "id": "MAT-SEC-5-001",
+          "severity": "medium",
+          "summary": "Current security evals are policy smoke tests, not full task-level adversarial fixtures.",
+          "remediation": "Add isolated repo task evals for prompt injection, malicious fixtures, unsafe tools, and expected diffs."
+        }
+      ]
+    },
+    {
+      "id": "rbac_as_code",
+      "title": "RBAC and entitlement as code",
+      "required": true,
+      "subdomains": [
+        { "id": "role_permission_matrix", "score": 4.5 },
+        { "id": "scope_denials", "score": 4.5 },
+        { "id": "support_boundaries", "score": 4.5 }
+      ],
+      "evidence": [
+        { "type": "path", "value": "skills/adg-rbac-as-code/SKILL.md" },
+        { "type": "path", "value": "config/agentic/elicitation.json" }
+      ],
+      "gaps": [
+        {
+          "id": "MAT-RBAC-5-001",
+          "severity": "medium",
+          "summary": "Generic RBAC policy exists, but host repos still need executable role and scope matrices.",
+          "remediation": "Add host role/permission/scope config and denial-path tests linked to experience contracts."
+        }
+      ]
+    },
+    {
+      "id": "context_as_code",
+      "title": "Context selection as code",
+      "required": true,
+      "subdomains": [
+        { "id": "context_profiles", "score": 4.5 },
+        { "id": "forbidden_bulk_files", "score": 4.5 },
+        { "id": "packet_audit", "score": 4.5 }
+      ],
+      "evidence": [
+        { "type": "path", "value": "config/agentic/context-profiles.yaml" },
+        { "type": "path", "value": "scripts/agent-context.mjs" },
+        { "type": "command", "value": "npm run test:agent-context" }
+      ],
+      "gaps": [
+        {
+          "id": "MAT-CONTEXT-5-001",
+          "severity": "medium",
+          "summary": "Context is bounded and audited, but relevance quality is not yet scored.",
+          "remediation": "Add context precision/recall fixtures with oracle files and forbidden-file regression checks."
+        }
+      ]
+    },
+    {
+      "id": "evidence_and_audit_as_code",
+      "title": "Evidence and audit as code",
+      "required": true,
+      "subdomains": [
+        { "id": "append_only_audit", "score": 4.5 },
+        { "id": "gap_register", "score": 4.5 },
+        { "id": "verification_evidence", "score": 4.5 }
+      ],
+      "evidence": [
+        { "type": "path", "value": "scripts/validate-audit.mjs" },
+        { "type": "path", "value": "skills/adg-evidence-curator/SKILL.md" },
+        { "type": "command", "value": "npm run audit:validate" }
+      ],
+      "gaps": [
+        {
+          "id": "MAT-AUDIT-5-001",
+          "severity": "medium",
+          "summary": "Audit events are append-only but not yet hash chained.",
+          "remediation": "Add previousHash/eventHash fields and validation once key policy is decided."
+        }
+      ]
+    },
+    {
+      "id": "agent_skill_governance",
+      "title": "Agent skill governance",
+      "required": true,
+      "subdomains": [
+        { "id": "generic_skill_manifest", "score": 4.5 },
+        { "id": "frontmatter_validation", "score": 4.5 },
+        { "id": "token_budget", "score": 4.5 }
+      ],
+      "evidence": [
+        { "type": "path", "value": "config/agentic/skill-manifest.json" },
+        { "type": "path", "value": "scripts/adg-skills.mjs" },
+        { "type": "command", "value": "npm run skills:validate" }
+      ],
+      "gaps": [
+        {
+          "id": "MAT-SKILLS-5-001",
+          "severity": "low",
+          "summary": "Skills are manifest-validated but not yet evaluated against task fixtures.",
+          "remediation": "Add skill behavior evals that verify outputs, stop conditions, and evidence discipline."
+        }
+      ]
+    },
+    {
+      "id": "runtime_autonomy_readiness",
+      "title": "Runtime autonomy readiness",
+      "required": true,
+      "subdomains": [
+        { "id": "capability_scopes", "score": 4.5 },
+        { "id": "trace_schema", "score": 4.5 },
+        { "id": "adapter_policy", "score": 4.5 }
+      ],
+      "evidence": [
+        { "type": "path", "value": "skills/adg-runtime-readiness/SKILL.md" },
+        { "type": "path", "value": "docs/roadmap-review-overview.md" },
+        { "type": "path", "value": "config/agentic/maturity.json" }
+      ],
+      "gaps": [
+        {
+          "id": "MAT-RUNTIME-5-001",
+          "severity": "high",
+          "summary": "Capability-scoped execution wrappers are designed but not implemented.",
+          "remediation": "Add optional adg read/edit/exec adapters over the same policy and trace model."
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,254 @@
+{
+  "schemaVersion": 1,
+  "modelVersion": "adg-elicitation-2026-06-06",
+  "formatPolicy": {
+    "editableSources": ["json", "yaml"],
+    "queryableSources": ["sqlite"],
+    "machineAssertions": ["json"],
+    "appendOnlyStreams": ["jsonl"],
+    "agentTransport": ["toon"],
+    "humanReports": ["markdown", "html"]
+  },
+  "policy": {
+    "defaultGapBehavior": "advisory",
+    "requiredScenarioOutcomes": ["happy", "sad", "denial", "recovery"],
+    "coverageMode": "bounded-critical-matrix",
+    "gapChannels": ["gap-register", "audit", "backlog"]
+  },
+  "features": [
+    {
+      "id": "S07",
+      "name": "Context broker and workflow profiles",
+      "status": "in-progress",
+      "brief": {
+        "goalFit": "Help agents select the smallest trustworthy context before reading or editing files.",
+        "platformFit": "Sits between the SQL backlog and agent execution so future autonomous work starts from bounded, queryable intent.",
+        "nonGoals": [
+          "Do not replace SQLite, JSON, JSONL, or SQL as canonical artifacts.",
+          "Do not bulk-load generated mirrors or long reports into agent context.",
+          "Do not implement a heavyweight agent runtime in the context broker."
+        ],
+        "risks": [
+          "A packet can omit a critical file if anchors are stale.",
+          "A packet can become too large if generated artifacts are allowed into nextFiles.",
+          "Agents can treat advisory gaps as invisible unless they are queryable."
+        ],
+        "dependencies": ["S05"],
+        "affectedSurfaces": ["cli:context:feature", "cli:context:item", "cli:context:audit"],
+        "expectedValue": "Agents spend fewer tokens, inspect more relevant files, and keep context selection auditable."
+      },
+      "rbacStories": [
+        {
+          "id": "S07-RBAC-01",
+          "persona": "agent",
+          "role": "owner",
+          "realm": "local-dev",
+          "access": "allowed",
+          "story": "As an agent, I can request a bounded context packet for an assigned feature before reading files."
+        },
+        {
+          "id": "S07-RBAC-02",
+          "persona": "maintainer",
+          "role": "admin",
+          "realm": "local-dev",
+          "access": "allowed",
+          "story": "As a maintainer, I can audit the last context packet for forbidden files and file-count violations."
+        }
+      ],
+      "userStories": [
+        {
+          "id": "S07-STORY-01",
+          "persona": "agent",
+          "goal": "Generate a feature packet that names only relevant next files.",
+          "benefit": "I can work from a bounded and explainable slice of the repo."
+        },
+        {
+          "id": "S07-STORY-02",
+          "persona": "maintainer",
+          "goal": "Validate context discipline without reading generated mirrors.",
+          "benefit": "I can trust that agent context stays cheap and auditable."
+        }
+      ],
+      "useCases": [
+        {
+          "id": "S07-UC-01",
+          "storyId": "S07-STORY-01",
+          "name": "Feature packet for implementation planning",
+          "primaryActor": "agent",
+          "trigger": "An agent is assigned a feature slice.",
+          "expectedOutcome": "The packet includes feature status, items, elicitation status, contracts, gaps, next files, and required checks."
+        },
+        {
+          "id": "S07-UC-02",
+          "storyId": "S07-STORY-02",
+          "name": "Context packet audit",
+          "primaryActor": "maintainer",
+          "trigger": "A packet manifest has been written.",
+          "expectedOutcome": "The audit reports file-count and forbidden-file status without bulk-reading generated artifacts."
+        }
+      ],
+      "functionalRequirements": [
+        {
+          "id": "S07-FR-H-01",
+          "level": "high",
+          "useCaseId": "S07-UC-01",
+          "statement": "The broker must emit a bounded agent context packet from SQL-backed project intent.",
+          "category": "context"
+        },
+        {
+          "id": "S07-FR-H-02",
+          "level": "high",
+          "useCaseId": "S07-UC-02",
+          "statement": "The broker must make context discipline auditable without mutating backlog or audit state.",
+          "category": "governance"
+        },
+        {
+          "id": "S07-FR-L-01",
+          "level": "low",
+          "useCaseId": "S07-UC-01",
+          "statement": "The packet must include elicitation status, experience contract rows, journey matrix rows, and advisory gaps when available.",
+          "category": "elicitation"
+        },
+        {
+          "id": "S07-FR-L-02",
+          "level": "low",
+          "useCaseId": "S07-UC-01",
+          "statement": "The packet must exclude forbidden bulk files and cap nextFiles by workflow profile.",
+          "category": "context"
+        },
+        {
+          "id": "S07-FR-L-03",
+          "level": "low",
+          "useCaseId": "S07-UC-02",
+          "statement": "The packet manifest audit must report advisory warnings and hard failures separately.",
+          "category": "governance"
+        }
+      ],
+      "successCriteria": [
+        {
+          "id": "S07-SC-01",
+          "requirementIds": ["S07-FR-L-01"],
+          "statement": "A feature packet for S07 includes elicitation metadata and experience contract rows."
+        },
+        {
+          "id": "S07-SC-02",
+          "requirementIds": ["S07-FR-L-02"],
+          "statement": "Context audit passes when no forbidden bulk file appears and file count stays under the cap."
+        }
+      ],
+      "antiSuccessCriteria": [
+        {
+          "id": "S07-ASC-01",
+          "requirementIds": ["S07-FR-L-02"],
+          "statement": "The broker must not include generated SQL dumps, audit JSONL, generated tracker JSON, or generated docs as next files."
+        },
+        {
+          "id": "S07-ASC-02",
+          "requirementIds": ["S07-FR-L-01"],
+          "statement": "The agent must not treat missing elicitation fields as invisible; gaps must be queryable and packet-visible."
+        }
+      ],
+      "experienceContracts": [
+        {
+          "id": "S07-XC-01",
+          "title": "Agent requests a bounded feature packet",
+          "useCaseId": "S07-UC-01",
+          "persona": "agent",
+          "role": "owner",
+          "intent": "Start implementation from a small, relevant, auditable context packet.",
+          "surface": "cli:context:feature",
+          "primaryAction": "Run context:feature for an assigned feature and workflow.",
+          "fallbackAction": "Stop and report missing feature, missing profile, or packet audit failure.",
+          "uiStates": ["ready", "valid-packet", "unknown-feature", "unknown-workflow", "forbidden-file-violation"],
+          "expectedCopy": "Context packet sections should name feature, next files, elicitation status, gaps, checks, and forbidden bulk files.",
+          "dataTouched": ["data/backlog.sqlite", "config/agentic/context-profiles.yaml", "config/agentic/elicitation.json"],
+          "auditBehavior": "The broker is read-only; material follow-up work records audit evidence separately.",
+          "requirementIds": ["S07-FR-H-01", "S07-FR-L-01", "S07-FR-L-02"],
+          "scenarioIds": ["S07-SCEN-HAPPY-01", "S07-SCEN-SAD-01", "S07-SCEN-DENY-01", "S07-SCEN-RECOVERY-01"],
+          "testEvidence": ["npm run test:agent-context", "npm run test:adg-as-code"]
+        }
+      ],
+      "journeyMatrix": [
+        {
+          "id": "S07-JM-01",
+          "contractId": "S07-XC-01",
+          "persona": "agent",
+          "role": "owner",
+          "state": "ready",
+          "outcome": "happy",
+          "expectedExperience": "Receives a bounded packet with next files, checks, elicitation status, and no forbidden files.",
+          "testEvidence": "npm run test:adg-as-code"
+        },
+        {
+          "id": "S07-JM-02",
+          "contractId": "S07-XC-01",
+          "persona": "agent",
+          "role": "owner",
+          "state": "unknown-feature",
+          "outcome": "sad",
+          "expectedExperience": "Receives a clear error and no misleading packet.",
+          "testEvidence": "npm run test:agent-context"
+        },
+        {
+          "id": "S07-JM-03",
+          "contractId": "S07-XC-01",
+          "persona": "maintainer",
+          "role": "admin",
+          "state": "forbidden-file-violation",
+          "outcome": "denial",
+          "expectedExperience": "Context audit fails with the forbidden file named.",
+          "testEvidence": "npm run test:agent-context"
+        },
+        {
+          "id": "S07-JM-04",
+          "contractId": "S07-XC-01",
+          "persona": "agent",
+          "role": "owner",
+          "state": "unknown-workflow",
+          "outcome": "recovery",
+          "expectedExperience": "The error names available workflows so the agent can retry with a valid profile.",
+          "testEvidence": "npm run test:agent-context"
+        }
+      ],
+      "scenarios": [
+        {
+          "id": "S07-SCEN-HAPPY-01",
+          "contractId": "S07-XC-01",
+          "outcome": "happy",
+          "given": "S07 exists and the workflow profile exists.",
+          "when": "The agent requests a feature packet.",
+          "then": "The packet includes bounded next files, elicitation status, and required checks.",
+          "testEvidence": "npm run test:adg-as-code"
+        },
+        {
+          "id": "S07-SCEN-SAD-01",
+          "contractId": "S07-XC-01",
+          "outcome": "sad",
+          "given": "The requested feature is unknown.",
+          "when": "The agent requests a feature packet.",
+          "then": "The command fails with a clear unknown-feature error.",
+          "testEvidence": "npm run test:agent-context"
+        },
+        {
+          "id": "S07-SCEN-DENY-01",
+          "contractId": "S07-XC-01",
+          "outcome": "denial",
+          "given": "A generated mirror is accidentally named in nextFiles.",
+          "when": "The packet manifest is audited.",
+          "then": "The audit fails and names the forbidden file.",
+          "testEvidence": "npm run context:audit"
+        },
+        {
+          "id": "S07-SCEN-RECOVERY-01",
+          "contractId": "S07-XC-01",
+          "outcome": "recovery",
+          "given": "The requested workflow profile is unknown.",
+          "when": "The agent requests a packet.",
+          "then": "The error names available profiles so the agent can retry.",
+          "testEvidence": "npm run test:agent-context"
+        }
+      ],
+      "gaps": []
+    }
+  ]
+}

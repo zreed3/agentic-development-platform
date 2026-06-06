@@ -1,0 +1,290 @@
+{
+  "schema": "bordroom.system.v1",
+  "name": "bordroom V4.1 token-optimized development system",
+  "status": "active",
+  "root": "development/_system",
+  "intent": "Make V4.1 work 5/5 across UX as Code, surface mapping, interaction grammar, experience contracts, design system, technical contracts, data governance, traceability, agent context, testing, security, IaC, documentation, and release evidence.",
+  "canonical_sources": [
+    "docs/traceability/v4-1-backlog.sqlite",
+    "docs/traceability/v4-1-backlog-source.sql",
+    "docs/traceability/v4-1-development-tracker.sqlite",
+    "docs/traceability/v4-1-development-audit.jsonl",
+    "apps/web/src/lib/navigation/route-registry.ts",
+    "apps/web/src/components/ui/PageState.tsx",
+    "packages/shared/src/types/index.ts",
+    "config/agentic/context-profiles.yaml",
+    "config/agentic/guardrails.json",
+    "config/integrations/registry.yaml",
+    "config/data-governance/data-map.yaml",
+    "infra/terraform/README.md"
+  ],
+  "five_of_five_rule": [
+    "The authoritative source is machine-readable or SQL-queryable.",
+    "The human-facing explanation is generated from or anchored to that source.",
+    "Every live user path has allowed, read-only, empty, error, forbidden, locked, and destructive-action states where relevant.",
+    "Every protected operation proves entitlement, permission, tenant scope, business scope, audit behavior, and negative tests.",
+    "Every change names its evidence command or artifact before it is called complete.",
+    "Agents can start from a bounded context packet and avoid bulk-loading generated mirrors."
+  ],
+  "operating_loop": [
+    "context",
+    "contract",
+    "build",
+    "verify",
+    "evidence",
+    "drift-check"
+  ],
+  "areas": [
+    {
+      "id": "ux_as_code",
+      "target": "5/5",
+      "required_functions": [
+        "experience-contract-author",
+        "surface-map-cartographer",
+        "interaction-grammar-governor",
+        "design-system-keeper"
+      ]
+    },
+    {
+      "id": "technical_contracts",
+      "target": "5/5",
+      "required_functions": [
+        "technical-contract-librarian",
+        "database-rls-guardian",
+        "rbac-entitlement-auditor"
+      ]
+    },
+    {
+      "id": "data_governance",
+      "target": "5/5",
+      "required_functions": [
+        "data-governance-steward",
+        "iac-deployment-readiness"
+      ]
+    },
+    {
+      "id": "agentic_delivery",
+      "target": "5/5",
+      "required_functions": [
+        "context-primer",
+        "agent-skill-governor",
+        "testing-evidence-curator",
+        "release-evidence-curator"
+      ]
+    },
+    {
+      "id": "docs_and_traceability",
+      "target": "5/5",
+      "required_functions": [
+        "documentation-drift-reconciler",
+        "release-evidence-curator"
+      ]
+    }
+  ],
+  "functions": [
+    {
+      "id": "context-primer",
+      "skill": "dev-context-primer",
+      "purpose": "Select the smallest trustworthy SQL-backed context before broad work.",
+      "writes": [],
+      "evidence": [
+        "bounded context packet",
+        "selected feature ID",
+        "risk class",
+        "checks"
+      ]
+    },
+    {
+      "id": "experience-contract-author",
+      "skill": "dev-experience-contract-author",
+      "purpose": "Turn primary user goals into end-to-end contracts from persona to audit evidence.",
+      "writes": [
+        "experience contract source or SQL rows",
+        "directly related tests"
+      ],
+      "evidence": [
+        "contract ID",
+        "route/action mapping",
+        "test command"
+      ]
+    },
+    {
+      "id": "surface-map-cartographer",
+      "skill": "dev-surface-map-cartographer",
+      "purpose": "Map every live route, entity, action, and page state without exposing unfinished surfaces.",
+      "writes": [
+        "surface map source",
+        "route registry or generated matrix when needed"
+      ],
+      "evidence": [
+        "surface state matrix",
+        "route truthfulness test"
+      ]
+    },
+    {
+      "id": "interaction-grammar-governor",
+      "skill": "dev-interaction-grammar-governor",
+      "purpose": "Keep controls, forms, dialogs, validation, destructive actions, and feedback behavior consistent.",
+      "writes": [
+        "interaction grammar source",
+        "UI primitive tests"
+      ],
+      "evidence": [
+        "grammar rule ID",
+        "component/test mapping"
+      ]
+    },
+    {
+      "id": "design-system-keeper",
+      "skill": "dev-design-system-keeper",
+      "purpose": "Keep tokens, components, accessibility, responsive layout, and visual QA aligned.",
+      "writes": [
+        "design token or component source",
+        "visual/accessibility tests"
+      ],
+      "evidence": [
+        "token/component mapping",
+        "screenshot or test"
+      ]
+    },
+    {
+      "id": "technical-contract-librarian",
+      "skill": "dev-technical-contract-librarian",
+      "purpose": "Keep API, server action, webhook, event, and integration contracts typed, validated, and truthful.",
+      "writes": [
+        "contract schemas",
+        "contract tests",
+        "OpenAPI source when applicable"
+      ],
+      "evidence": [
+        "schema",
+        "contract test",
+        "route registry state"
+      ]
+    },
+    {
+      "id": "data-governance-steward",
+      "skill": "dev-data-governance-steward",
+      "purpose": "Keep data maps, retention, privacy, subprocessors, classifications, and export/delete behavior governed.",
+      "writes": [
+        "governance config",
+        "privacy/runtime tests"
+      ],
+      "evidence": [
+        "data class",
+        "retention rule",
+        "privacy test"
+      ]
+    },
+    {
+      "id": "rbac-entitlement-auditor",
+      "skill": "dev-rbac-entitlement-auditor",
+      "purpose": "Prove every protected operation checks role, entitlement, tenant scope, and business scope.",
+      "writes": [
+        "access tests",
+        "route or action gate updates"
+      ],
+      "evidence": [
+        "allowed role",
+        "denied role",
+        "cross-tenant denial",
+        "cross-business denial",
+        "missing entitlement denial"
+      ]
+    },
+    {
+      "id": "database-rls-guardian",
+      "skill": "dev-database-rls-guardian",
+      "purpose": "Keep schema, migrations, RLS, repository predicates, seeds, and runtime context aligned.",
+      "writes": [
+        "schema",
+        "migration",
+        "repository tests"
+      ],
+      "evidence": [
+        "migration validation",
+        "RLS negative test",
+        "runtime role assertion"
+      ]
+    },
+    {
+      "id": "testing-evidence-curator",
+      "skill": "dev-testing-evidence-curator",
+      "purpose": "Select targeted tests, record failures truthfully, and promote evidence into backlog/audit rows.",
+      "writes": [
+        "tests",
+        "backlog failure or verification events"
+      ],
+      "evidence": [
+        "test command",
+        "result",
+        "coverage claim"
+      ]
+    },
+    {
+      "id": "iac-deployment-readiness",
+      "skill": "dev-iac-deployment-readiness",
+      "purpose": "Keep Terraform, environments, provider evidence, deployment secrets, and rollback paths launch-ready.",
+      "writes": [
+        "infra config",
+        "deployment validation tests",
+        "readiness evidence"
+      ],
+      "evidence": [
+        "environment boundary",
+        "secret handling proof",
+        "rollback proof"
+      ]
+    },
+    {
+      "id": "documentation-drift-reconciler",
+      "skill": "dev-documentation-drift-reconciler",
+      "purpose": "Keep generated docs, source docs, route matrices, and tracker mirrors aligned without hand-editing generated outputs.",
+      "writes": [
+        "source docs",
+        "generator changes",
+        "generated artifacts when required"
+      ],
+      "evidence": [
+        "drift command",
+        "generator output",
+        "audit event"
+      ]
+    },
+    {
+      "id": "release-evidence-curator",
+      "skill": "dev-release-evidence-curator",
+      "purpose": "Assemble go/no-go evidence, deferrals, blockers, owners, rollback notes, and launch gate proof.",
+      "writes": [
+        "release evidence packet",
+        "audit events",
+        "deferral rows"
+      ],
+      "evidence": [
+        "blocker count",
+        "deferral owner",
+        "gate command",
+        "go/no-go decision"
+      ]
+    },
+    {
+      "id": "agent-skill-governor",
+      "skill": "dev-agent-skill-governor",
+      "purpose": "Create and maintain compact agent skills with clear triggers, progressive disclosure, validation, and stop conditions.",
+      "writes": [
+        "SKILL.md files",
+        "optional references or scripts"
+      ],
+      "evidence": [
+        "skill path",
+        "frontmatter validation",
+        "token budget"
+      ]
+    }
+  ],
+  "verification": {
+    "local": "node development/_system/validate-system.mjs",
+    "traceability": "pnpm audit:validate",
+    "checkpoint": "pnpm ci:traceability"
+  }
+}

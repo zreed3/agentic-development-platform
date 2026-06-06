@@ -28,14 +28,24 @@
     "agent:next": "node scripts/agent-context.mjs next",
     "agent:loop": "node scripts/agent-context.mjs loop",
     "test:agent-context": "node tooling/agent-context/test-agent-context.mjs",
+    "test:adg-as-code": "node tooling/adg-as-code/test-adg-as-code.mjs",
     "audit:validate": "node scripts/validate-audit.mjs",
     "audit:record": "node scripts/record-audit.mjs",
     "guardrails:check": "node scripts/guardrail-check.mjs",
     "agent:evals": "node scripts/run-agent-evals.mjs",
     "metrics:dora": "node scripts/dora-metrics.mjs",
-    "ci:governance": "npm run backlog:validate && npm run audit:validate && npm run guardrails:check && npm run agent:evals && npm run metrics:dora && npm run test:agent-context",
+    "elicitation:validate": "node scripts/adg-elicitation.mjs validate",
+    "elicitation:packet": "node scripts/adg-elicitation.mjs packet",
+    "maturity:validate": "node scripts/adg-maturity.mjs validate",
+    "maturity:score": "node scripts/adg-maturity.mjs score",
+    "maturity:report": "node scripts/adg-maturity.mjs report",
+    "skills:validate": "node scripts/adg-skills.mjs validate",
+    "ci:governance": "npm run backlog:validate && npm run audit:validate && npm run guardrails:check && npm run agent:evals && npm run metrics:dora && npm run elicitation:validate && npm run maturity:validate && npm run skills:validate && npm run test:agent-context && npm run test:adg-as-code",
     "prepush": "npm run ci:governance"
   },
   "author": "Otterblock Pty Ltd",
-  "license": "SEE LICENSE IN LICENSE"
+  "license": "SEE LICENSE IN LICENSE",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "1.29.0"
+  }
 }

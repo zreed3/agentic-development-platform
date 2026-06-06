@@ -1,16 +1,18 @@
 # Agentic Development Governance (ADG)
 
-**Governance, traceability, and bounded context for agent-assisted software
-development — in a handful of Node scripts and one SQLite file.**
+**Governance, traceability, elicitation, maturity scoring, and bounded context for
+agent-assisted software development — in a handful of Node scripts and SQLite
+files.**
 
 Hand an AI agent your codebase and two failure modes dominate: it does too much
 (unbounded, unaudited, occasionally destructive actions), or it drowns in context
 (you paste the whole tracker into the prompt and burn six figures of tokens before
 it writes a line). This platform is a small, local control plane that fixes both. It
 gives an AI collaborator the apparatus of a regulated engineering org — deny-by-default
-guardrails, an append-only audit trail, AI-security evals, delivery metrics, and a
-SQL-first backlog — plus a **context broker** that keeps token usage bounded by
-*refusing* to load the artifacts that blow up a context window.
+guardrails, an append-only audit trail, AI-security evals, delivery metrics, a
+SQL-first backlog, **feature elicitation as code**, and **maturity as code** — plus
+a **context broker** that keeps token usage bounded by *refusing* to load the
+artifacts that blow up a context window.
 
 It runs on nothing but **Node (≥ 20) and the `sqlite3` CLI.** No SaaS, no agent
 framework, no vector database, no API keys. Everything is grep-able, diffable,
@@ -77,6 +79,8 @@ reproduce it: [`docs/token-reduction.md`](docs/token-reduction.md).
 # ADG is not currently published on npm; copy or clone it into your development folder.
 npm run setup            # build data/backlog.sqlite from schema + seed + audit log
 npm run ci:governance    # the full gate: backlog, audit, guardrails, evals, dora, broker
+npm run elicitation:packet -- --feature S07 --format toon
+npm run maturity:score -- --format toon
 
 # Ask the broker for a bounded packet instead of opening files blind:
 npm run context:feature -- --feature S07 --workflow route
@@ -94,7 +98,9 @@ npm run context:feature -- --feature S07 --workflow delivery-slice
 | **Delivery metrics** | `scripts/dora-metrics.mjs` | DORA-style proxies from local git + the audit log. |
 | **SQL backlog ("the SQL server")** | `scripts/backlog-db.mjs`, `data/schema.sql`, `data/seed/` | One SQLite DB; claim/start/complete/verify lifecycle; reviewable SQL mirrors. |
 | **Context broker** | `scripts/agent-context.mjs`, `config/agentic/context-profiles.yaml` | Bounded packets in markdown/json/toon; forbids bulk files. |
-| **Codex skills** | `skills/agentic-traceability`, `skills/agentic-build-runner` | Portable disciplines installable into `~/.codex/skills`. |
+| **Elicitation as code** | `config/agentic/elicitation.json`, `scripts/adg-elicitation.mjs` | Feature brief → RBAC stories → requirements → contracts → scenarios → gaps. |
+| **Maturity as code** | `config/agentic/maturity.json`, `scripts/adg-maturity.mjs` | 1.0-5.0 scorecards for required ADG domains, with evidence and gaps. |
+| **Agent skills** | `skills/agentic-*`, `skills/adg-*`, `config/agentic/skill-manifest.json` | Portable disciplines plus generic as-code skills validated by manifest. |
 | **Rulebook** | `AGENTS.md` | What every agent reads first; also a per-repo template. |
 
 ## Documentation

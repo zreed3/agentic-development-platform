@@ -21,6 +21,7 @@ const root = process.cwd();
 const trackerDbPath = "data/backlog.sqlite";
 const backlogDbPath = "data/backlog.sqlite";
 const profilePath = "config/agentic/context-profiles.yaml";
+const elicitationPath = "config/agentic/elicitation.json";
 const manifestDir = "tooling/agent-context/manifests";
 const lastManifestPath = `${manifestDir}/last-context-packet.json`;
 const historyManifestPath = `${manifestDir}/history.jsonl`;
@@ -181,6 +182,95 @@ function parseJsonArray(raw) {
   }
 }
 
+function asArray(input) {
+  return Array.isArray(input) ? input : [];
+}
+
+function loadElicitationConfig() {
+  if (!fs.existsSync(abs(elicitationPath))) return null;
+  return JSON.parse(fs.readFileSync(abs(elicitationPath), "utf8"));
+}
+
+function getElicitationContext(featureId) {
+  const config = loadElicitationConfig();
+  const feature = config?.features?.find((item) => item.id === featureId);
+  if (!feature) {
+    return {
+      status: "missing",
+      modelVersion: config?.modelVersion ?? "",
+      featureId,
+      advisoryGaps: [],
+      hardGaps: [],
+      experienceContracts: [],
+      journeyMatrix: [],
+      scenarios: [],
+      requiredEvidence: [],
+    };
+  }
+  const gaps = asArray(feature.gaps);
+  const requiredOutcomes = asArray(config.policy?.requiredScenarioOutcomes);
+  const presentOutcomes = new Set(asArray(feature.scenarios).map((scenario) => scenario.outcome));
+  const derivedGaps = requiredOutcomes
+    .filter((outcome) => !presentOutcomes.has(outcome))
+    .map((outcome) => ({
+      id: `PACKET-${featureId}-${outcome}`,
+      domain: "scenarios",
+      severity: "high",
+      summary: `Missing ${outcome} scenario`,
+      remediation: `Add at least one ${outcome} path scenario.`,
+      blocksImplementation: false,
+    }));
+  const allGaps = [...gaps, ...derivedGaps];
+  return {
+    status: allGaps.some((gap) => gap.blocksImplementation === true) ? "hard-gaps" : allGaps.length ? "advisory-gaps" : "ready",
+    modelVersion: config.modelVersion,
+    featureId,
+    brief: {
+      goalFit: feature.brief?.goalFit ?? "",
+      platformFit: feature.brief?.platformFit ?? "",
+      expectedValue: feature.brief?.expectedValue ?? "",
+    },
+    counts: {
+      rbacStories: asArray(feature.rbacStories).length,
+      userStories: asArray(feature.userStories).length,
+      useCases: asArray(feature.useCases).length,
+      requirements: asArray(feature.functionalRequirements).length,
+      successCriteria: asArray(feature.successCriteria).length,
+      antiSuccessCriteria: asArray(feature.antiSuccessCriteria).length,
+      experienceContracts: asArray(feature.experienceContracts).length,
+      scenarios: asArray(feature.scenarios).length,
+    },
+    advisoryGaps: allGaps.filter((gap) => gap.blocksImplementation !== true),
+    hardGaps: allGaps.filter((gap) => gap.blocksImplementation === true),
+    experienceContracts: asArray(feature.experienceContracts).map((contract) => ({
+      id: contract.id,
+      title: contract.title,
+      persona: contract.persona,
+      role: contract.role,
+      surface: contract.surface,
+      intent: contract.intent,
+      testEvidence: asArray(contract.testEvidence).join("; "),
+    })),
+    journeyMatrix: asArray(feature.journeyMatrix).map((row) => ({
+      id: row.id,
+      contractId: row.contractId,
+      persona: row.persona,
+      role: row.role,
+      state: row.state,
+      outcome: row.outcome,
+      expectedExperience: row.expectedExperience,
+      testEvidence: row.testEvidence,
+    })),
+    scenarios: asArray(feature.scenarios).map((scenario) => ({
+      id: scenario.id,
+      outcome: scenario.outcome,
+      then: scenario.then,
+      testEvidence: scenario.testEvidence,
+    })),
+    requiredEvidence: unique(asArray(feature.experienceContracts).flatMap((contract) => asArray(contract.testEvidence))),
+  };
+}
+
 function getFeature(featureId) {
   const statusRows = sqliteJson(
     trackerDbPath,
@@ -290,6 +380,7 @@ function buildPacket({ featureId, itemId = "", workflowName, format }) {
   const backlogEvents = getBacklogEvents({ featureId: effectiveFeatureId, itemId, profile });
   const personaWorkflows = profile.queries?.includes("persona_workflows_by_feature") ? getPersonaWorkflows(effectiveFeatureId) : [];
   const integrations = profile.queries?.includes("integrations_by_feature") ? getIntegrations(effectiveFeatureId) : [];
+  const elicitation = getElicitationContext(effectiveFeatureId);
   const nextFiles = deriveNextFiles({ feature, routes, profile });
 
   return {
@@ -298,7 +389,7 @@ function buildPacket({ featureId, itemId = "", workflowName, format }) {
     workflow: workflowName,
     format,
     inputs: { feature: effectiveFeatureId, item: itemId || null },
-    source: { trackerDb: trackerDbPath, backlogDb: backlogDbPath, profile: profilePath },
+    source: { trackerDb: trackerDbPath, backlogDb: backlogDbPath, profile: profilePath, elicitation: elicitationPath },
     profile: {
       maxAuditEvents: profile.maxAuditEvents,
       maxBacklogEvents: profile.maxBacklogEvents,
@@ -317,6 +408,7 @@ function buildPacket({ featureId, itemId = "", workflowName, format }) {
     auditEvents,
     personaWorkflows,
     integrations,
+    elicitation,
     nextFiles,
     requiredChecks: profile.requiredChecks ?? [],
     forbiddenBulkFiles: profile.forbiddenBulkFiles ?? [],
@@ -422,6 +514,47 @@ ${markdownTable(packet.auditEvents, [
   { key: "summary", label: "Summary" },
 ])}
 
+## Elicitation
+
+| Field | Value |
+|---|---|
+| Status | ${md(packet.elicitation?.status)} |
+| Model | ${md(packet.elicitation?.modelVersion)} |
+| Experience contracts | ${md(packet.elicitation?.counts?.experienceContracts ?? 0)} |
+| Scenarios | ${md(packet.elicitation?.counts?.scenarios ?? 0)} |
+| Advisory gaps | ${md(packet.elicitation?.advisoryGaps?.length ?? 0)} |
+| Hard gaps | ${md(packet.elicitation?.hardGaps?.length ?? 0)} |
+
+### Experience Contracts
+
+${markdownTable(packet.elicitation?.experienceContracts ?? [], [
+  { key: "id", label: "ID" },
+  { key: "title", label: "Title" },
+  { key: "persona", label: "Persona" },
+  { key: "role", label: "Role" },
+  { key: "surface", label: "Surface" },
+])}
+
+### Journey Matrix
+
+${markdownTable(packet.elicitation?.journeyMatrix ?? [], [
+  { key: "id", label: "ID" },
+  { key: "persona", label: "Persona" },
+  { key: "role", label: "Role" },
+  { key: "state", label: "State" },
+  { key: "outcome", label: "Outcome" },
+  { key: "expectedExperience", label: "Expected Experience" },
+])}
+
+### Elicitation Gaps
+
+${markdownTable([...(packet.elicitation?.advisoryGaps ?? []), ...(packet.elicitation?.hardGaps ?? [])], [
+  { key: "id", label: "ID" },
+  { key: "domain", label: "Domain" },
+  { key: "severity", label: "Severity" },
+  { key: "summary", label: "Summary" },
+])}
+
 ## Required Checks
 
 ${packet.requiredChecks.map((check) => `- ${check}`).join("\n") || "- None"}
@@ -471,6 +604,9 @@ function renderToon(packet) {
     renderToonRows("backlogItems", packet.backlogItems, ["id", "item_type", "current_status", "title"]),
     renderToonRows("routes", packet.routes, ["path", "status", "realm", "file_path"]),
     renderToonRows("auditEvents", packet.auditEvents, ["occurred_at", "event_type", "status", "summary"]),
+    renderToonRows("experienceContracts", packet.elicitation?.experienceContracts ?? [], ["id", "title", "persona", "role", "surface", "intent"]),
+    renderToonRows("journeyMatrix", packet.elicitation?.journeyMatrix ?? [], ["id", "persona", "role", "state", "outcome", "expectedExperience"]),
+    renderToonRows("elicitationGaps", [...(packet.elicitation?.advisoryGaps ?? []), ...(packet.elicitation?.hardGaps ?? [])], ["id", "domain", "severity", "summary"]),
     renderToonRows("requiredChecks", packet.requiredChecks.map((check) => ({ check })), ["check"]),
     renderToonRows("deliveryFlow", (packet.profile.deliveryFlow ?? []).map((step) => ({ step })), ["step"]),
     renderToonRows("verificationPolicy", (packet.profile.verificationPolicy ?? []).map((policy) => ({ policy })), ["policy"]),

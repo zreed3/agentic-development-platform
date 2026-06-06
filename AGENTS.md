@@ -25,7 +25,8 @@ here, follow these rules. When this file is copied into a host repo, fill in the
 ## Repo Shape
 
 - `config/agentic/` — `guardrails.json` (risk-class policy) and
-  `context-profiles.yaml` (per-workflow context budgets).
+  `context-profiles.yaml` (per-workflow context budgets), plus elicitation,
+  maturity, and skill-manifest config.
 - `scripts/` — the governance scripts (backlog engine, context broker, guardrail
   check, eval runner, DORA metrics, audit validate/record).
 - `tooling/agent-context/` — context-broker manifests and smoke test.
@@ -49,6 +50,10 @@ dependencies to install.
 - Run agent evals / AI-security scenarios: `npm run agent:evals`
 - Capture delivery metrics: `npm run metrics:dora`
 - Context broker test: `npm run test:agent-context`
+- Elicitation validation: `npm run elicitation:validate`
+- Elicitation packet: `npm run elicitation:packet -- --feature S07 --format toon`
+- Maturity validation / scorecard: `npm run maturity:validate` / `npm run maturity:score`
+- Skill manifest validation: `npm run skills:validate`
 - **Full gate:** `npm run ci:governance`
 - Context packets: `npm run context:feature -- --feature S07 --workflow route`
 
@@ -73,6 +78,11 @@ The canonical backlog is `data/backlog.sqlite`, rebuilt from
 database as generated and queryable; treat `data/backlog-source.sql` and
 `data/schema.sql` as the reviewable mirrors. Do not invent a parallel spreadsheet or
 Markdown-only backlog — the SQL backlog is the requirements/elicitation system.
+
+Feature elicitation is modeled in `config/agentic/elicitation.json` and mirrored to
+`data/elicitation.sqlite`. Experience contracts are the agent build documents;
+journey matrices and test-first specs are supporting evidence. Advisory gaps are
+allowed, but they must stay structured and queryable.
 
 Use the item lifecycle (`backlog:next` → `claim` → `start` → `complete` → `verify`)
 and keep current state *derived* from events, never hand-edited. See
