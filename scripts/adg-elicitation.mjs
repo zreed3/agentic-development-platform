@@ -52,6 +52,7 @@ function usage() {
   console.log(`Usage:
   node scripts/adg-elicitation.mjs validate [--config config/agentic/elicitation.json] [--feature S07] [--format json|markdown|toon] [--no-sqlite]
   node scripts/adg-elicitation.mjs packet --feature S07 [--format json|markdown|toon]
+  node scripts/adg-elicitation.mjs graph [--feature S07] [--format json|markdown|toon]
 
 The validator treats elicitation coverage gaps as advisory unless config policy
 marks them as hard-gated. Invalid config shape still exits non-zero.`);
@@ -192,6 +193,104 @@ function flatten(config, validation) {
   };
 }
 
+function graphNode(type, id, label, featureId, attributes = {}) {
+  return {
+    id: `${type}:${id}`,
+    type,
+    sourceId: id,
+    featureId,
+    label: label || id,
+    attributes,
+  };
+}
+
+function graphEdge(type, fromType, fromId, toType, toId, featureId, attributes = {}) {
+  return {
+    id: `${type}:${fromType}:${fromId}->${toType}:${toId}`,
+    type,
+    from: `${fromType}:${fromId}`,
+    to: `${toType}:${toId}`,
+    featureId,
+    attributes,
+  };
+}
+
+function buildGraph(config, validation, featureId = "") {
+  const requestedFeatures = featureId ? asArray(config.features).filter((feature) => feature.id === featureId) : asArray(config.features);
+  if (featureId && !requestedFeatures.length) throw new Error(`Unknown elicitation feature ${featureId}`);
+  const nodes = [];
+  const edges = [];
+  for (const feature of requestedFeatures) {
+    nodes.push(graphNode("feature", feature.id, feature.name, feature.id, { status: feature.status ?? "" }));
+    for (const story of asArray(feature.userStories)) {
+      nodes.push(graphNode("user_story", story.id, story.goal, feature.id, { persona: story.persona ?? "", benefit: story.benefit ?? "" }));
+      edges.push(graphEdge("feature_to_story", "feature", feature.id, "user_story", story.id, feature.id));
+    }
+    for (const rbac of asArray(feature.rbacStories)) {
+      nodes.push(graphNode("rbac_story", rbac.id, rbac.story, feature.id, { persona: rbac.persona ?? "", role: rbac.role ?? "", access: rbac.access ?? "", realm: rbac.realm ?? "" }));
+      edges.push(graphEdge("feature_to_rbac_story", "feature", feature.id, "rbac_story", rbac.id, feature.id));
+    }
+    for (const useCase of asArray(feature.useCases)) {
+      nodes.push(graphNode("use_case", useCase.id, useCase.name, feature.id, { primaryActor: useCase.primaryActor ?? "", expectedOutcome: useCase.expectedOutcome ?? "" }));
+      if (useCase.storyId) edges.push(graphEdge("story_to_use_case", "user_story", useCase.storyId, "use_case", useCase.id, feature.id));
+    }
+    for (const requirement of asArray(feature.functionalRequirements)) {
+      nodes.push(graphNode("requirement", requirement.id, requirement.statement, feature.id, { level: requirement.level ?? "", category: requirement.category ?? "" }));
+      if (requirement.useCaseId) edges.push(graphEdge("use_case_to_requirement", "use_case", requirement.useCaseId, "requirement", requirement.id, feature.id));
+    }
+    for (const criterion of asArray(feature.successCriteria)) {
+      nodes.push(graphNode("criterion", criterion.id, criterion.statement, feature.id, { kind: "success" }));
+      for (const reqId of asArray(criterion.requirementIds)) edges.push(graphEdge("requirement_to_criterion", "requirement", reqId, "criterion", criterion.id, feature.id, { kind: "success" }));
+    }
+    for (const criterion of asArray(feature.antiSuccessCriteria)) {
+      nodes.push(graphNode("criterion", criterion.id, criterion.statement, feature.id, { kind: "anti-success" }));
+      for (const reqId of asArray(criterion.requirementIds)) edges.push(graphEdge("requirement_to_criterion", "requirement", reqId, "criterion", criterion.id, feature.id, { kind: "anti-success" }));
+    }
+    for (const contract of asArray(feature.experienceContracts)) {
+      nodes.push(graphNode("experience_contract", contract.id, contract.title, feature.id, { persona: contract.persona ?? "", role: contract.role ?? "", surface: contract.surface ?? "" }));
+      if (contract.useCaseId) edges.push(graphEdge("use_case_to_contract", "use_case", contract.useCaseId, "experience_contract", contract.id, feature.id));
+      for (const reqId of asArray(contract.requirementIds)) edges.push(graphEdge("requirement_to_contract", "requirement", reqId, "experience_contract", contract.id, feature.id));
+      for (const evidence of asArray(contract.testEvidence)) {
+        const evidenceId = `${contract.id}:${evidence}`;
+        nodes.push(graphNode("test_evidence", evidenceId, evidence, feature.id, { command: evidence }));
+        edges.push(graphEdge("contract_to_test_evidence", "experience_contract", contract.id, "test_evidence", evidenceId, feature.id));
+      }
+    }
+    for (const scenario of asArray(feature.scenarios)) {
+      nodes.push(graphNode("scenario", scenario.id, scenario.then, feature.id, { outcome: scenario.outcome ?? "", testEvidence: scenario.testEvidence ?? "" }));
+      if (scenario.contractId) edges.push(graphEdge("contract_to_scenario", "experience_contract", scenario.contractId, "scenario", scenario.id, feature.id, { outcome: scenario.outcome ?? "" }));
+      if (scenario.testEvidence) {
+        const evidenceId = `${scenario.id}:${scenario.testEvidence}`;
+        nodes.push(graphNode("test_evidence", evidenceId, scenario.testEvidence, feature.id, { command: scenario.testEvidence }));
+        edges.push(graphEdge("scenario_to_test_evidence", "scenario", scenario.id, "test_evidence", evidenceId, feature.id));
+      }
+    }
+    for (const journey of asArray(feature.journeyMatrix)) {
+      nodes.push(graphNode("journey_row", journey.id, journey.expectedExperience, feature.id, { persona: journey.persona ?? "", role: journey.role ?? "", state: journey.state ?? "", outcome: journey.outcome ?? "" }));
+      if (journey.contractId) edges.push(graphEdge("contract_to_journey", "experience_contract", journey.contractId, "journey_row", journey.id, feature.id, { outcome: journey.outcome ?? "" }));
+    }
+  }
+  const nodeIds = new Set(nodes.map((node) => node.id));
+  const danglingEdges = edges.filter((edge) => !nodeIds.has(edge.from) || !nodeIds.has(edge.to));
+  return {
+    kind: "elicitation-graph",
+    generatedAt: new Date().toISOString(),
+    modelVersion: config.modelVersion,
+    feature: { id: featureId || "" },
+    valid: validation.valid && danglingEdges.length === 0,
+    nodes,
+    edges,
+    summary: {
+      features: requestedFeatures.length,
+      nodes: nodes.length,
+      edges: edges.length,
+      danglingEdges: danglingEdges.length,
+      gaps: validation.gaps.filter((gap) => !featureId || gap.featureId === featureId).length,
+    },
+    failures: [...validation.failures, ...danglingEdges.map((edge) => `${edge.id}: dangling graph edge`)],
+  };
+}
+
 function writeSqlite(config, validation) {
   fs.mkdirSync(path.dirname(abs(sqlitePath)), { recursive: true });
   const flat = flatten(config, validation);
@@ -207,6 +306,8 @@ function writeSqlite(config, validation) {
     "DROP TABLE IF EXISTS elicitation_scenarios;",
     "DROP TABLE IF EXISTS elicitation_journey_matrix;",
     "DROP TABLE IF EXISTS elicitation_gaps;",
+    "DROP TABLE IF EXISTS elicitation_graph_nodes;",
+    "DROP TABLE IF EXISTS elicitation_graph_edges;",
     "CREATE TABLE elicitation_features (id TEXT PRIMARY KEY, name TEXT NOT NULL, status TEXT NOT NULL, goal_fit TEXT NOT NULL, platform_fit TEXT NOT NULL, expected_value TEXT NOT NULL, non_goals_json TEXT NOT NULL, risks_json TEXT NOT NULL, dependencies_json TEXT NOT NULL, affected_surfaces_json TEXT NOT NULL);",
     "CREATE TABLE elicitation_rbac_stories (id TEXT PRIMARY KEY, feature_id TEXT NOT NULL, persona TEXT NOT NULL, role TEXT NOT NULL, realm TEXT NOT NULL, access TEXT NOT NULL, story TEXT NOT NULL);",
     "CREATE TABLE elicitation_user_stories (id TEXT PRIMARY KEY, feature_id TEXT NOT NULL, persona TEXT NOT NULL, goal TEXT NOT NULL, benefit TEXT NOT NULL);",
@@ -217,6 +318,8 @@ function writeSqlite(config, validation) {
     "CREATE TABLE elicitation_scenarios (id TEXT PRIMARY KEY, feature_id TEXT NOT NULL, contract_id TEXT NOT NULL, outcome TEXT NOT NULL, given_text TEXT NOT NULL, when_text TEXT NOT NULL, then_text TEXT NOT NULL, test_evidence TEXT NOT NULL);",
     "CREATE TABLE elicitation_journey_matrix (id TEXT PRIMARY KEY, feature_id TEXT NOT NULL, contract_id TEXT NOT NULL, persona TEXT NOT NULL, role TEXT NOT NULL, state TEXT NOT NULL, outcome TEXT NOT NULL, expected_experience TEXT NOT NULL, test_evidence TEXT NOT NULL);",
     "CREATE TABLE elicitation_gaps (id TEXT PRIMARY KEY, feature_id TEXT NOT NULL, domain TEXT NOT NULL, severity TEXT NOT NULL, summary TEXT NOT NULL, remediation TEXT NOT NULL, channel TEXT NOT NULL, blocks_implementation INTEGER NOT NULL);",
+    "CREATE TABLE elicitation_graph_nodes (id TEXT PRIMARY KEY, feature_id TEXT NOT NULL, type TEXT NOT NULL, source_id TEXT NOT NULL, label TEXT NOT NULL, attributes_json TEXT NOT NULL);",
+    "CREATE TABLE elicitation_graph_edges (id TEXT PRIMARY KEY, feature_id TEXT NOT NULL, type TEXT NOT NULL, from_node TEXT NOT NULL, to_node TEXT NOT NULL, attributes_json TEXT NOT NULL);",
   ];
 
   for (const feature of flat.features) {
@@ -231,6 +334,9 @@ function writeSqlite(config, validation) {
   for (const row of flat.scenarios) statements.push(`INSERT INTO elicitation_scenarios VALUES (${sqlString(row.id)}, ${sqlString(row.featureId)}, ${sqlString(row.contractId)}, ${sqlString(row.outcome)}, ${sqlString(row.given)}, ${sqlString(row.when)}, ${sqlString(row.then)}, ${sqlString(row.testEvidence)});`);
   for (const row of flat.journeyMatrix) statements.push(`INSERT INTO elicitation_journey_matrix VALUES (${sqlString(row.id)}, ${sqlString(row.featureId)}, ${sqlString(row.contractId)}, ${sqlString(row.persona)}, ${sqlString(row.role)}, ${sqlString(row.state)}, ${sqlString(row.outcome)}, ${sqlString(row.expectedExperience)}, ${sqlString(row.testEvidence)});`);
   for (const gap of flat.gaps) statements.push(`INSERT INTO elicitation_gaps VALUES (${sqlString(gap.id)}, ${sqlString(gap.featureId)}, ${sqlString(gap.domain)}, ${sqlString(gap.severity)}, ${sqlString(gap.summary)}, ${sqlString(gap.remediation)}, ${sqlString(gap.channel ?? "gap-register")}, ${gap.blocksImplementation ? 1 : 0});`);
+  const graph = buildGraph(config, validation);
+  for (const node of graph.nodes) statements.push(`INSERT OR REPLACE INTO elicitation_graph_nodes VALUES (${sqlString(node.id)}, ${sqlString(node.featureId)}, ${sqlString(node.type)}, ${sqlString(node.sourceId)}, ${sqlString(node.label)}, ${sqlString(JSON.stringify(node.attributes ?? {}))});`);
+  for (const edge of graph.edges) statements.push(`INSERT OR REPLACE INTO elicitation_graph_edges VALUES (${sqlString(edge.id)}, ${sqlString(edge.featureId)}, ${sqlString(edge.type)}, ${sqlString(edge.from)}, ${sqlString(edge.to)}, ${sqlString(JSON.stringify(edge.attributes ?? {}))});`);
 
   if (fs.existsSync(abs(sqlitePath))) fs.rmSync(abs(sqlitePath));
   execFileSync("sqlite3", [abs(sqlitePath)], { cwd: root, input: `${statements.join("\n")}\n`, encoding: "utf8" });
@@ -357,9 +463,52 @@ ${markdownTable(packet.status.gaps, [
 }
 
 function renderPacket(packet, format) {
+  if (packet.kind === "elicitation-graph") return renderGraph(packet, format);
   if (format === "json") return `${JSON.stringify(packet, null, 2)}\n`;
   if (format === "toon") return `${renderToon(packet)}\n`;
   if (format === "markdown") return renderMarkdown(packet);
+  throw new Error(`Unsupported format ${format}`);
+}
+
+function renderGraph(packet, format) {
+  if (format === "json") return `${JSON.stringify(packet, null, 2)}\n`;
+  if (format === "toon") {
+    return `${[
+      "elicitationGraph:",
+      `  feature: ${packet.feature.id || "all"}`,
+      `  nodes: ${packet.summary.nodes}`,
+      `  edges: ${packet.summary.edges}`,
+      `  danglingEdges: ${packet.summary.danglingEdges}`,
+      renderRows("nodes", packet.nodes, ["id", "type", "sourceId", "label"]),
+      renderRows("edges", packet.edges, ["id", "type", "from", "to"]),
+    ].join("\n")}\n`;
+  }
+  if (format === "markdown") {
+    return `# Elicitation Graph: ${packet.feature.id || "all"}
+
+Nodes: ${packet.summary.nodes}
+Edges: ${packet.summary.edges}
+Dangling edges: ${packet.summary.danglingEdges}
+
+## Nodes
+
+${markdownTable(packet.nodes, [
+  { key: "id", label: "ID" },
+  { key: "type", label: "Type" },
+  { key: "sourceId", label: "Source" },
+  { key: "label", label: "Label" },
+])}
+
+## Edges
+
+${markdownTable(packet.edges, [
+  { key: "id", label: "ID" },
+  { key: "type", label: "Type" },
+  { key: "from", label: "From" },
+  { key: "to", label: "To" },
+])}
+`;
+  }
   throw new Error(`Unsupported format ${format}`);
 }
 
@@ -396,6 +545,14 @@ function main() {
     if (!featureId) throw new Error("packet requires --feature");
     process.stdout.write(renderPacket(featurePacket(config, validation, featureId), format));
     if (!validation.valid) process.exitCode = 1;
+    return;
+  }
+
+  if (args.command === "graph") {
+    const featureId = value(args, "feature");
+    const graph = buildGraph(config, validation, featureId);
+    process.stdout.write(renderPacket(graph, format));
+    if (!graph.valid) process.exitCode = 1;
     return;
   }
 

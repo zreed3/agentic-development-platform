@@ -52,6 +52,12 @@ dependencies to install.
 - Context broker test: `npm run test:agent-context`
 - Elicitation validation: `npm run elicitation:validate`
 - Elicitation packet: `npm run elicitation:packet -- --feature S07 --format toon`
+- Elicitation graph: `npm run elicitation:graph -- --feature S07 --format toon`
+- Bounded context slice: `npm run context:slice -- --feature S07 --workflow agentic-tooling`
+- UX-as-code validation: `npm run ux:validate`
+- Standards/control validation: `npm run standards:validate`
+- Deliverable audit validation: `npm run deliverable:audit`
+- ADG plugin validation: `npm run plugin:validate`
 - Maturity validation / scorecard: `npm run maturity:validate` / `npm run maturity:score`
 - Skill manifest validation: `npm run skills:validate`
 - **Full gate:** `npm run ci:governance`
@@ -83,6 +89,11 @@ Feature elicitation is modeled in `config/agentic/elicitation.json` and mirrored
 `data/elicitation.sqlite`. Experience contracts are the agent build documents;
 journey matrices and test-first specs are supporting evidence. Advisory gaps are
 allowed, but they must stay structured and queryable.
+
+Requirements-to-UX lineage is projected as a SQL graph: feature → story → use case
+→ requirement → criteria → scenario → experience contract → journey/test evidence.
+Use this graph to keep agents on the relevant build slice, reduce rework, and make
+bugs traceable back to the requirement and UX contract that produced them.
 
 Use the item lifecycle (`backlog:next` → `claim` → `start` → `complete` → `verify`)
 and keep current state *derived* from events, never hand-edited. See

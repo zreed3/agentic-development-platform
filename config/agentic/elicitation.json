@@ -127,12 +127,12 @@
       "successCriteria": [
         {
           "id": "S07-SC-01",
-          "requirementIds": ["S07-FR-L-01"],
+          "requirementIds": ["S07-FR-H-01", "S07-FR-L-01"],
           "statement": "A feature packet for S07 includes elicitation metadata and experience contract rows."
         },
         {
           "id": "S07-SC-02",
-          "requirementIds": ["S07-FR-L-02"],
+          "requirementIds": ["S07-FR-H-02", "S07-FR-L-02", "S07-FR-L-03"],
           "statement": "Context audit passes when no forbidden bulk file appears and file count stays under the cap."
         }
       ],

@@ -1,0 +1,42 @@
+{
+  "schemaVersion": 1,
+  "modelVersion": "adg-ux-as-code-2026-06-06",
+  "intent": "Turn requirements into auditable UX contracts, surface states, persona journeys, and evidence before agents edit code.",
+  "surfaceProfiles": [
+    {
+      "id": "cli",
+      "matchPrefix": "cli:",
+      "requiredStates": ["ready", "valid-packet", "unknown-feature", "unknown-workflow", "forbidden-file-violation"],
+      "protectedStatePolicy": "scope-and-evidence"
+    },
+    {
+      "id": "web-app",
+      "matchPrefix": "route:",
+      "requiredStates": ["loading", "empty", "success", "validation-error", "system-error", "forbidden", "entitlement-locked", "read-only", "dirty", "destructive-confirmation", "recovery"],
+      "protectedStatePolicy": "rbac-entitlement-scope-and-rls"
+    },
+    {
+      "id": "api",
+      "matchPrefix": "api:",
+      "requiredStates": ["success", "validation-error", "unauthorized", "forbidden", "not-found", "conflict", "rate-limited", "system-error", "recovery"],
+      "protectedStatePolicy": "authz-scope-audit"
+    }
+  ],
+  "requiredScenarioOutcomes": ["happy", "sad", "denial", "recovery"],
+  "requiredContractFields": ["persona", "role", "surface", "primaryAction", "fallbackAction", "requirementIds", "scenarioIds", "testEvidence"],
+  "requiredTraceability": [
+    "feature_to_story",
+    "story_to_use_case",
+    "use_case_to_requirement",
+    "requirement_to_criterion",
+    "requirement_to_contract",
+    "contract_to_scenario",
+    "contract_to_journey",
+    "contract_to_test_evidence"
+  ],
+  "efficiencyGoals": [
+    "reduce rework by checking complete requirements-to-UX lineage before edits",
+    "reduce tangent work by naming bounded slice files and stop conditions",
+    "improve bug triage by linking deliverables and bugs back to requirements, contracts, tests, roles, and evidence"
+  ]
+}

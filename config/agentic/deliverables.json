@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "modelVersion": "adg-deliverables-2026-06-06",
+  "records": [
+    {
+      "id": "DEL-S07-V2",
+      "featureId": "S07",
+      "summary": "ADG V2 as-code tooling and setup bundle publication",
+      "graphSlice": {
+        "featureId": "S07",
+        "nodeIds": ["feature:S07", "experience_contract:S07-XC-01", "scenario:S07-SCEN-HAPPY-01"],
+        "edgeIds": ["contract_to_scenario:experience_contract:S07-XC-01->scenario:S07-SCEN-HAPPY-01"]
+      },
+      "requirements": ["S07-FR-H-01", "S07-FR-L-01", "S07-FR-L-02"],
+      "contracts": ["S07-XC-01"],
+      "roles": ["agent:owner", "maintainer:admin"],
+      "sourceInputs": ["config/agentic/elicitation.json", "config/agentic/maturity.json", "config/agentic/skill-manifest.json"],
+      "filesTouched": ["scripts/adg-elicitation.mjs", "scripts/adg-maturity.mjs", "scripts/adg-skills.mjs", "scripts/agent-context.mjs"],
+      "testsRun": ["npm run ci:governance", "node setup-repo/_methodology/validate-methodology.mjs"],
+      "failures": [],
+      "decisions": ["Use SQL-first governance and installable Codex-style skills before implementing an autonomous runtime."],
+      "evidence": ["data/audit/audit-log.jsonl", "https://github.com/zreed3/agentic-development-platform/releases/tag/v2.0"]
+    }
+  ]
+}

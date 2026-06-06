@@ -238,6 +238,75 @@
           "remediation": "Add optional adg read/edit/exec adapters over the same policy and trace model."
         }
       ]
+    },
+    {
+      "id": "requirements_to_ux_lineage",
+      "title": "Requirements to UX as code lineage",
+      "required": true,
+      "subdomains": [
+        { "id": "sql_graph_projection", "score": 4.5 },
+        { "id": "contract_journey_mapping", "score": 4.5 },
+        { "id": "bounded_slice_guidance", "score": 4.5 }
+      ],
+      "evidence": [
+        { "type": "path", "value": "config/agentic/ux-as-code.json" },
+        { "type": "path", "value": "scripts/adg-ux.mjs" },
+        { "type": "command", "value": "npm run elicitation:graph -- --feature S07" }
+      ],
+      "gaps": [
+        {
+          "id": "MAT-LINEAGE-5-001",
+          "severity": "medium",
+          "summary": "Lineage is projected into SQLite and packets, but does not yet measure requirement churn or bug recurrence over time.",
+          "remediation": "Add trend metrics that connect changed requirements, repeated runs, and bug records to graph nodes."
+        }
+      ]
+    },
+    {
+      "id": "standards_control_evidence",
+      "title": "Standards control evidence",
+      "required": true,
+      "subdomains": [
+        { "id": "global_isms_map", "score": 4.5 },
+        { "id": "local_control_evidence", "score": 4.5 },
+        { "id": "copyright_safe_references", "score": 4.5 }
+      ],
+      "evidence": [
+        { "type": "path", "value": "config/agentic/standards-map.json" },
+        { "type": "path", "value": "scripts/adg-standards.mjs" },
+        { "type": "command", "value": "npm run standards:validate" }
+      ],
+      "gaps": [
+        {
+          "id": "MAT-STANDARDS-5-001",
+          "severity": "medium",
+          "summary": "Standards are mapped to local controls, but external audit sampling and formal control ownership are not yet modeled.",
+          "remediation": "Add owner, reviewer, sampling cadence, and audit-result fields for each local control."
+        }
+      ]
+    },
+    {
+      "id": "deliverable_auditability",
+      "title": "Deliverable auditability and rework reduction",
+      "required": true,
+      "subdomains": [
+        { "id": "deliverable_records", "score": 4.5 },
+        { "id": "bug_lineage", "score": 4.5 },
+        { "id": "token_rework_metrics", "score": 4.5 }
+      ],
+      "evidence": [
+        { "type": "path", "value": "config/agentic/deliverables.json" },
+        { "type": "path", "value": "scripts/adg-deliverable.mjs" },
+        { "type": "command", "value": "npm run deliverable:audit" }
+      ],
+      "gaps": [
+        {
+          "id": "MAT-DELIVERABLE-5-001",
+          "severity": "medium",
+          "summary": "Deliverables are auditable, but run-level token totals and repeated-run reduction are not yet collected automatically.",
+          "remediation": "Add optional run metrics ingestion for token usage, repeated agent passes, and bug recurrence by graph slice."
+        }
+      ]
     }
   ]
 }

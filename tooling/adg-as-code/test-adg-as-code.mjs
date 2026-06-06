@@ -23,6 +23,12 @@ assert.match(elicitationToon, /journeyMatrix\[/u);
 assert.match(elicitationToon, /S07-SCEN-HAPPY-01/u);
 assert.match(elicitationToon, /S07-SCEN-SAD-01/u);
 
+const elicitationGraph = JSON.parse(run("node scripts/adg-elicitation.mjs graph --feature S07 --format json"));
+assert.equal(elicitationGraph.valid, true);
+assert.equal(elicitationGraph.summary.danglingEdges, 0);
+assert.ok(elicitationGraph.nodes.some((node) => node.type === "requirement"));
+assert.ok(elicitationGraph.edges.some((edge) => edge.type === "requirement_to_contract"));
+
 const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "adg-elicitation-"));
 const partialConfigPath = path.join(tempDir, "partial.json");
 const config = JSON.parse(fs.readFileSync("config/agentic/elicitation.json", "utf8"));
@@ -56,6 +62,7 @@ assert.ok(maturityValidation.summary.minimumScore >= 4.5);
 const maturityToon = run("node scripts/adg-maturity.mjs score --format toon");
 assert.match(maturityToon, /feature_elicitation/u);
 assert.match(maturityToon, /runtime_autonomy_readiness/u);
+assert.match(maturityToon, /requirements_to_ux_lineage/u);
 
 const skillValidation = JSON.parse(run("node scripts/adg-skills.mjs validate"));
 assert.equal(skillValidation.valid, true);
@@ -65,5 +72,32 @@ const contextPacket = JSON.parse(run("node scripts/agent-context.mjs feature --f
 assert.equal(contextPacket.elicitation.status, "ready");
 assert.ok(contextPacket.elicitation.experienceContracts.length > 0);
 assert.ok(contextPacket.elicitation.journeyMatrix.some((row) => row.outcome === "recovery"));
+
+const contextSlice = JSON.parse(run("node scripts/adg-context.mjs slice --feature S07 --workflow agentic-tooling --format json"));
+assert.equal(contextSlice.valid, true);
+assert.equal(contextSlice.efficiency.forbiddenNamed.length, 0);
+assert.ok(contextSlice.efficiency.nextFileCount < contextSlice.efficiency.repoFileCount);
+
+const uxValidation = JSON.parse(run("node scripts/adg-ux.mjs validate --feature S07 --format json"));
+assert.equal(uxValidation.valid, true);
+assert.equal(uxValidation.summary.contracts, 1);
+
+const standardsValidation = JSON.parse(run("node scripts/adg-standards.mjs validate --format json"));
+assert.equal(standardsValidation.valid, true);
+assert.ok(standardsValidation.summary.controls >= 6);
+
+const deliverableAudit = JSON.parse(run("node scripts/adg-deliverable.mjs audit --format json"));
+assert.equal(deliverableAudit.valid, true);
+assert.ok(deliverableAudit.records >= 1);
+
+const tempDeliverableLog = path.join(tempDir, "deliverables.jsonl");
+const deliverableRecord = JSON.parse(run(`node scripts/adg-deliverable.mjs record --log ${JSON.stringify(tempDeliverableLog)} --id DEL-TEST-S07 --feature S07 --summary ${JSON.stringify("Test deliverable")} --node feature:S07 --edge ${JSON.stringify("feature_to_story:feature:S07->user_story:S07-STORY-01")} --requirement S07-FR-H-01 --contract S07-XC-01 --role agent:owner --input config/agentic/elicitation.json --file scripts/adg-elicitation.mjs --test ${JSON.stringify("npm run test:adg-as-code")} --decision ${JSON.stringify("Keep deterministic governance outside runtime")} --evidence config/agentic/deliverables.json`));
+assert.equal(deliverableRecord.valid, true);
+const deliverableTempAudit = JSON.parse(run(`node scripts/adg-deliverable.mjs audit --config ${JSON.stringify("config/agentic/deliverables.json")} --log ${JSON.stringify(tempDeliverableLog)}`));
+assert.equal(deliverableTempAudit.valid, true);
+
+const pluginValidation = JSON.parse(run("node scripts/adg-plugin.mjs validate"));
+assert.equal(pluginValidation.valid, true);
+assert.ok(pluginValidation.skills >= 3);
 
 console.log("ADG as-code checks passed");

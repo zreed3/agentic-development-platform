@@ -1,0 +1,23 @@
+{
+  "name": "adg-governance",
+  "version": "0.2.0",
+  "description": "Deterministic ADG governance workflows for bounded agent delivery, requirements-to-UX lineage, standards evidence, and auditable deliverables.",
+  "author": {
+    "name": "Otterblock Pty Ltd"
+  },
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "ADG Governance",
+    "shortDescription": "Bound agents to auditable feature slices.",
+    "longDescription": "ADG Governance provides deterministic planning, validation, and evidence workflows that reduce rework by connecting requirements, UX contracts, RBAC, standards, tests, and deliverables before code is edited.",
+    "developerName": "Otterblock Pty Ltd",
+    "category": "Productivity",
+    "capabilities": [
+      "Generate bounded context slices",
+      "Validate requirements-to-UX lineage",
+      "Map governance controls to standards",
+      "Audit deliverables and bug evidence"
+    ],
+    "defaultPrompt": "Use ADG Governance to plan a bounded, auditable feature slice before implementation."
+  }
+}

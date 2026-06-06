@@ -1,0 +1,103 @@
+{
+  "schemaVersion": 1,
+  "modelVersion": "adg-standards-2026-06-06",
+  "policy": {
+    "baseline": ["iso-27001", "iso-27002", "nist-ssdf", "nist-ai-rmf", "owasp-genai-llm"],
+    "advisory": ["iso-27701", "iso-42001"],
+    "copyrightRule": "Reference standard identifiers and local control intent only; do not copy paid-standard control text."
+  },
+  "standards": [
+    {
+      "id": "iso-27001",
+      "name": "ISO/IEC 27001:2022",
+      "sourceUrl": "https://www.iso.org/standard/27001",
+      "kind": "information-security-management"
+    },
+    {
+      "id": "iso-27002",
+      "name": "ISO/IEC 27002:2022",
+      "sourceUrl": "https://www.iso.org/standard/75652",
+      "kind": "information-security-controls"
+    },
+    {
+      "id": "nist-ssdf",
+      "name": "NIST SP 800-218 Secure Software Development Framework",
+      "sourceUrl": "https://csrc.nist.gov/pubs/sp/800/218/final",
+      "kind": "secure-software-development"
+    },
+    {
+      "id": "nist-ai-rmf",
+      "name": "NIST AI Risk Management Framework",
+      "sourceUrl": "https://www.nist.gov/itl/ai-risk-management-framework",
+      "kind": "ai-risk-management"
+    },
+    {
+      "id": "owasp-genai-llm",
+      "name": "OWASP GenAI Security Project / LLM Top 10",
+      "sourceUrl": "https://owasp.org/www-project-top-10-for-large-language-model-applications/",
+      "kind": "genai-application-security"
+    },
+    {
+      "id": "iso-27701",
+      "name": "ISO/IEC 27701 privacy information management",
+      "sourceUrl": "https://www.iso.org/standard/27701",
+      "kind": "privacy-management"
+    },
+    {
+      "id": "iso-42001",
+      "name": "ISO/IEC 42001 AI management system",
+      "sourceUrl": "https://www.iso.org/standard/42001",
+      "kind": "ai-management"
+    }
+  ],
+  "controls": [
+    {
+      "id": "ADG-CTRL-001",
+      "domain": "context_as_code",
+      "standardRefs": ["iso-27001", "nist-ssdf", "nist-ai-rmf"],
+      "localControl": "Agents must start material work from a bounded, queryable context packet and must not bulk-load generated mirrors.",
+      "evidence": ["scripts/agent-context.mjs", "config/agentic/context-profiles.yaml", "npm run test:agent-context"],
+      "maturityDomain": "context_as_code"
+    },
+    {
+      "id": "ADG-CTRL-002",
+      "domain": "requirements_to_ux_lineage",
+      "standardRefs": ["iso-27001", "nist-ssdf"],
+      "localControl": "Feature requirements must trace to user stories, use cases, criteria, UX contracts, journey states, and test evidence before implementation is complete.",
+      "evidence": ["config/agentic/elicitation.json", "config/agentic/ux-as-code.json", "npm run elicitation:graph"],
+      "maturityDomain": "requirements_to_ux_lineage"
+    },
+    {
+      "id": "ADG-CTRL-003",
+      "domain": "rbac_as_code",
+      "standardRefs": ["iso-27001", "iso-27002", "nist-ssdf"],
+      "localControl": "Protected operations must name persona, role, scope, allowed path, denial path, and evidence before being treated as verified.",
+      "evidence": ["skills/adg-rbac-as-code/SKILL.md", "config/agentic/elicitation.json", "npm run ux:validate"],
+      "maturityDomain": "rbac_as_code"
+    },
+    {
+      "id": "ADG-CTRL-004",
+      "domain": "cybersecurity_as_code",
+      "standardRefs": ["nist-ssdf", "nist-ai-rmf", "owasp-genai-llm"],
+      "localControl": "Agent tool and prompt-risk behaviors must be checked with local eval scenarios and deny-by-default guardrail policy.",
+      "evidence": ["config/agentic/guardrails.json", "tooling/agent-evals/scenarios", "npm run agent:evals"],
+      "maturityDomain": "cybersecurity_as_code"
+    },
+    {
+      "id": "ADG-CTRL-005",
+      "domain": "data_governance_as_code",
+      "standardRefs": ["iso-27001", "iso-27002", "iso-27701"],
+      "localControl": "Host repos must classify sensitive data, retention, deletion, export, residency, and subprocessor evidence in machine-readable sources.",
+      "evidence": ["skills/adg-data-governance-as-code/SKILL.md", "config/agentic/maturity.json"],
+      "maturityDomain": "data_governance_as_code"
+    },
+    {
+      "id": "ADG-CTRL-006",
+      "domain": "deliverable_auditability",
+      "standardRefs": ["iso-27001", "nist-ssdf", "nist-ai-rmf", "iso-42001"],
+      "localControl": "Material agent deliverables must record source inputs, graph slice, files touched, tests, failures, decisions, and evidence for bug triage and rework reduction.",
+      "evidence": ["config/agentic/deliverables.json", "scripts/adg-deliverable.mjs", "npm run deliverable:audit"],
+      "maturityDomain": "deliverable_auditability"
+    }
+  ]
+}

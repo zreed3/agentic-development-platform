@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "modelVersion": "host-standards-map-template",
+  "policy": {
+    "baseline": ["iso-27001", "iso-27002", "nist-ssdf", "nist-ai-rmf", "owasp-genai-llm"],
+    "advisory": ["iso-27701", "iso-42001"],
+    "copyrightRule": "Reference standard identifiers and local control intent only."
+  },
+  "standards": [],
+  "controls": []
+}

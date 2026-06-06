@@ -80,6 +80,12 @@ reproduce it: [`docs/token-reduction.md`](docs/token-reduction.md).
 npm run setup            # build data/backlog.sqlite from schema + seed + audit log
 npm run ci:governance    # the full gate: backlog, audit, guardrails, evals, dora, broker
 npm run elicitation:packet -- --feature S07 --format toon
+npm run elicitation:graph -- --feature S07 --format toon
+npm run context:slice -- --feature S07 --workflow agentic-tooling
+npm run ux:validate
+npm run standards:validate
+npm run deliverable:audit
+npm run plugin:validate
 npm run maturity:score -- --format toon
 
 # Ask the broker for a bounded packet instead of opening files blind:
@@ -99,7 +105,11 @@ npm run context:feature -- --feature S07 --workflow delivery-slice
 | **SQL backlog ("the SQL server")** | `scripts/backlog-db.mjs`, `data/schema.sql`, `data/seed/` | One SQLite DB; claim/start/complete/verify lifecycle; reviewable SQL mirrors. |
 | **Context broker** | `scripts/agent-context.mjs`, `config/agentic/context-profiles.yaml` | Bounded packets in markdown/json/toon; forbids bulk files. |
 | **Elicitation as code** | `config/agentic/elicitation.json`, `scripts/adg-elicitation.mjs` | Feature brief → RBAC stories → requirements → contracts → scenarios → gaps. |
+| **Requirements graph / UX as code** | `config/agentic/ux-as-code.json`, `scripts/adg-ux.mjs` | SQL graph lineage from feature intent to UX contracts, journeys, states, and test evidence. |
+| **Standards as code** | `config/agentic/standards-map.json`, `scripts/adg-standards.mjs` | Local control evidence mapped to global ISMS, secure SDLC, AI-risk, and GenAI security references. |
+| **Deliverable auditability** | `config/agentic/deliverables.json`, `scripts/adg-deliverable.mjs` | Records source inputs, graph slices, files, tests, decisions, and evidence for bug and rework triage. |
 | **Maturity as code** | `config/agentic/maturity.json`, `scripts/adg-maturity.mjs` | 1.0-5.0 scorecards for required ADG domains, with evidence and gaps. |
+| **Governance plugin** | `plugins/adg-governance/` | Codex plugin package plus neutral manifest for future agent clients; deterministic controls, not a runtime. |
 | **Agent skills** | `skills/agentic-*`, `skills/adg-*`, `config/agentic/skill-manifest.json` | Portable disciplines plus generic as-code skills validated by manifest. |
 | **Rulebook** | `AGENTS.md` | What every agent reads first; also a per-repo template. |
 

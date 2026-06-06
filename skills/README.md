@@ -38,6 +38,11 @@ cp -R skills/adg-* ~/.codex/skills/
 Invoke with `$agentic-traceability`, `$agentic-build-runner`, or the relevant
 `$adg-*` skill in an agent session.
 
+The Codex plugin package lives at [`../plugins/adg-governance`](../plugins/adg-governance).
+It exposes bounded delivery, requirements-to-UX lineage, standards evidence, and
+deliverable-audit workflows as deterministic controls rather than an autonomous
+runtime.
+
 For the static ADG setup guide, see [`../docs/setup.html`](../docs/setup.html).
 It includes the manual install path, skill installation options, adoption steps,
 and Otterblock contact details.
