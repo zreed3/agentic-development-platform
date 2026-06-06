@@ -22,15 +22,16 @@ A deliberate split keeps the database cheap to trust and easy to review:
 
 | Layer | Files | Role |
 |---|---|---|
-| **Canonical, human-editable** | `data/seed/backlog.seed.json`, `data/audit/audit-log.jsonl` | The source of truth you edit. |
-| **Generated, queryable** | `data/backlog.sqlite` | Rebuilt from the canonical sources; what you *query*. Not version-controlled. |
+| **Canonical, human-editable** | `data/seed/backlog.seed.json`, optional seed fixtures, `data/audit/audit-log.jsonl` | The source of truth you edit. |
+| **Generated, queryable** | `data/backlog.sqlite` | Rebuilt from the selected seed; what you *query*. Not version-controlled. |
 | **Generated, reviewable** | `data/backlog-source.sql` (`.dump`), `data/schema.sql` (`.schema`) | Text mirrors for diffs and code review. Version-controlled. |
 
-`npm run setup` rebuilds the database from the canonical sources and re-emits the
-reviewable mirrors. Because the database is generated, it is on `.gitignore`; the
-`.sql`/`.schema` mirrors are committed instead. This is the same discipline the
-context broker enforces: **SQLite is queried, never pasted; the big dump is a
-forbidden bulk file.**
+`npm run setup` rebuilds an empty database from the default seed and re-emits the
+reviewable mirrors. `npm run setup:demo` loads the self-referential worked-example
+seed and mirrors the append-only audit log into SQL for governance tests. Because
+the database is generated, it is on `.gitignore`; the `.sql`/`.schema` mirrors are
+committed instead. This is the same discipline the context broker enforces:
+**SQLite is queried, never pasted; the big dump is a forbidden bulk file.**
 
 ## Schema at a glance
 
@@ -49,7 +50,8 @@ Execution tables (the lifecycle):
 
 Audit:
 
-- `audit_events` — the SQL mirror of `data/audit/audit-log.jsonl`
+- `audit_events` — empty by default; `setup --with-audit` mirrors
+  `data/audit/audit-log.jsonl` into SQL when a worked example or review flow needs it
 
 Derived views (current state is always *derived*, never stored):
 
@@ -108,9 +110,10 @@ sqlite3 data/backlog.sqlite \
 
 ## Adapting it to a real project
 
-The seed in `data/seed/backlog.seed.json` is self-referential demo data describing
-the platform's own components. To adopt the layer in a host repo, replace the seed
-with that project's epics/features/items/routes, then `npm run setup`. The schema is
+The default seed in `data/seed/backlog.seed.json` is intentionally empty, so a new
+app starts without demo records. To adopt the layer in a host repo, add that
+project's epics/features/items/routes to the seed, then `npm run setup`. Use
+`data/seed/backlog.demo.seed.json` only for the ADG worked example. The schema is
 generic; nothing in it is specific to any one product. `npm run backlog:validate`
-enforces structural integrity (every feature has at least one task and one test case,
-no orphaned dependencies or routes).
+enforces structural integrity (every feature has at least one task and one test
+case, no orphaned dependencies or routes).

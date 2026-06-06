@@ -583,7 +583,7 @@ cd agentic-development-governance</code></pre>
               <div class="step-number">2</div>
               <div class="step-body">
                 <h3>Build the database</h3>
-                <p>Regenerate <code>data/backlog.sqlite</code> from source files.</p>
+                <p>Regenerate an empty <code>data/backlog.sqlite</code> from source files.</p>
                 <pre><code>npm run setup</code></pre>
               </div>
             </article>
@@ -592,7 +592,7 @@ cd agentic-development-governance</code></pre>
               <div class="step-number">3</div>
               <div class="step-body">
                 <h3>Run the full gate</h3>
-                <p>Validate backlog, audit, guardrails, evals, metrics, and broker.</p>
+                <p>Validate backlog, audit, guardrails, evals, metrics, and broker against the ADG worked example.</p>
                 <pre><code>npm run ci:governance</code></pre>
               </div>
             </article>
@@ -653,8 +653,8 @@ cp -R skills/agentic-build-runner ~/.codex/skills/</code></pre>
           <div class="section-header">
             <h2>Adopt in another repo</h2>
             <p>
-              Copy the governance layer into a host project, replace the demo
-              backlog with the host project's real plan, and fill in the Project
+              Copy the governance layer into a host project, add the host
+              backlog when ready, and fill in the Project
               Profile in <code>AGENTS.md</code>.
             </p>
           </div>
@@ -663,10 +663,11 @@ cp -R skills/agentic-build-runner ~/.codex/skills/</code></pre>
 cp -R skills &lt;host-repo&gt;/
 
 cd &lt;host-repo&gt;
-# Replace data/seed/backlog.seed.json with the host project's features and routes.
+# Leave data/seed/backlog.seed.json empty for a blank install,
+# or replace it with the host project's features and routes.
 # Fill in the Project Profile section in AGENTS.md.
 npm run setup
-npm run ci:governance</code></pre>
+npm run ci:governance  # optional worked-example gate</code></pre>
         </div>
       </section>
 

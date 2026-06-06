@@ -336,7 +336,8 @@ ADG graduates from governance scaffold to credible agentic SDLC control plane wh
 ## Current Publishing Note
 
 ADG is not currently published on npm. For now, copy or clone the repository into
-your development folder, run `npm run setup`, then run `npm run ci:governance`.
+your development folder, run `npm run setup` for an empty database, or run
+`npm run ci:governance` for the bundled ADG worked-example checks.
 
 For bugs or setup questions, contact
 [zach+github@otterblock.com](mailto:zach+github@otterblock.com).
