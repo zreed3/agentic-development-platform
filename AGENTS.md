@@ -25,7 +25,8 @@ here, follow these rules. When this file is copied into a host repo, fill in the
 ## Repo Shape
 
 - `config/agentic/` — `guardrails.json` (risk-class policy) and
-  `context-profiles.yaml` (per-workflow context budgets).
+  `context-profiles.yaml` (per-workflow context budgets), plus elicitation,
+  maturity, and skill-manifest config.
 - `scripts/` — the governance scripts (backlog engine, context broker, guardrail
   check, eval runner, DORA metrics, audit validate/record).
 - `tooling/agent-context/` — context-broker manifests and smoke test.
@@ -41,7 +42,8 @@ here, follow these rules. When this file is copied into a host repo, fill in the
 The platform needs only Node (>= 20) and the `sqlite3` CLI. There are no runtime
 dependencies to install.
 
-- Build/refresh the database: `npm run setup`
+- Build/refresh an empty database: `npm run setup`
+- Build/refresh the ADG worked-example database: `npm run setup:demo`
 - Validate the backlog: `npm run backlog:validate`
 - Validate the audit log: `npm run audit:validate`
 - Record an audit event: `npm run audit:record -- --feature S07 --type status --status in-progress --summary "..."`
@@ -49,6 +51,16 @@ dependencies to install.
 - Run agent evals / AI-security scenarios: `npm run agent:evals`
 - Capture delivery metrics: `npm run metrics:dora`
 - Context broker test: `npm run test:agent-context`
+- Elicitation validation: `npm run elicitation:validate`
+- Elicitation packet: `npm run elicitation:packet -- --feature S07 --format toon`
+- Elicitation graph: `npm run elicitation:graph -- --feature S07 --format toon`
+- Bounded context slice: `npm run context:slice -- --feature S07 --workflow agentic-tooling`
+- UX-as-code validation: `npm run ux:validate`
+- Standards/control validation: `npm run standards:validate`
+- Deliverable audit validation: `npm run deliverable:audit`
+- ADG plugin validation: `npm run plugin:validate`
+- Maturity validation / scorecard: `npm run maturity:validate` / `npm run maturity:score`
+- Skill manifest validation: `npm run skills:validate`
 - **Full gate:** `npm run ci:governance`
 - Context packets: `npm run context:feature -- --feature S07 --workflow route`
 
@@ -68,15 +80,33 @@ Do not weaken the policy to make work proceed; if a gate must be waived, record 
 
 ## SQL-First Backlog
 
-The canonical backlog is `data/backlog.sqlite`, rebuilt from
-`data/seed/backlog.seed.json` and `data/audit/audit-log.jsonl`. Treat the SQLite
+The canonical backlog is `data/backlog.sqlite`, rebuilt from a seed file. Default
+`npm run setup` uses `data/seed/backlog.seed.json`, which is intentionally empty
+for clean installs. Use `npm run setup:demo` to load the self-referential ADG
+worked example and mirror the append-only audit log into SQL. Treat the SQLite
 database as generated and queryable; treat `data/backlog-source.sql` and
-`data/schema.sql` as the reviewable mirrors. Do not invent a parallel spreadsheet or
-Markdown-only backlog — the SQL backlog is the requirements/elicitation system.
+`data/schema.sql` as the reviewable mirrors. Do not invent a parallel spreadsheet
+or Markdown-only backlog — the SQL backlog is the requirements/elicitation system.
+
+Feature elicitation is modeled in `config/agentic/elicitation.json` and mirrored to
+`data/elicitation.sqlite`. Experience contracts are the agent build documents;
+journey matrices and test-first specs are supporting evidence. Advisory gaps are
+allowed, but they must stay structured and queryable.
+
+Requirements-to-UX lineage is projected as a SQL graph: feature → story → use case
+→ requirement → criteria → scenario → experience contract → journey/test evidence.
+Use this graph to keep agents on the relevant build slice, reduce rework, and make
+bugs traceable back to the requirement and UX contract that produced them.
 
 Use the item lifecycle (`backlog:next` → `claim` → `start` → `complete` → `verify`)
 and keep current state *derived* from events, never hand-edited. See
 [`docs/sql-data-layer.md`](docs/sql-data-layer.md).
+
+For complete-dev delivery, work in **feature slices** rather than micro-items:
+plan the slice, design the behavior and checks, build the scoped code/tests, then
+test with targeted commands. Record failed test runs with `npm run backlog:fail`.
+Use one consolidated verification/audit event for a slice when the same command
+evidence covers several tasks, tests, use cases, or success criteria.
 
 ## Append-Only Audit And Traceability
 
@@ -101,7 +131,11 @@ Before finishing material work, run the relevant gates:
 - `npm run guardrails:check` when tool/action policy changes.
 - `npm run agent:evals` for guardrail, eval, or AI-security changes.
 - `npm run metrics:dora` for delivery-process changes.
-- `npm run ci:governance` before considering work done.
+- `npm run ci:governance` at feature completion, before push, or when process/tooling
+  changes affect governance behavior.
+
+During implementation, prefer the smallest targeted checks from the context packet.
+Do not run the full gate after every small item unless the change is high risk.
 
 If no reviewer is available, enforce strict solo-dev gates. Any waived gate needs an
 audit `decision` event with reason, risk, and rollback.

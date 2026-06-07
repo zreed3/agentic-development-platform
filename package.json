@@ -1,14 +1,15 @@
 {
-  "name": "agentic-development-platform",
+  "name": "agentic-development-governance",
   "version": "0.1.0",
   "private": true,
-  "description": "A SQL-first, deny-by-default governance layer for agent-assisted software development: guardrails, append-only audit, AI-security evals, DORA metrics, and a context broker that keeps token usage bounded.",
+  "description": "Agentic Development Governance (ADG): a SQL-first, deny-by-default governance layer for agent-assisted software development with guardrails, append-only audit, AI-security evals, DORA metrics, and bounded context.",
   "type": "module",
   "engines": {
     "node": ">=20"
   },
   "scripts": {
     "setup": "node scripts/backlog-db.mjs setup",
+    "setup:demo": "node scripts/backlog-db.mjs setup --seed data/seed/backlog.demo.seed.json --with-audit",
     "backlog:validate": "node scripts/backlog-db.mjs validate",
     "backlog:export": "node scripts/backlog-db.mjs export",
     "backlog:list": "node scripts/backlog-db.mjs list",
@@ -19,6 +20,7 @@
     "backlog:block": "node scripts/backlog-db.mjs block",
     "backlog:complete": "node scripts/backlog-db.mjs complete",
     "backlog:verify": "node scripts/backlog-db.mjs verify",
+    "backlog:fail": "node scripts/backlog-db.mjs fail",
     "backlog:release": "node scripts/backlog-db.mjs release",
     "backlog:active": "node scripts/backlog-db.mjs active",
     "context:feature": "node scripts/agent-context.mjs feature",
@@ -27,14 +29,34 @@
     "agent:next": "node scripts/agent-context.mjs next",
     "agent:loop": "node scripts/agent-context.mjs loop",
     "test:agent-context": "node tooling/agent-context/test-agent-context.mjs",
+    "test:adg-as-code": "node tooling/adg-as-code/test-adg-as-code.mjs",
     "audit:validate": "node scripts/validate-audit.mjs",
     "audit:record": "node scripts/record-audit.mjs",
     "guardrails:check": "node scripts/guardrail-check.mjs",
     "agent:evals": "node scripts/run-agent-evals.mjs",
     "metrics:dora": "node scripts/dora-metrics.mjs",
-    "ci:governance": "npm run backlog:validate && npm run audit:validate && npm run guardrails:check && npm run agent:evals && npm run metrics:dora && npm run test:agent-context",
+    "elicitation:validate": "node scripts/adg-elicitation.mjs validate",
+    "elicitation:packet": "node scripts/adg-elicitation.mjs packet",
+    "elicitation:graph": "node scripts/adg-elicitation.mjs graph",
+    "context:slice": "node scripts/adg-context.mjs slice",
+    "ux:validate": "node scripts/adg-ux.mjs validate",
+    "ux:packet": "node scripts/adg-ux.mjs packet",
+    "ux:truth-pass": "node scripts/adg-ux.mjs truth-pass",
+    "ux:downgrade": "node scripts/adg-ux.mjs downgrade",
+    "standards:validate": "node scripts/adg-standards.mjs validate",
+    "standards:matrix": "node scripts/adg-standards.mjs matrix",
+    "deliverable:audit": "node scripts/adg-deliverable.mjs audit",
+    "plugin:validate": "node scripts/adg-plugin.mjs validate",
+    "maturity:validate": "node scripts/adg-maturity.mjs validate",
+    "maturity:score": "node scripts/adg-maturity.mjs score",
+    "maturity:report": "node scripts/adg-maturity.mjs report",
+    "skills:validate": "node scripts/adg-skills.mjs validate",
+    "ci:governance": "npm run setup:demo && npm run backlog:validate && npm run audit:validate && npm run guardrails:check && npm run agent:evals && npm run metrics:dora && npm run elicitation:validate && npm run elicitation:graph -- --feature S07 && npm run context:slice -- --feature S07 --workflow agentic-tooling && npm run ux:validate && npm run standards:validate && npm run deliverable:audit && npm run plugin:validate && npm run maturity:validate && npm run skills:validate && npm run test:agent-context && npm run test:adg-as-code",
     "prepush": "npm run ci:governance"
   },
   "author": "Otterblock Pty Ltd",
-  "license": "SEE LICENSE IN LICENSE"
+  "license": "SEE LICENSE IN LICENSE",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "1.29.0"
+  }
 }

@@ -1,0 +1,63 @@
+{
+  "schemaVersion": 1,
+  "name": "adg-governance",
+  "version": "0.3.1",
+  "intent": "Expose deterministic governance workflows to Codex first and future agent clients through the same commands, schemas, and risk classes.",
+  "runtimePolicy": "This plugin does not implement an autonomous runtime. It constrains whichever runtime invokes it through bounded context, validation, evidence, and stop conditions.",
+  "commands": [
+    {
+      "name": "elicitation-graph",
+      "command": "node scripts/adg-elicitation.mjs graph --feature <feature> --format json",
+      "riskClass": "read-only",
+      "outputs": ["requirements graph nodes", "requirements graph edges", "dangling-edge failures"]
+    },
+    {
+      "name": "context-slice",
+      "command": "node scripts/adg-context.mjs slice --feature <feature> --workflow <workflow>",
+      "riskClass": "read-only",
+      "outputs": ["bounded packet", "efficiency metrics", "stop conditions"]
+    },
+    {
+      "name": "ux-validate",
+      "command": "node scripts/adg-ux.mjs validate --feature <feature>",
+      "riskClass": "read-only",
+      "outputs": ["structural coverage", "substantive journey coverage", "evidence specificity warnings", "RBAC/persona gaps"]
+    },
+    {
+      "name": "ux-truth-pass",
+      "command": "node scripts/adg-ux.mjs truth-pass --feature <feature> --format markdown --check",
+      "riskClass": "read-only",
+      "outputs": ["feature lifecycle classification", "route/persona journey matrix", "missing or broken journeys", "downgrade recommendations"]
+    },
+    {
+      "name": "ux-downgrade-report",
+      "command": "node scripts/adg-ux.mjs downgrade --feature <feature> --format json",
+      "riskClass": "read-only",
+      "outputs": ["audit-ready downgrade recommendations", "failing feature route persona expectations"]
+    },
+    {
+      "name": "standards-matrix",
+      "command": "node scripts/adg-standards.mjs matrix --format json",
+      "riskClass": "read-only",
+      "outputs": ["standards controls", "evidence links", "maturity domains"]
+    },
+    {
+      "name": "deliverable-audit",
+      "command": "node scripts/adg-deliverable.mjs audit",
+      "riskClass": "read-only",
+      "outputs": ["deliverable evidence records", "traceability failures"]
+    }
+  ],
+  "adapters": [
+    {
+      "client": "codex",
+      "status": "primary",
+      "manifest": ".codex-plugin/plugin.json"
+    },
+    {
+      "client": "claude-openclaw-opencode",
+      "status": "future",
+      "contract": "Use this neutral manifest plus SKILL.md workflow text and deterministic command outputs."
+    }
+  ]
+}

@@ -48,6 +48,26 @@ See [`scripts/agent-context.mjs`](../scripts/agent-context.mjs) and
    format. JSON/SQL/SQLite stay canonical; TOON is a *transport* used only for the
    LLM-facing packet, and only after measuring that it is actually smaller.
 
+## Fast delivery mode
+
+Use the `delivery-slice` workflow when the repo is in complete-dev mode and speed
+matters:
+
+```sh
+npm run context:feature -- --feature S07 --workflow delivery-slice
+```
+
+The packet carries the operating sequence directly:
+
+1. Plan the feature slice and the exact backlog items in scope.
+2. Design the RBAC/scope/state behavior and the test seams.
+3. Build only the scoped files plus directly related tests.
+4. Test with targeted commands, record failed runs once with `npm run backlog:fail`,
+   and defer `npm run ci:governance` until feature/release checkpoints.
+
+This keeps the quality-improving checks while removing repeated full-gate runs and
+micro-event narration.
+
 ## Measured locally (this repo, demo backlog)
 
 Generated with the seeded demo backlog (7 features, 57 items, 8 audit events):
@@ -82,7 +102,7 @@ comfortably and one that cannot run at all.
 A rough rule of thumb: **tokens ≈ bytes ÷ 4** for English/JSON text.
 
 ```sh
-npm run setup
+npm run setup:demo
 
 # packet size in each format
 for fmt in markdown json toon; do
