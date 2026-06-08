@@ -19,10 +19,12 @@ sign-off claims are mechanically upgraded to the required guardrails.
 
 ## Model Guidance
 
-Use `gpt-5.4-mini` for L0/L1/L2 lane classification, quick UI fixes, docs, and
-most targeted implementation. Escalate to `gpt-5.5` for L3/L4 work involving
-auth, RBAC, tenant/business scope, schema, billing, production, guardrails, CI,
-release signoff, or ambiguous risk.
+Use `gpt-5-mini` for L0/L1/L2 lane classification, quick UI fixes, docs, and
+most targeted implementation. Use `gpt-5-nano` only for very small classification
+or formatting passes. Escalate to `gpt-5.2`, `gpt-5.2-codex`, or the current
+Codex high-capability model for L3/L4 work involving auth, RBAC, tenant/business
+scope, schema, billing, production, guardrails, CI, release signoff, or ambiguous
+risk.
 
 ## Naming Options
 
