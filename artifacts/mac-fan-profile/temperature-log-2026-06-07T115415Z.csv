@@ -1,2 +1,0 @@
-timestamp,cpu_temp_c,gpu_temp_c,chip_max_temp_c,cpu_usage_percent,gpu_usage_percent,session_high_temp_c,cpu_sensor,gpu_sensor,chip_max_sensor,fan_id,fan_mode,fan_speed_rpm,fan_target_rpm,fan_min_rpm,fan_max_rpm
-2026-06-07T11:54:13.564Z,46.48,43.46,60.14,22.8,24.0,60.14,CPU Die Average,GPU 18,CPU Die Max,1,Manual,4897,4900,1000,4900
