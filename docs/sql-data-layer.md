@@ -65,6 +65,9 @@ Derived views (current state is always *derived*, never stored):
 The full DDL lives in [`data/schema.sql`](../data/schema.sql) (regenerated on every
 `setup`/mutation).
 
+For a visual, copyable command map of the same engine, open
+[`docs/sql-engine-view.html`](sql-engine-view.html).
+
 ## The item lifecycle
 
 Items move through a claim/transition model, recorded as immutable events. The

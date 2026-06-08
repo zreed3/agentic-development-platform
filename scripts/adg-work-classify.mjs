@@ -1,24 +1,28 @@
 #!/usr/bin/env node
-// Proofline lane classifier: cheap first-pass risk routing for agent work.
+// Proofline lane classifier/guard for ADG-governed work.
 
+import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 
 const root = process.cwd();
 const configPath = "config/agentic/delivery-lanes.json";
+const laneOrder = ["L0", "L1", "L2", "L3", "L4"];
 
 function abs(file) {
   return path.join(root, file);
 }
 
 function parseArgs(argv) {
-  const args = { command: argv[0] ?? "classify", values: {}, flags: new Set() };
-  for (let i = 1; i < argv.length; i += 1) {
-    const token = argv[i];
+  const first = argv[0] && !argv[0].startsWith("--") ? argv[0] : "classify";
+  const rest = first === argv[0] ? argv.slice(1) : argv;
+  const args = { command: first, values: {}, flags: new Set() };
+  for (let i = 0; i < rest.length; i += 1) {
+    const token = rest[i];
     if (token === "--") continue;
     if (!token.startsWith("--")) continue;
     const key = token.slice(2);
-    const next = argv[i + 1];
+    const next = rest[i + 1];
     if (next && !next.startsWith("--")) {
       if (args.values[key] === undefined) args.values[key] = next;
       else if (Array.isArray(args.values[key])) args.values[key].push(next);
@@ -77,8 +81,11 @@ function globToRegex(pattern) {
 
 function matchesPattern(file, pattern) {
   const normalized = normalizeFile(file);
-  if (pattern.endsWith("/**")) return normalized.startsWith(pattern.slice(0, -3));
-  return globToRegex(pattern).test(normalized);
+  const normalizedPattern = normalizeFile(pattern);
+  if (normalizedPattern.endsWith("/**")) {
+    return normalized.startsWith(normalizedPattern.slice(0, -3));
+  }
+  return globToRegex(normalizedPattern).test(normalized);
 }
 
 function hasTerm(text, terms) {
@@ -93,18 +100,52 @@ function hasTerm(text, terms) {
   }) ?? "";
 }
 
+function git(args) {
+  try {
+    return execFileSync("git", args, {
+      cwd: root,
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"],
+    }).trim();
+  } catch {
+    return "";
+  }
+}
+
+function changedFiles() {
+  const files = new Set();
+  for (const command of [
+    ["diff", "--name-only", "--diff-filter=ACMRTUXB", "HEAD"],
+    ["diff", "--cached", "--name-only", "--diff-filter=ACMRTUXB"],
+    ["ls-files", "--others", "--exclude-standard"],
+  ]) {
+    for (const line of git(command).split(/\r?\n/u).filter(Boolean)) {
+      files.add(normalizeFile(line));
+    }
+  }
+  return [...files].sort();
+}
+
 function laneById(config, id) {
   return config.lanes.find((lane) => lane.id === id);
 }
 
-function classify({ config, intent, files }) {
+function higherLane(a, b) {
+  return laneOrder.indexOf(a) >= laneOrder.indexOf(b) ? a : b;
+}
+
+function classify({ config, intent, event, files }) {
   const terms = config.classification ?? {};
   const normalizedFiles = files.map(normalizeFile);
-  const joined = `${intent} ${normalizedFiles.join(" ")}`;
+  const joined = `${event} ${intent} ${normalizedFiles.join(" ")}`;
+  const githubEvent = (terms.githubEvents ?? []).includes(event);
   const releaseTerm = hasTerm(joined, terms.releaseIntentTerms ?? []);
   const sensitiveTerm = hasTerm(joined, terms.sensitiveIntentTerms ?? []);
   const spikeTerm = hasTerm(joined, terms.spikeIntentTerms ?? []);
   const quickTerm = hasTerm(joined, terms.quickIntentTerms ?? []);
+  const releaseFile = normalizedFiles.find((file) =>
+    (terms.releaseFilePatterns ?? []).some((pattern) => matchesPattern(file, pattern)),
+  );
   const sensitiveFile = normalizedFiles.find((file) =>
     (terms.sensitiveFilePatterns ?? []).some((pattern) => matchesPattern(file, pattern)),
   );
@@ -114,14 +155,7 @@ function classify({ config, intent, files }) {
   let laneId = "L2";
   const reasons = [];
 
-  if (releaseTerm) {
-    laneId = "L4";
-    reasons.push(`release intent: ${releaseTerm}`);
-  } else if (sensitiveTerm || sensitiveFile) {
-    laneId = "L3";
-    if (sensitiveTerm) reasons.push(`sensitive intent: ${sensitiveTerm}`);
-    if (sensitiveFile) reasons.push(`sensitive file: ${sensitiveFile}`);
-  } else if (spikeTerm) {
+  if (spikeTerm) {
     laneId = "L0";
     reasons.push(`spike intent: ${spikeTerm}`);
   } else if (quickTerm || quickFiles) {
@@ -132,15 +166,30 @@ function classify({ config, intent, files }) {
     reasons.push("default bounded implementation");
   }
 
+  if (sensitiveTerm || sensitiveFile) {
+    laneId = higherLane(laneId, "L3");
+    if (sensitiveTerm) reasons.push(`sensitive intent: ${sensitiveTerm}`);
+    if (sensitiveFile) reasons.push(`sensitive file: ${sensitiveFile}`);
+  }
+
+  if (githubEvent || releaseTerm || releaseFile) {
+    laneId = "L4";
+    if (githubEvent) reasons.push(`GitHub event: ${event}`);
+    if (releaseTerm) reasons.push(`release intent: ${releaseTerm}`);
+    if (releaseFile) reasons.push(`release file: ${releaseFile}`);
+  }
+
   const lane = laneById(config, laneId);
   return {
-    kind: "proofline-work-classification",
+    kind: "adg-work-classification",
     generatedAt: new Date().toISOString(),
     system: config.name,
-    mode: value({ values: {} }, "mode", config.defaultMode ?? "caveman"),
+    version: config.version,
+    mode: config.defaultMode ?? "caveman",
     lane: lane?.label ?? laneId,
     laneId,
     laneName: lane?.name ?? "",
+    event,
     intent,
     files: normalizedFiles,
     reasons,
@@ -152,7 +201,7 @@ function classify({ config, intent, files }) {
     forbiddenClaims: lane?.forbiddenClaims ?? [],
     upgradeTriggers: [
       "auth, RBAC, permission, tenant, business-scope, or entitlement behavior appears",
-      "schema, migration, secret, billing, production, guardrail, or audit behavior changes",
+      "schema, migration, secret, billing, production, guardrail, audit, CI, or GitHub behavior changes",
       "the work changes from exploration to implementation or signoff",
       "the agent wants to claim verified, release-ready, or signed-off",
     ],
@@ -168,12 +217,12 @@ function renderToon(result) {
     `fullGate: ${result.fullGateRequired}`,
     `files[${result.files.length}]: ${result.files.join(", ")}`,
     `checks[${result.requiredChecks.length}]: ${result.requiredChecks.join("; ")}`,
-    `stop: upgrade if sensitive scope or signoff claim appears`,
+    "stop: upgrade if sensitive scope or signoff claim appears",
   ].join("\n") + "\n";
 }
 
 function renderMarkdown(result) {
-  return `# ${result.system} Classification
+  return `# ${result.system} ${result.version} Classification
 
 - Lane: ${result.lane}
 - Reason: ${result.reasons.join("; ")}
@@ -185,21 +234,46 @@ function renderMarkdown(result) {
 `;
 }
 
+function assertMinimumLane(result, minimumLane) {
+  const actual = laneOrder.indexOf(result.laneId);
+  const required = laneOrder.indexOf(minimumLane);
+  if (required < 0) throw new Error(`Unknown required lane ${minimumLane}`);
+  if (actual < required) {
+    throw new Error(`Lane guard failed: ${result.laneId} is below required ${minimumLane}.`);
+  }
+}
+
 function main() {
   const args = parseArgs(process.argv.slice(2));
-  if (args.command === "help") {
-    console.log("Usage: node scripts/adg-work-classify.mjs classify --intent \"...\" [--file path] [--files a,b] [--format json|toon|markdown]");
+  if (args.command === "help" || args.flags.has("help")) {
+    console.log("Usage: node scripts/adg-work-classify.mjs classify|guard --intent \"...\" [--event github-push] [--file path] [--files a,b] [--changed] [--format json|toon|markdown]");
     return;
   }
+
   const config = JSON.parse(fs.readFileSync(abs(configPath), "utf8"));
-  const intent = value(args, "intent", value(args, "summary", ""));
-  const files = splitFiles([...values(args, "file"), ...values(args, "files")]);
-  const result = classify({ config, intent, files });
+  const event = value(args, "event", "");
+  const intent = value(args, "intent", value(args, "summary", event));
+  const explicitFiles = splitFiles([...values(args, "file"), ...values(args, "files")]);
+  const files = args.command === "guard" || args.flags.has("changed")
+    ? [...new Set([...explicitFiles.map(normalizeFile), ...changedFiles()])].sort()
+    : explicitFiles;
+  const result = classify({ config, intent, event, files });
   result.mode = value(args, "mode", config.defaultMode ?? "caveman");
+
+  if (args.command === "guard") {
+    const minimumLane = value(args, "require-lane", "");
+    if (minimumLane) assertMinimumLane(result, minimumLane);
+  }
+
   const format = value(args, "format", result.mode === "caveman" ? "toon" : "json");
   if (format === "toon") process.stdout.write(renderToon(result));
   else if (format === "markdown") process.stdout.write(renderMarkdown(result));
   else process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
 }
 
-main();
+try {
+  main();
+} catch (error) {
+  console.error(error.message);
+  process.exit(1);
+}

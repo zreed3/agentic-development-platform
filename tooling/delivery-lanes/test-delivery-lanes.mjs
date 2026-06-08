@@ -13,11 +13,17 @@ function classify(args) {
   return JSON.parse(run(`node scripts/adg-work-classify.mjs classify --format json ${args}`));
 }
 
+function guard(args) {
+  return JSON.parse(run(`node scripts/adg-work-classify.mjs guard --format json ${args}`));
+}
+
 assert.equal(classify('--intent "explore why the dashboard spacing is odd"').laneId, "L0");
 assert.equal(classify('--intent "quick css spacing fix" --file docs/setup.html').laneId, "L1");
 assert.equal(classify('--intent "add normal feature behavior" --file scripts/agent-context.mjs').laneId, "L2");
 assert.equal(classify('--intent "change auth tenant permission" --file src/auth.ts').laneId, "L3");
 assert.equal(classify('--intent "release signoff for RC"').laneId, "L4");
+assert.equal(classify('--event github-push --intent "small docs update"').laneId, "L4");
+assert.equal(guard('--event github-push --intent "GitHub update"').laneId, "L4");
 
 const toon = run('node scripts/adg-work-classify.mjs classify --intent "tiny docs typo" --file README.md');
 assert.match(toon, /lane: L1 quick-fix/u);

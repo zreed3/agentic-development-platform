@@ -46,6 +46,7 @@ dependencies to install.
 - Build/refresh the ADG worked-example database: `npm run setup:demo`
 - Validate the backlog: `npm run backlog:validate`
 - Classify work lane / risk: `npm run work:classify -- --intent "..." --file path`
+- Install/update Proofline in a host repo: `npm run adg:install -- --target /path/to/repo` / `npm run adg:update -- --target /path/to/repo`
 - Validate the audit log: `npm run audit:validate`
 - Record an audit event: `npm run audit:record -- --feature S07 --type status --status in-progress --summary "..."`
 - Check the guardrail policy: `npm run guardrails:check`
@@ -101,6 +102,11 @@ npm run work:classify -- --intent "small UI spacing fix" --file docs/setup.html
   policy gate and negative tests where possible.
 - `L4 release signoff` — pre-push, RC, GA, release, verified, or signed-off claims.
   Run the full governance/traceability gate.
+
+Host repos install or refresh the portable lane guard with `npm run adg:install`
+and `npm run adg:update`. The installer writes `config/agentic/adg-install-state.json`
+so updates are versioned and managed files can be refreshed without relying on
+chat instructions.
 
 If new evidence raises risk, upgrade the lane immediately. Never downgrade a lane
 without recording why when the work touches sensitive behavior. L0/L1 work may use
