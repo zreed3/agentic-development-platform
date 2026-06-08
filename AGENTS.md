@@ -82,7 +82,7 @@ Before performing a sensitive action, resolve it against the policy
 Do not weaken the policy to make work proceed; if a gate must be waived, record a
 `decision` audit event with reason, risk, and rollback.
 
-## Proofline Delivery Lanes
+## Proofline v0.9 Delivery Lanes
 
 Use Proofline lanes to keep exploration cheap while preserving evidence for real
 claims. Start material work by classifying it:

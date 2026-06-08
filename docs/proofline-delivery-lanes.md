@@ -3,7 +3,7 @@
 Proofline is the lightweight name for the ADG delivery discipline: cheap work
 stays cheap, but every serious claim has a proof line.
 
-ADG process version: `0.4.0`.
+Proofline process version: `0.9.0` (`v0.9`).
 
 The goal is not to run full governance on every small change. The goal is to
 separate exploration from claims:

@@ -24,8 +24,8 @@ const managedFiles = [
     target: "docs/adg/proofline-delivery-lanes.md",
   },
   {
-    source: "docs/adg-v0-4-release-notes.md",
-    target: "docs/adg/adg-v0-4-release-notes.md",
+    source: "docs/proofline-v0-9-release-notes.md",
+    target: "docs/adg/proofline-v0-9-release-notes.md",
   },
 ];
 
@@ -134,6 +134,33 @@ function installFiles({ targetRoot, command, force, dryRun }) {
   return { installed, backups };
 }
 
+function pruneStaleManagedFiles({ targetRoot, dryRun }) {
+  const existingState = loadState(targetRoot);
+  if (!existingState?.files?.length) return [];
+
+  const currentTargets = new Set(managedFiles.map((entry) => entry.target));
+  const pruned = [];
+
+  for (const entry of existingState.files) {
+    if (currentTargets.has(entry.target)) continue;
+
+    const targetFile = abs(targetRoot, entry.target);
+    if (!fs.existsSync(targetFile)) continue;
+
+    const targetContent = fs.readFileSync(targetFile, "utf8");
+    const targetHash = sha256(targetContent);
+    if (entry.sha256 && targetHash !== entry.sha256) {
+      pruned.push({ target: entry.target, status: "stale-modified" });
+      continue;
+    }
+
+    if (!dryRun) fs.rmSync(targetFile);
+    pruned.push({ target: entry.target, status: "pruned" });
+  }
+
+  return pruned;
+}
+
 function updatePackageScripts({ targetRoot, dryRun, forceScripts }) {
   const packagePath = abs(targetRoot, "package.json");
   if (!fs.existsSync(packagePath)) return { changed: false, scripts: {}, skipped: "no package.json" };
@@ -206,6 +233,9 @@ function printResult(result, format) {
     console.log(`${file.status ?? (file.changed ? "updated" : "current")}: ${file.target}`);
   }
   if (result.packageScripts?.changed) console.log("package scripts updated");
+  if (result.pruned?.length) {
+    for (const file of result.pruned) console.log(`${file.status}: ${file.target}`);
+  }
   if (result.backups?.length) {
     for (const backup of result.backups) console.log(`backup: ${backup.backup}`);
   }
@@ -243,6 +273,7 @@ function main() {
 
   const force = args.flags.has("force") || args.command === "update";
   const forceScripts = args.flags.has("force-scripts");
+  const pruned = args.command === "update" ? pruneStaleManagedFiles({ targetRoot, dryRun }) : [];
   const { installed, backups } = installFiles({ targetRoot, command: args.command, force, dryRun });
   const packageScriptsResult = updatePackageScripts({ targetRoot, dryRun, forceScripts });
   const state = writeState({ targetRoot, installed, dryRun });
@@ -252,6 +283,7 @@ function main() {
     target: targetRoot,
     version: state.version,
     files: installed,
+    pruned,
     backups,
     packageScripts: packageScriptsResult,
     dryRun,

@@ -66,6 +66,20 @@
       "requiredEvidence": ["changed-file", "validation-command"]
     },
     {
+      "name": "proofline.guard",
+      "riskClass": "read-only",
+      "mode": "read",
+      "allowed": true,
+      "requiredEvidence": ["lane-result", "event-or-intent"]
+    },
+    {
+      "name": "proofline.install",
+      "riskClass": "code-change",
+      "mode": "write",
+      "allowed": true,
+      "requiredEvidence": ["target-repo", "install-state", "validation-command"]
+    },
+    {
       "name": "db.migration",
       "riskClass": "migration",
       "mode": "write",

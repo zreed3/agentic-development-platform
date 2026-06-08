@@ -33,7 +33,7 @@ For delivery speed, the default operating unit is a **feature slice**:
 targeted checks during implementation, records failures explicitly, and reserves the
 full governance gate for feature/release checkpoints.
 
-The lightweight operating name for this discipline is **Proofline**: exploration
+The lightweight operating name for this discipline is **Proofline v0.9**: exploration
 and quick fixes stay cheap, while release/signoff claims still need evidence. Use
 `npm run work:classify -- --intent "..." --file path` to choose a lane before
 burning tokens on context or gates.
