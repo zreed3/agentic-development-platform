@@ -45,6 +45,7 @@ dependencies to install.
 - Build/refresh an empty database: `npm run setup`
 - Build/refresh the ADG worked-example database: `npm run setup:demo`
 - Validate the backlog: `npm run backlog:validate`
+- Classify work lane / risk: `npm run work:classify -- --intent "..." --file path`
 - Validate the audit log: `npm run audit:validate`
 - Record an audit event: `npm run audit:record -- --feature S07 --type status --status in-progress --summary "..."`
 - Check the guardrail policy: `npm run guardrails:check`
@@ -63,6 +64,8 @@ dependencies to install.
 - Skill manifest validation: `npm run skills:validate`
 - **Full gate:** `npm run ci:governance`
 - Context packets: `npm run context:feature -- --feature S07 --workflow route`
+- ADG aliases for host repos / signoff docs: `npm run adg:context`,
+  `npm run adg:validate`, `npm run adg:sync`, `npm run ci:traceability`
 
 ## Guardrails And Risk Classes
 
@@ -77,6 +80,31 @@ Before performing a sensitive action, resolve it against the policy
 (`npm run guardrails:check -- --tool <name>`) and supply the `requiredEvidence`.
 Do not weaken the policy to make work proceed; if a gate must be waived, record a
 `decision` audit event with reason, risk, and rollback.
+
+## Proofline Delivery Lanes
+
+Use Proofline lanes to keep exploration cheap while preserving evidence for real
+claims. Start material work by classifying it:
+
+```sh
+npm run work:classify -- --intent "small UI spacing fix" --file docs/setup.html
+```
+
+- `L0 spike` — read-only exploration, options, triage, and debugging. No audit or
+  full gate unless a decision or implementation claim is made.
+- `L1 quick-fix` — copy, CSS, small UI state, docs, or obvious low-risk bugs. Use
+  the nearest focused check, screenshot, or smoke proof; do not run full governance.
+- `L2 bounded slice` — normal feature work. Use an ADG context slice, targeted
+  tests, and material evidence.
+- `L3 sensitive` — auth, RBAC, tenant/business scope, schema, migrations, secrets,
+  billing, production, guardrails, audit, or governance tooling. Run the relevant
+  policy gate and negative tests where possible.
+- `L4 release signoff` — pre-push, RC, GA, release, verified, or signed-off claims.
+  Run the full governance/traceability gate.
+
+If new evidence raises risk, upgrade the lane immediately. Never downgrade a lane
+without recording why when the work touches sensitive behavior. L0/L1 work may use
+ultra caveman mode: report only lane, files, checks, pass/fail, and next move.
 
 ## SQL-First Backlog
 
@@ -136,6 +164,10 @@ Before finishing material work, run the relevant gates:
 
 During implementation, prefer the smallest targeted checks from the context packet.
 Do not run the full gate after every small item unless the change is high risk.
+Full governance is required for L4 signoff, L3 process/tooling/security changes
+that alter behavior, pre-push, and explicit `verified` / `release-ready` claims.
+It is not required for L0/L1 work unless the classifier or local evidence upgrades
+the lane.
 
 If no reviewer is available, enforce strict solo-dev gates. Any waived gate needs an
 audit `decision` event with reason, risk, and rollback.

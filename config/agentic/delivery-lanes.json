@@ -1,0 +1,113 @@
+{
+  "schemaVersion": 1,
+  "name": "Proofline",
+  "summary": "Risk-based delivery lanes for cheap exploration and evidence-backed signoff.",
+  "defaultMode": "caveman",
+  "modes": {
+    "caveman": {
+      "maxBullets": 5,
+      "style": "short",
+      "include": ["lane", "risk", "files", "checks", "stop"]
+    },
+    "standard": {
+      "maxBullets": 10,
+      "style": "concise",
+      "include": ["lane", "reason", "files", "checks", "evidence", "upgradeTriggers"]
+    }
+  },
+  "lanes": [
+    {
+      "id": "L0",
+      "name": "spike",
+      "label": "L0 spike",
+      "intent": "Read-only exploration, options, triage, and throwaway investigation.",
+      "auditRequired": false,
+      "fullGateRequired": false,
+      "requiredChecks": [],
+      "contextWorkflow": "spike",
+      "allowedClaims": ["observed", "suspected", "proposed"],
+      "forbiddenClaims": ["implemented", "verified", "release-ready", "signed-off"]
+    },
+    {
+      "id": "L1",
+      "name": "quick-fix",
+      "label": "L1 quick-fix",
+      "intent": "Small UI, copy, styling, docs, or obvious low-risk bug fixes.",
+      "auditRequired": false,
+      "fullGateRequired": false,
+      "requiredChecks": ["nearest targeted check or screenshot when UI-visible"],
+      "contextWorkflow": "quick-ui",
+      "allowedClaims": ["changed", "checked"],
+      "forbiddenClaims": ["release-ready", "signed-off"]
+    },
+    {
+      "id": "L2",
+      "name": "bounded-slice",
+      "label": "L2 bounded slice",
+      "intent": "Normal scoped implementation with ADG context and targeted evidence.",
+      "auditRequired": "material",
+      "fullGateRequired": false,
+      "requiredChecks": ["context slice", "targeted tests"],
+      "contextWorkflow": "delivery-slice",
+      "allowedClaims": ["implemented with targeted evidence"],
+      "forbiddenClaims": ["release-ready without release gate"]
+    },
+    {
+      "id": "L3",
+      "name": "sensitive",
+      "label": "L3 sensitive",
+      "intent": "Auth, RBAC, tenant or business scope, schema, migrations, secrets, billing, production, guardrails, or governance tooling.",
+      "auditRequired": true,
+      "fullGateRequired": "when behavior or policy changes",
+      "requiredChecks": ["policy-specific gate", "negative tests where applicable"],
+      "contextWorkflow": "agentic-tooling",
+      "allowedClaims": ["implemented with risk evidence"],
+      "forbiddenClaims": ["waived without decision event"]
+    },
+    {
+      "id": "L4",
+      "name": "release-signoff",
+      "label": "L4 release signoff",
+      "intent": "Pre-push, RC, GA, release, signoff, or status claims that need non-repudiable proof.",
+      "auditRequired": true,
+      "fullGateRequired": true,
+      "requiredChecks": ["npm run ci:governance"],
+      "contextWorkflow": "release-signoff",
+      "allowedClaims": ["verified", "release-ready", "signed-off"],
+      "forbiddenClaims": ["unchecked release claim"]
+    }
+  ],
+  "classification": {
+    "releaseIntentTerms": ["release", "signoff", "sign-off", "signed off", "rc", "ga", "prepush", "pre-push", "ship", "launch"],
+    "sensitiveIntentTerms": ["auth", "rbac", "permission", "tenant", "business scope", "migration", "schema", "secret", "billing", "production", "guardrail", "policy", "audit", "governance", "destructive"],
+    "spikeIntentTerms": ["spike", "explore", "investigate", "triage", "read-only", "read only", "no code", "no edits", "options", "research"],
+    "quickIntentTerms": ["quick", "small", "tiny", "copy", "typo", "css", "style", "spacing", "ui polish", "docs-only", "docs only"],
+    "sensitiveFilePatterns": [
+      "config/agentic/guardrails.json",
+      "config/agentic/delivery-lanes.json",
+      "data/schema.sql",
+      "scripts/backlog-db.mjs",
+      "scripts/guardrail-check.mjs",
+      "scripts/record-audit.mjs",
+      "scripts/validate-audit.mjs",
+      "scripts/adg-*.mjs",
+      "**/*auth*",
+      "**/*permission*",
+      "**/*rbac*",
+      "**/*tenant*",
+      "**/*migration*",
+      "**/*.sql"
+    ],
+    "quickFilePatterns": [
+      "**/*.css",
+      "**/*.scss",
+      "**/*.md",
+      "**/*.mdx",
+      "**/*.html",
+      "**/*.tsx",
+      "**/*.jsx",
+      "docs/**",
+      "README.md"
+    ]
+  }
+}

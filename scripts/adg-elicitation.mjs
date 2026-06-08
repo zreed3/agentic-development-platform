@@ -12,6 +12,7 @@ import path from "node:path";
 const root = process.cwd();
 const defaultConfigPath = "config/agentic/elicitation.json";
 const sqlitePath = "data/elicitation.sqlite";
+const sqliteLockPath = "data/.elicitation-sqlite.lock";
 
 function abs(file) {
   if (path.isAbsolute(file)) return file;
@@ -41,6 +42,30 @@ function value(args, key, fallback = "") {
   const raw = args.values[key];
   if (raw === undefined || raw === true) return fallback;
   return String(raw);
+}
+
+function sleep(ms) {
+  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
+}
+
+function acquireSqliteWriteLock() {
+  const lock = abs(sqliteLockPath);
+  const started = Date.now();
+  while (true) {
+    try {
+      fs.mkdirSync(lock, { recursive: false });
+      return;
+    } catch {
+      if (Date.now() - started > 30000) throw new Error(`Timed out waiting for ${sqliteLockPath}`);
+      try {
+        const age = Date.now() - fs.statSync(lock).mtimeMs;
+        if (age > 60000) fs.rmSync(lock, { recursive: true, force: true });
+      } catch {
+        // Lock disappeared between checks.
+      }
+      sleep(100);
+    }
+  }
 }
 
 function sqlString(input) {
@@ -329,9 +354,11 @@ function buildGraph(config, validation, featureId = "") {
 }
 
 function writeSqlite(config, validation) {
-  fs.mkdirSync(path.dirname(abs(sqlitePath)), { recursive: true });
-  const flat = flatten(config, validation);
-  const statements = [
+  acquireSqliteWriteLock();
+  try {
+    fs.mkdirSync(path.dirname(abs(sqlitePath)), { recursive: true });
+    const flat = flatten(config, validation);
+    const statements = [
     "PRAGMA foreign_keys = OFF;",
     "DROP TABLE IF EXISTS elicitation_features;",
     "DROP TABLE IF EXISTS elicitation_rbac_stories;",
@@ -375,8 +402,11 @@ function writeSqlite(config, validation) {
   for (const node of graph.nodes) statements.push(`INSERT OR REPLACE INTO elicitation_graph_nodes VALUES (${sqlString(node.id)}, ${sqlString(node.featureId)}, ${sqlString(node.type)}, ${sqlString(node.sourceId)}, ${sqlString(node.label)}, ${sqlString(JSON.stringify(node.attributes ?? {}))});`);
   for (const edge of graph.edges) statements.push(`INSERT OR REPLACE INTO elicitation_graph_edges VALUES (${sqlString(edge.id)}, ${sqlString(edge.featureId)}, ${sqlString(edge.type)}, ${sqlString(edge.from)}, ${sqlString(edge.to)}, ${sqlString(JSON.stringify(edge.attributes ?? {}))});`);
 
-  if (fs.existsSync(abs(sqlitePath))) fs.rmSync(abs(sqlitePath));
-  execFileSync("sqlite3", [abs(sqlitePath)], { cwd: root, input: `${statements.join("\n")}\n`, encoding: "utf8" });
+    if (fs.existsSync(abs(sqlitePath))) fs.rmSync(abs(sqlitePath));
+    execFileSync("sqlite3", [abs(sqlitePath)], { cwd: root, input: `${statements.join("\n")}\n`, encoding: "utf8" });
+  } finally {
+    fs.rmSync(abs(sqliteLockPath), { recursive: true, force: true });
+  }
 }
 
 function readSqliteJson(sql) {
