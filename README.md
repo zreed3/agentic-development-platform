@@ -131,6 +131,7 @@ npm run context:feature -- --feature S07 --workflow spike
 - [`docs/architecture/agentic-application-development-pipeline.md`](docs/architecture/agentic-application-development-pipeline.md) — the end-to-end pipeline and benchmark sources.
 - [`docs/roadmap-review-overview.md`](docs/roadmap-review-overview.md) — the external review summary and ADG roadmap.
 - [`docs/field-report-and-hardening-plan.md`](docs/field-report-and-hardening-plan.md) — field report from first-party use, with the v0.9.1 hardening plan (evidence tiers + adopter-conformance doctor).
+- [`docs/v0.9.2-plan.md`](docs/v0.9.2-plan.md) — v0.9.2 plan: evidence hardening + Claude Code integration (plugin, generated CLAUDE.md, marketplace packaging, education site).
 - [`docs/setup.html`](docs/setup.html) — static setup page with manual install and Otterblock contact details.
 - [`docs/sql-engine-view.html`](docs/sql-engine-view.html) — static HTML view of the plugin SQL engine, derived SQLite views, and read-only command map.
 - [`docs/sql-data-layer.md`](docs/sql-data-layer.md) — the SQL "server": schema, views, and the item lifecycle.
