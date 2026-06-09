@@ -31,7 +31,7 @@ function asArray(input) {
 }
 
 function abs(file) {
-  return path.join(root, file);
+  return path.isAbsolute(file) ? file : path.join(root, file);
 }
 
 function repoFileCount() {

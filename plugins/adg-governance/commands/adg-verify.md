@@ -12,8 +12,10 @@ Before claiming verified, check the evidence tier matches the claim:
 - `test` — an automated check passed.
 - `live` — observed true in the running or deployed system (a probe, response header, measured metric, or restore drill). **Required** to sign off a sensitive class.
 
-Record it:
+Record it with the tier that matches the evidence (`--tier` defaults to `asserted`):
 
-`npm run backlog:verify -- --item <ITEM> --summary "<what was proven>" --evidence "$ARGUMENTS"`
+`npm run backlog:verify -- --item <ITEM> --summary "<what was proven>" --evidence "$ARGUMENTS" --tier <asserted|config|test|live>`
 
-Then append the matching audit event with `npm run audit:record`. Do not record `verified` for a deploy/infra/runtime claim on `config` evidence alone — that is the exact false-confidence failure the v0.9.1 field report documents.
+Then append the matching audit event with `npm run audit:record -- --feature <ID> --type test-result --status verified --summary "..." --evidence "$ARGUMENTS" --tier <tier>`.
+
+Do not record `verified` for a deploy/infra/performance/runtime-security/data-residency claim on `config` evidence alone — that is the exact false-confidence failure the v0.9.1 field report documents. For those classes the release gate (`npm run backlog:validate`) stays red until a `--tier live` event exists: the configuration existing is not the system being observed correct.

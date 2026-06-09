@@ -10,7 +10,7 @@ const pluginManifest = `${pluginRoot}/.codex-plugin/plugin.json`;
 const neutralManifest = `${pluginRoot}/agentic-plugin.manifest.json`;
 
 function abs(file) {
-  return path.join(root, file);
+  return path.isAbsolute(file) ? file : path.join(root, file);
 }
 
 function readJson(file) {

@@ -45,14 +45,17 @@ here, follow these rules. When this file is copied into a host repo, fill in the
 
 ## Commands
 
-The platform needs only Node (>= 20) and the `sqlite3` CLI. There are no runtime
-dependencies to install.
+The core platform needs only Node (>= 20) and the `sqlite3` CLI — no runtime
+dependencies. (The optional governance MCP server uses `@modelcontextprotocol/sdk`;
+run `npm install` if you want it. Nothing else in the platform requires it.)
 
 - Build/refresh an empty database: `npm run setup`
 - Build/refresh the ADG worked-example database: `npm run setup:demo`
 - Validate the backlog: `npm run backlog:validate`
 - Classify work lane / risk: `npm run work:classify -- --intent "..." --file path`
-- Install/update Proofline in a host repo: `npm run adg:install -- --target /path/to/repo` / `npm run adg:update -- --target /path/to/repo`
+- Install/update Proofline in a host repo: `npm run adg:install -- --target /path/to/repo` / `npm run adg:update -- --target /path/to/repo`. Add `--client claude` to also install the deterministic Claude Code layer (PreToolUse guardrail hook, `.claude/settings.json`, slash commands, the doctor, and a `CLAUDE.md` generated from the host's `AGENTS.md`), tracked and backed up in `adg-install-state.json`.
+- Conformance doctor (catch adopter drift): `npm run adg:doctor -- --target /path/to/repo`
+- Governance MCP server (read-only `classify_work` / `context_packet`, append-only `record_audit`): `npm run adg:mcp`
 - Validate the audit log: `npm run audit:validate`
 - Record an audit event: `npm run audit:record -- --feature S07 --type status --status in-progress --summary "..."`
 - Check the guardrail policy: `npm run guardrails:check`
@@ -156,6 +159,28 @@ data in audit events (`audit:validate` will flag likely secrets). Record an audi
 event before finishing material work. Use `$agentic-traceability` for the full
 discipline.
 
+## Evidence Tiers And The Release Gate
+
+Every verify/audit event carries an ordered **evidence tier** —
+`asserted` < `config` < `test` < `live` — that records what *kind* of proof backs
+the claim, not just a path or command:
+
+- `asserted` — a claim with no artifact (the default; never enough to sign off).
+- `config` — the controlling configuration exists (Terraform / env / flag).
+- `test` — an automated check passed.
+- `live` — observed true in the running or deployed system (probe, response header,
+  measured metric, restore drill).
+
+Pass the tier with `--tier` on `backlog:verify` and `audit:record`. A feature is
+declared part of a **sensitive release class** with a `release-class:<class>` label
+(`deploy`, `infra`, `performance`, `runtime-security`, `data-residency`; canonical
+list in `config/agentic/guardrails.json` under `evidence`). The **release gate**
+then enforces one rule: an item under a `release-class:*` feature cannot be signed
+off (status `verified`) on `asserted`/`config`/`test` evidence alone — it requires a
+`live` event. `backlog:validate` fails while the `release_gate_violations` view is
+non-empty. Config existing is not the system being observed correct; do not record
+`verified` for a deploy/infra/runtime claim on `config` evidence.
+
 ## Context Discipline
 
 Generate a bounded context packet **before** opening source files, and read only the
@@ -173,6 +198,11 @@ Before finishing material work, run the relevant gates:
 - `npm run metrics:dora` for delivery-process changes.
 - `npm run ci:governance` at feature completion, before push, or when process/tooling
   changes affect governance behavior.
+- `npm run adg:doctor` to check an install has not drifted from ADG's invariants —
+  tracked generated `*.sqlite`/mirrors, a committed-artifact diff gate, volatile
+  provenance (git SHA/timestamp) in tracked docs, or `CLAUDE.md` out of sync with
+  `AGENTS.md`. Folded into `ci:governance`; `adg:install:status` runs it and
+  `adg:update` warns on drift.
 
 During implementation, prefer the smallest targeted checks from the context packet.
 Do not run the full gate after every small item unless the change is high risk.

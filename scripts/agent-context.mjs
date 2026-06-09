@@ -27,7 +27,7 @@ const lastManifestPath = `${manifestDir}/last-context-packet.json`;
 const historyManifestPath = `${manifestDir}/history.jsonl`;
 
 function abs(file) {
-  return path.join(root, file);
+  return path.isAbsolute(file) ? file : path.join(root, file);
 }
 
 function exec(cmd) {

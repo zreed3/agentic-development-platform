@@ -18,7 +18,7 @@ const outSqlite = "data/agent-evals.sqlite";
 const outSql = "data/agent-evals.sql";
 
 function abs(file) {
-  return path.join(root, file);
+  return path.isAbsolute(file) ? file : path.join(root, file);
 }
 
 function sqlString(value) {

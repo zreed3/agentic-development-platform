@@ -16,7 +16,7 @@ const sqliteLockPath = "data/.elicitation-sqlite.lock";
 
 function abs(file) {
   if (path.isAbsolute(file)) return file;
-  return path.join(root, file);
+  return path.isAbsolute(file) ? file : path.join(root, file);
 }
 
 function parseArgs(argv) {

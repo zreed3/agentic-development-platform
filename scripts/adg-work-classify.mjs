@@ -10,7 +10,7 @@ const configPath = "config/agentic/delivery-lanes.json";
 const laneOrder = ["L0", "L1", "L2", "L3", "L4"];
 
 function abs(file) {
-  return path.join(root, file);
+  return path.isAbsolute(file) ? file : path.join(root, file);
 }
 
 function parseArgs(argv) {
