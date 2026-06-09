@@ -1,0 +1,11 @@
+{
+  "name": "adg-governance",
+  "version": "0.4.0",
+  "description": "Deterministic ADG governance for Claude Code: deny-by-default tool gating via a PreToolUse hook, bounded-context discipline, and the ADG lane / backlog / audit workflow as slash commands and skills.",
+  "author": {
+    "name": "Otterblock Pty Ltd",
+    "email": "zach+github@otterblock.com"
+  },
+  "license": "PolyForm-Noncommercial-1.0.0",
+  "keywords": ["governance", "guardrails", "agentic", "adg", "deterministic", "audit"]
+}
