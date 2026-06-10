@@ -39,16 +39,23 @@ Honest about the asymmetry:
   migration. The rules become *physically enforced* at the tool gate.
 - **Codex** enforces through its **approval policy** plus the shared
   `guardrails.json` and the skills/commands that carry the same risk classes.
-  When Codex exposes a pre-tool hook surface, the **same**
-  `adg-guardrail-hook.mjs` can be wired behind an adapter (it reads a neutral
-  `{tool_name, tool_input}` JSON event on stdin), giving Codex the same
-  deterministic gate. Until then, Codex follows the same *rules*, with the *teeth*
-  coming from its approval prompts.
+  A harness-neutral adapter (`.codex-plugin/hooks/adg-codex-pretool.mjs`) already
+  wraps the **same** `adg-guardrail-hook.mjs`: it normalises a pre-tool event
+  (tolerating `tool_name`/`toolName`/`name` and `tool_input`/`input`/`arguments`),
+  runs the shared hook, and emits a uniform `{decision, reason}` with a matching exit
+  code (`2` = deny, `0` = ask/allow). When Codex exposes a pre-tool hook surface,
+  wiring it to this adapter gives Codex the same deterministic gate Claude Code
+  enforces — one policy script, both harnesses. Until then, Codex follows the same
+  *rules*, with the *teeth* coming from its approval prompts.
 
 ## Using both in one repo
 
 1. Install the marketplace once: `claude plugin marketplace add <repo>` then
-   `claude plugin install adg-governance` (Claude Code).
+   `claude plugin install adg-governance` (Claude Code). Or, for a copy-install
+   tracked in `adg-install-state.json`, run `npm run adg:install -- --target <repo>
+   --client claude`, which lays down the PreToolUse guardrail hook,
+   `.claude/settings.json` (hook + deny-by-default permissions), the slash commands,
+   the conformance doctor, and a `CLAUDE.md` generated from the host's `AGENTS.md`.
 2. Install/refresh the Codex adapter with the existing `npm run adg:install --
    --target <repo>` flow.
 3. Run `npm run claude:generate` so `CLAUDE.md` mirrors `AGENTS.md`; `npm run
