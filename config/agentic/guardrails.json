@@ -66,6 +66,20 @@
       "requiredEvidence": ["changed-file", "validation-command"]
     },
     {
+      "name": "proofline.guard",
+      "riskClass": "read-only",
+      "mode": "read",
+      "allowed": true,
+      "requiredEvidence": ["lane-result", "event-or-intent"]
+    },
+    {
+      "name": "proofline.install",
+      "riskClass": "code-change",
+      "mode": "write",
+      "allowed": true,
+      "requiredEvidence": ["target-repo", "install-state", "validation-command"]
+    },
+    {
       "name": "db.migration",
       "riskClass": "migration",
       "mode": "write",
@@ -115,5 +129,18 @@
     "cookie",
     "privateKey",
     "webhookSecret"
-  ]
+  ],
+  "evidence": {
+    "tiers": ["asserted", "config", "test", "live"],
+    "defaultTier": "asserted",
+    "tierMeanings": {
+      "asserted": "A human or agent claim with no artifact. Never enough to sign off.",
+      "config": "The controlling configuration exists (Terraform / env / flag). Not sufficient for a sensitive release class.",
+      "test": "An automated check passed (unit / integration / gate).",
+      "live": "Observed true in the running or deployed system (probe, response header, measured metric, restore drill)."
+    },
+    "sensitiveReleaseClasses": ["deploy", "infra", "performance", "runtime-security", "data-residency"],
+    "releaseClassLabelPrefix": "release-class:",
+    "releaseGateRule": "A backlog item whose feature carries a release-class:<class> label cannot be signed off (status 'verified') on asserted/config/test evidence alone; it requires a backlog event whose evidence_tier is 'live'. Enforced by the release_gate_violations view and npm run backlog:validate."
+  }
 }

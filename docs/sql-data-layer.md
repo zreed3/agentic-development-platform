@@ -45,13 +45,15 @@ Planning tables:
 
 Execution tables (the lifecycle):
 
-- `backlog_item_events` — append-only item lifecycle events (claim/start/complete/verify/...)
+- `backlog_item_events` — append-only item lifecycle events (claim/start/complete/verify/...),
+  each carrying an `evidence_tier` (`asserted` < `config` < `test` < `live`)
 - `backlog_item_claims` — current claim per item, with TTL and write scope
 
 Audit:
 
 - `audit_events` — empty by default; `setup --with-audit` mirrors
-  `data/audit/audit-log.jsonl` into SQL when a worked example or review flow needs it
+  `data/audit/audit-log.jsonl` into SQL when a worked example or review flow needs it.
+  Also carries `evidence_tier` so audit claims are typed the same way as lifecycle events
 
 Derived views (current state is always *derived*, never stored):
 
@@ -61,9 +63,14 @@ Derived views (current state is always *derived*, never stored):
   claim, with claim expiry handled in SQL
 - `persona_workflows`, `feature_tasks`, `feature_test_cases`,
   `feature_success_criteria`, `feature_use_cases`, `backlog_summary`
+- `release_gate_violations` — sensitive-class sign-offs that still lack `live`
+  evidence (the release gate; see *Evidence tiers and the release gate* below)
 
 The full DDL lives in [`data/schema.sql`](../data/schema.sql) (regenerated on every
 `setup`/mutation).
+
+For a visual, copyable command map of the same engine, open
+[`docs/sql-engine-view.html`](sql-engine-view.html).
 
 ## The item lifecycle
 
@@ -89,6 +96,47 @@ in the SQL backlog instead of only appearing in prose. Failed items are eligible
 Claims have a TTL and a write scope. `backlog:next` skips items with an active claim,
 so parallel agents can each take disjoint work without colliding — the database is
 the coordination point.
+
+## Evidence tiers and the release gate
+
+Every lifecycle and audit event records an **evidence tier** — what *kind* of proof
+backs the claim, not just a free-form command or path:
+
+| tier | meaning |
+|---|---|
+| `asserted` | a human/agent claim, no artifact (the default; never enough to sign off) |
+| `config` | the controlling configuration exists (Terraform / env / flag) |
+| `test` | an automated check passed (unit / integration / gate) |
+| `live` | observed true in the running or deployed system (probe, response header, measured metric, restore drill) |
+
+The tiers are ordered `asserted < config < test < live` and are recorded with
+`--tier` on both `backlog:verify` and `audit:record`:
+
+```sh
+npm run backlog:verify -- --item S07-TASK-01 --summary "probe shows syd1" --evidence "har/prod.har" --tier live
+```
+
+A feature is declared part of a **sensitive release class** by carrying a
+`release-class:<class>` label, where `<class>` is one of the five classes the
+v0.9.1 field report named: `deploy`, `infra`, `performance`, `runtime-security`,
+`data-residency` (the canonical list lives in
+[`config/agentic/guardrails.json`](../config/agentic/guardrails.json) under
+`evidence`). The **release gate** then enforces one rule:
+
+> An item under a `release-class:*` feature cannot be signed off (status
+> `verified`) on `asserted`/`config`/`test` evidence alone — it requires at least
+> one event with `evidence_tier = 'live'`.
+
+`backlog:validate` fails while the `release_gate_violations` view is non-empty. The
+gate **fails safe** — it treats *any* `release-class:*` label as sensitive, so a
+typo like `release-class:deployy` is still gated rather than silently escaping — and
+`backlog:validate` separately flags a declared class that is not one of the canonical
+five, so the mistake gets corrected instead of quietly mis-declared.
+
+This closes the F2 failure the field report documents: a deploy task marked
+*verified* on Terraform config (`syd1`) while production HAR captures proved the
+functions were actually executing in `iad1`. Config existing is not the system
+being observed correct — and now the gate knows the difference.
 
 ## Querying directly
 

@@ -1,0 +1,130 @@
+{
+  "schemaVersion": 1,
+  "name": "Proofline",
+  "version": "0.9.0",
+  "summary": "Risk-based ADG delivery lanes for cheap exploration, bounded fixes, and hard release evidence.",
+  "defaultMode": "caveman",
+  "modes": {
+    "caveman": {
+      "maxBullets": 5,
+      "style": "short",
+      "include": ["lane", "risk", "files", "checks", "stop"]
+    },
+    "standard": {
+      "maxBullets": 10,
+      "style": "concise",
+      "include": ["lane", "reason", "files", "checks", "evidence", "upgradeTriggers"]
+    }
+  },
+  "lanes": [
+    {
+      "id": "L0",
+      "name": "spike",
+      "label": "L0 spike",
+      "intent": "Read-only exploration, options, triage, and throwaway investigation.",
+      "auditRequired": false,
+      "fullGateRequired": false,
+      "requiredChecks": [],
+      "contextWorkflow": "spike",
+      "allowedClaims": ["observed", "suspected", "proposed"],
+      "forbiddenClaims": ["implemented", "verified", "release-ready", "signed-off"]
+    },
+    {
+      "id": "L1",
+      "name": "quick-fix",
+      "label": "L1 quick-fix",
+      "intent": "Small UI, copy, styling, docs, or obvious low-risk bug fixes.",
+      "auditRequired": false,
+      "fullGateRequired": false,
+      "requiredChecks": ["nearest targeted check, typecheck, or screenshot when UI-visible"],
+      "contextWorkflow": "quick-ui",
+      "allowedClaims": ["changed", "checked"],
+      "forbiddenClaims": ["release-ready", "signed-off"]
+    },
+    {
+      "id": "L2",
+      "name": "bounded-slice",
+      "label": "L2 bounded slice",
+      "intent": "Normal scoped implementation with ADG context and targeted evidence.",
+      "auditRequired": "material",
+      "fullGateRequired": false,
+      "requiredChecks": ["ADG context slice", "targeted tests"],
+      "contextWorkflow": "delivery-slice",
+      "allowedClaims": ["implemented with targeted evidence"],
+      "forbiddenClaims": ["release-ready without release gate"]
+    },
+    {
+      "id": "L3",
+      "name": "sensitive",
+      "label": "L3 sensitive",
+      "intent": "Auth, RBAC, tenant or business scope, schema, migrations, secrets, billing, production, guardrails, audit, governance tooling, or CI policy.",
+      "auditRequired": true,
+      "fullGateRequired": "when behavior, policy, schema, or guardrails change",
+      "requiredChecks": ["policy-specific gate", "negative tests where applicable", "host ADG validation gate"],
+      "contextWorkflow": "agentic-tooling",
+      "allowedClaims": ["implemented with risk evidence"],
+      "forbiddenClaims": ["waived without decision event"]
+    },
+    {
+      "id": "L4",
+      "name": "release-signoff",
+      "label": "L4 release signoff",
+      "intent": "GitHub push or PR, pre-push, RC, GA, release, signoff, or any verified/release-ready/signed-off claim.",
+      "auditRequired": true,
+      "fullGateRequired": true,
+      "requiredChecks": ["host full governance gate", "host pre-push gate before GitHub push"],
+      "contextWorkflow": "release-signoff",
+      "allowedClaims": ["verified", "release-ready", "signed-off"],
+      "forbiddenClaims": ["unchecked release claim"]
+    }
+  ],
+  "classification": {
+    "githubEvents": ["github-push", "github-ci", "pull-request", "pr"],
+    "releaseIntentTerms": ["release", "signoff", "sign-off", "signed off", "verified", "release-ready", "rc", "ga", "prepush", "pre-push", "push", "pull request", "pr", "ship", "launch"],
+    "sensitiveIntentTerms": ["auth", "rbac", "permission", "tenant", "business scope", "entitlement", "migration", "schema", "secret", "billing", "production", "guardrail", "policy", "audit", "governance", "ci", "github", "workflow", "destructive"],
+    "spikeIntentTerms": ["spike", "explore", "investigate", "triage", "read-only", "read only", "no code", "no edits", "options", "research"],
+    "quickIntentTerms": ["quick", "small", "tiny", "copy", "typo", "css", "style", "spacing", "ui polish", "docs-only", "docs only"],
+    "releaseFilePatterns": [
+      ".github/**",
+      "docs/adg-v*-release-notes.md",
+      "docs/proofline-v*-release-notes.md",
+      "docs/proofline-delivery-lanes.md"
+    ],
+    "sensitiveFilePatterns": [
+      "AGENTS.md",
+      "package.json",
+      "config/agentic/**",
+      "config/agentic/guardrails.json",
+      "config/agentic/delivery-lanes.json",
+      "data/schema.sql",
+      "data/audit/**",
+      "data/seed/**",
+      "scripts/backlog-db.mjs",
+      "scripts/guardrail-check.mjs",
+      "scripts/record-audit.mjs",
+      "scripts/validate-audit.mjs",
+      "scripts/adg-*.mjs",
+      "scripts/*guard*.mjs",
+      "tooling/delivery-lanes/**",
+      "**/*auth*",
+      "**/*permission*",
+      "**/*rbac*",
+      "**/*tenant*",
+      "**/*entitlement*",
+      "**/*billing*",
+      "**/*migration*",
+      "**/*.sql"
+    ],
+    "quickFilePatterns": [
+      "**/*.css",
+      "**/*.scss",
+      "**/*.md",
+      "**/*.mdx",
+      "**/*.html",
+      "**/*.tsx",
+      "**/*.jsx",
+      "docs/**",
+      "README.md"
+    ]
+  }
+}

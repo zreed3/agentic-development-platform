@@ -16,7 +16,7 @@ const outSql = "data/delivery-metrics.sql";
 const outSqlite = "data/delivery-metrics.sqlite";
 
 function abs(file) {
-  return path.join(root, file);
+  return path.isAbsolute(file) ? file : path.join(root, file);
 }
 
 function exec(cmd) {

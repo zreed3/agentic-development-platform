@@ -58,6 +58,31 @@
       "name": "adg-runtime-readiness",
       "path": "skills/adg-runtime-readiness/SKILL.md",
       "category": "runtime"
+    },
+    {
+      "name": "adg-risk-classifier",
+      "path": "skills/adg-risk-classifier/SKILL.md",
+      "category": "delivery-lanes"
+    },
+    {
+      "name": "adg-spike-runner",
+      "path": "skills/adg-spike-runner/SKILL.md",
+      "category": "delivery-lanes"
+    },
+    {
+      "name": "adg-quick-ui-fix",
+      "path": "skills/adg-quick-ui-fix/SKILL.md",
+      "category": "delivery-lanes"
+    },
+    {
+      "name": "adg-signoff-reviewer",
+      "path": "skills/adg-signoff-reviewer/SKILL.md",
+      "category": "delivery-lanes"
+    },
+    {
+      "name": "adg-doc-alignment-checker",
+      "path": "skills/adg-doc-alignment-checker/SKILL.md",
+      "category": "delivery-lanes"
     }
   ],
   "retiredSkills": [

@@ -33,6 +33,11 @@ For delivery speed, the default operating unit is a **feature slice**:
 targeted checks during implementation, records failures explicitly, and reserves the
 full governance gate for feature/release checkpoints.
 
+The lightweight operating name for this discipline is **Proofline v0.9**: exploration
+and quick fixes stay cheap, while release/signoff claims still need evidence. Use
+`npm run work:classify -- --intent "..." --file path` to choose a lane before
+burning tokens on context or gates.
+
 ## What makes it different
 
 Most of the ingredients here exist somewhere. The combination, and one specific
@@ -79,6 +84,9 @@ reproduce it: [`docs/token-reduction.md`](docs/token-reduction.md).
 # ADG is not currently published on npm; copy or clone it into your development folder.
 npm run setup            # build an empty data/backlog.sqlite from schema + empty seed
 npm run setup:demo       # optional: load the self-referential ADG worked example
+npm run work:classify -- --intent "quick css spacing fix" --file docs/setup.html
+npm run adg:install -- --target /path/to/host-repo
+npm run adg:update -- --target /path/to/host-repo
 npm run ci:governance    # the full gate; loads the demo fixture for governance checks
 npm run elicitation:packet -- --feature S07 --format toon
 npm run elicitation:graph -- --feature S07 --format toon
@@ -93,6 +101,7 @@ npm run maturity:score -- --format toon
 npm run context:feature -- --feature S07 --workflow route
 npm run context:item -- --item S07-TASK-01 --workflow route --format toon
 npm run context:feature -- --feature S07 --workflow delivery-slice
+npm run context:feature -- --feature S07 --workflow spike
 ```
 
 ## What's inside
@@ -104,6 +113,7 @@ npm run context:feature -- --feature S07 --workflow delivery-slice
 | **AI-security evals** | `tooling/agent-evals/scenarios/`, `scripts/run-agent-evals.mjs` | Prompt-injection / excessive-agency / resilience scenarios mapped to OWASP LLM & NIST AI-RMF. |
 | **Delivery metrics** | `scripts/dora-metrics.mjs` | DORA-style proxies from local git + the audit log. |
 | **SQL backlog ("the SQL server")** | `scripts/backlog-db.mjs`, `data/schema.sql`, `data/seed/` | One SQLite DB; claim/start/complete/verify lifecycle; reviewable SQL mirrors. |
+| **Proofline lanes** | `config/agentic/delivery-lanes.json`, `scripts/adg-work-classify.mjs`, `scripts/adg-install.mjs` | Risk-based lanes plus install/update support so spikes and quick fixes avoid full governance while signoff remains evidence-backed. |
 | **Context broker** | `scripts/agent-context.mjs`, `config/agentic/context-profiles.yaml` | Bounded packets in markdown/json/toon; forbids bulk files. |
 | **Elicitation as code** | `config/agentic/elicitation.json`, `scripts/adg-elicitation.mjs` | Feature brief → RBAC stories → requirements → contracts → scenarios → gaps. |
 | **Requirements graph / UX as code** | `config/agentic/ux-as-code.json`, `scripts/adg-ux.mjs` | SQL graph lineage from feature intent to UX contracts, journeys, states, and test evidence. |
@@ -120,8 +130,13 @@ npm run context:feature -- --feature S07 --workflow delivery-slice
 - [`docs/architecture/governance-model.md`](docs/architecture/governance-model.md) — the five design principles.
 - [`docs/architecture/agentic-application-development-pipeline.md`](docs/architecture/agentic-application-development-pipeline.md) — the end-to-end pipeline and benchmark sources.
 - [`docs/roadmap-review-overview.md`](docs/roadmap-review-overview.md) — the external review summary and ADG roadmap.
+- [`docs/field-report-and-hardening-plan.md`](docs/field-report-and-hardening-plan.md) — field report from first-party use, with the v0.9.1 hardening plan (evidence tiers + adopter-conformance doctor).
+- [`docs/v0.9.2-plan.md`](docs/v0.9.2-plan.md) — v0.9.2 plan: evidence hardening + Claude Code integration (plugin, generated CLAUDE.md, marketplace packaging, education site).
+- [`docs/dual-harness.md`](docs/dual-harness.md) — running Codex and Claude Code in one repo under one shared policy and rulebook.
 - [`docs/setup.html`](docs/setup.html) — static setup page with manual install and Otterblock contact details.
+- [`docs/sql-engine-view.html`](docs/sql-engine-view.html) — static HTML view of the plugin SQL engine, derived SQLite views, and read-only command map.
 - [`docs/sql-data-layer.md`](docs/sql-data-layer.md) — the SQL "server": schema, views, and the item lifecycle.
+- [`docs/proofline-delivery-lanes.md`](docs/proofline-delivery-lanes.md) — risk lanes, ultra caveman mode, and when full governance is actually required.
 - [`docs/token-reduction.md`](docs/token-reduction.md) — how context stays cheap, with measured numbers.
 - [`docs/reference/`](docs/reference/) — the context-tooling design record and extraction/provenance notes.
 - [`skills/README.md`](skills/README.md) — installing the skills.
