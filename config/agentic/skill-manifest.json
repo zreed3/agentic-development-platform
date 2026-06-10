@@ -1,0 +1,106 @@
+{
+  "schemaVersion": 1,
+  "manifestVersion": "adg-skills-2026-06-06",
+  "maxSkillBytes": 5000,
+  "forbiddenTerms": ["bord.room", "bordroom", "V4.1", "pnpm"],
+  "skills": [
+    {
+      "name": "agentic-traceability",
+      "path": "skills/agentic-traceability/SKILL.md",
+      "category": "core"
+    },
+    {
+      "name": "agentic-build-runner",
+      "path": "skills/agentic-build-runner/SKILL.md",
+      "category": "core"
+    },
+    {
+      "name": "adg-feature-elicitation",
+      "path": "skills/adg-feature-elicitation/SKILL.md",
+      "category": "elicitation"
+    },
+    {
+      "name": "adg-experience-contract",
+      "path": "skills/adg-experience-contract/SKILL.md",
+      "category": "ux-as-code"
+    },
+    {
+      "name": "adg-surface-map",
+      "path": "skills/adg-surface-map/SKILL.md",
+      "category": "ux-as-code"
+    },
+    {
+      "name": "adg-rbac-as-code",
+      "path": "skills/adg-rbac-as-code/SKILL.md",
+      "category": "rbac"
+    },
+    {
+      "name": "adg-data-governance-as-code",
+      "path": "skills/adg-data-governance-as-code/SKILL.md",
+      "category": "data-governance"
+    },
+    {
+      "name": "adg-cybersecurity-as-code",
+      "path": "skills/adg-cybersecurity-as-code/SKILL.md",
+      "category": "security"
+    },
+    {
+      "name": "adg-evidence-curator",
+      "path": "skills/adg-evidence-curator/SKILL.md",
+      "category": "evidence"
+    },
+    {
+      "name": "adg-maturity-assessor",
+      "path": "skills/adg-maturity-assessor/SKILL.md",
+      "category": "maturity"
+    },
+    {
+      "name": "adg-runtime-readiness",
+      "path": "skills/adg-runtime-readiness/SKILL.md",
+      "category": "runtime"
+    },
+    {
+      "name": "adg-risk-classifier",
+      "path": "skills/adg-risk-classifier/SKILL.md",
+      "category": "delivery-lanes"
+    },
+    {
+      "name": "adg-spike-runner",
+      "path": "skills/adg-spike-runner/SKILL.md",
+      "category": "delivery-lanes"
+    },
+    {
+      "name": "adg-quick-ui-fix",
+      "path": "skills/adg-quick-ui-fix/SKILL.md",
+      "category": "delivery-lanes"
+    },
+    {
+      "name": "adg-signoff-reviewer",
+      "path": "skills/adg-signoff-reviewer/SKILL.md",
+      "category": "delivery-lanes"
+    },
+    {
+      "name": "adg-doc-alignment-checker",
+      "path": "skills/adg-doc-alignment-checker/SKILL.md",
+      "category": "delivery-lanes"
+    }
+  ],
+  "retiredSkills": [
+    "dev-agent-skill-governor",
+    "dev-context-primer",
+    "dev-data-governance-steward",
+    "dev-database-rls-guardian",
+    "dev-design-system-keeper",
+    "dev-documentation-drift-reconciler",
+    "dev-experience-contract-author",
+    "dev-iac-deployment-readiness",
+    "dev-interaction-grammar-governor",
+    "dev-rbac-entitlement-auditor",
+    "dev-release-evidence-curator",
+    "dev-surface-map-cartographer",
+    "dev-technical-contract-librarian",
+    "dev-testing-evidence-curator",
+    "lite-build-runner",
+    "lite-traceability"
+  ]
+}

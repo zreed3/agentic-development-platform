@@ -1,0 +1,47 @@
+{
+  "schema": "bordroom.methodology.bundle.v1",
+  "name": "bord.room V4.1 methodology setup bundle",
+  "status": "copied",
+  "target": "development/setup-repo/_methodology",
+  "copied_sources": [
+    {
+      "source": "development/_system",
+      "target": "dev-system",
+      "kind": "dev-system"
+    },
+    {
+      "source": "skills",
+      "target": "repo-lite-skills",
+      "kind": "repo-local-skills"
+    },
+    {
+      "source": "docs/agentic-application-development-pipeline.md",
+      "target": "docs/agentic-application-development-pipeline.md",
+      "kind": "methodology-doc"
+    },
+    {
+      "source": "documents for review/v4-1-agentic-development-strategy-lite.md",
+      "target": "documents-for-review/v4-1-agentic-development-strategy-lite.md",
+      "kind": "review-note"
+    },
+    {
+      "source": "config/agentic/context-profiles.yaml",
+      "target": "config/agentic/context-profiles.yaml",
+      "kind": "agent-context-config"
+    },
+    {
+      "source": "config/agentic/guardrails.json",
+      "target": "config/agentic/guardrails.json",
+      "kind": "agent-guardrail-config"
+    },
+    {
+      "source": "AGENTS.md",
+      "target": "root/AGENTS.md",
+      "kind": "repo-agent-instructions"
+    }
+  ],
+  "validation": {
+    "bundle": "node development/setup-repo/_methodology/validate-methodology.mjs",
+    "dev_system": "node development/setup-repo/_methodology/dev-system/validate-system.mjs"
+  }
+}

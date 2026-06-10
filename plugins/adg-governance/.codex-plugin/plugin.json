@@ -1,0 +1,24 @@
+{
+  "name": "adg-governance",
+  "version": "0.4.0",
+  "description": "Deterministic ADG governance workflows for bounded agent delivery, route/persona UX truth passes, standards evidence, and auditable deliverables. Shares one policy and rulebook with the Claude Code adapter (.claude-plugin) so both harnesses enforce the same rules in one repo.",
+  "author": {
+    "name": "Otterblock Pty Ltd"
+  },
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "ADG Governance",
+    "shortDescription": "Bound agents to auditable feature slices.",
+    "longDescription": "ADG Governance provides deterministic planning, validation, and evidence workflows that reduce rework by connecting requirements, UX contracts, RBAC, standards, tests, and deliverables before code is edited.",
+    "developerName": "Otterblock Pty Ltd",
+    "category": "Productivity",
+    "capabilities": [
+      "Generate bounded context slices",
+      "Validate requirements-to-UX lineage",
+      "Classify route/persona journey truth",
+      "Map governance controls to standards",
+      "Audit deliverables and bug evidence"
+    ],
+    "defaultPrompt": "Use ADG Governance to plan a bounded, auditable feature slice before implementation."
+  }
+}

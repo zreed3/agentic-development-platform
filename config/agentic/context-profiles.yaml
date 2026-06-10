@@ -18,8 +18,66 @@ defaults:
     - data/backlog.json
     - data/audit/audit-log.jsonl
     - docs/generated/**
+  deliveryFlow:
+    - "Plan: choose one feature slice, inspect the bounded packet, and name the exact items/routes/contracts in scope."
+    - "Design: decide RBAC/scope/state behavior and test seams before editing code."
+    - "Build: edit only the scoped files plus directly related tests; defer generated docs until the slice is stable."
+    - "Test: run targeted checks first, record failed results once, and run full governance only at feature or release checkpoints."
+  verificationPolicy:
+    - "Prefer one consolidated verification event per feature slice instead of repeated micro-events for the same command evidence."
+    - "Use npm run backlog:fail when a test command fails so the backlog is not success-biased."
+    - "Do not run npm run ci:governance for every small item; reserve it for feature completion, process/tooling changes, or pre-push."
 
 workflows:
+  spike:
+    maxFiles: 3
+    maxBacklogEvents: 1
+    maxAuditEvents: 1
+    maxBacklogItems: 4
+    maxRoutes: 3
+    queries:
+      - feature_current_status
+      - routes_by_feature
+    requiredChecks:
+      - no required command
+    guidance:
+      - Use this profile for read-only exploration and options.
+      - Do not claim implementation, verification, release readiness, or signoff from a spike.
+      - Stop and reclassify when edits, sensitive scope, or a signoff claim appears.
+
+  quick-ui:
+    maxFiles: 4
+    maxBacklogEvents: 1
+    maxAuditEvents: 1
+    maxBacklogItems: 6
+    maxRoutes: 4
+    queries:
+      - feature_current_status
+      - routes_by_feature
+    requiredChecks:
+      - nearest targeted check or screenshot when UI-visible
+    guidance:
+      - Use this profile for small UI, copy, docs, and style fixes.
+      - Prefer visual proof or the nearest focused test over full governance.
+      - Upgrade to delivery-slice if behavior, data, auth, or route status changes.
+
+  quick-bugfix:
+    maxFiles: 5
+    maxBacklogEvents: 2
+    maxAuditEvents: 1
+    maxBacklogItems: 8
+    maxRoutes: 4
+    queries:
+      - feature_current_status
+      - backlog_items_by_feature
+      - routes_by_feature
+    requiredChecks:
+      - nearest failing or focused regression check
+    guidance:
+      - Use this profile for obvious low-risk regressions.
+      - Reproduce narrowly when possible, fix the direct cause, then rerun the same focused check.
+      - Upgrade if the fix touches shared policy, schema, auth, RBAC, tenant scope, or production operations.
+
   route:
     maxFiles: 8
     queries:
@@ -108,3 +166,43 @@ workflows:
     guidance:
       - Treat context tooling as bounded, deterministic, and reversible.
       - Do not emit audit events for throwaway tooling experiments.
+
+  delivery-slice:
+    maxFiles: 6
+    maxBacklogEvents: 3
+    maxAuditEvents: 3
+    maxBacklogItems: 16
+    queries:
+      - feature_current_status
+      - backlog_items_by_feature
+      - persona_workflows_by_feature
+      - routes_by_feature
+      - recent_audit
+    requiredChecks:
+      - npm run backlog:validate
+      - npm run test:agent-context
+    guidance:
+      - Use this profile for fast complete-dev work where token cost matters.
+      - Batch plan, design, build, and test into one feature slice before recording evidence.
+      - Run only targeted checks during implementation; run npm run ci:governance only at a feature/release checkpoint or after tooling/policy changes.
+
+  release-signoff:
+    maxFiles: 12
+    maxBacklogEvents: 8
+    maxAuditEvents: 8
+    maxBacklogItems: 24
+    maxRoutes: 24
+    queries:
+      - feature_current_status
+      - backlog_items_by_feature
+      - persona_workflows_by_feature
+      - routes_by_feature
+      - integrations_by_feature
+      - recent_backlog_events
+      - recent_audit
+    requiredChecks:
+      - npm run ci:governance
+    guidance:
+      - Use this profile only for release, RC, GA, or signoff claims.
+      - Every verified or signed-off claim needs traceable evidence, not narrative confidence.
+      - Record explicit deferrals and failed checks before a GO/NO-GO decision.

@@ -18,8 +18,9 @@ invented the model while shipping a real product; this repo lifts the *model* ou
 it can be adopted by any project without dragging the product with it.
 
 Nothing here contains product code, customer data, secrets, or the product's backlog
-content. The seed (`data/seed/backlog.seed.json`) is fresh, self-referential demo
-data describing this platform's own components.
+content. The default seed (`data/seed/backlog.seed.json`) is intentionally empty;
+`data/seed/backlog.demo.seed.json` is fresh, self-referential demo data describing
+this platform's own components.
 
 ## What was reused (and generalized)
 
@@ -56,10 +57,10 @@ guardrails, evals, DORA, context-broker test) rather than the product's broader
 ## Adopting this layer in a new repo
 
 1. Copy `config/`, `scripts/`, `tooling/`, `data/schema.sql`, and `AGENTS.md`.
-2. Replace `data/seed/backlog.seed.json` with the host project's backlog.
+2. Leave `data/seed/backlog.seed.json` empty for a blank install, or replace it with the host project's backlog.
 3. Fill in the "Project Profile" section of `AGENTS.md`.
 4. Install the skills (see [`../../skills/README.md`](../../skills/README.md)).
-5. `npm run setup && npm run ci:governance`.
+5. `npm run setup` for an empty host database, or `npm run ci:governance` for the bundled ADG worked-example checks.
 6. Add host-specific gates (route registry, typecheck, lint, tests) to `ci:governance`.
 
 ## Reversibility

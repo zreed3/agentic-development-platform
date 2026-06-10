@@ -25,7 +25,8 @@ here, follow these rules. When this file is copied into a host repo, fill in the
 ## Repo Shape
 
 - `config/agentic/` — `guardrails.json` (risk-class policy) and
-  `context-profiles.yaml` (per-workflow context budgets).
+  `context-profiles.yaml` (per-workflow context budgets), plus elicitation,
+  maturity, and skill-manifest config.
 - `scripts/` — the governance scripts (backlog engine, context broker, guardrail
   check, eval runner, DORA metrics, audit validate/record).
 - `tooling/agent-context/` — context-broker manifests and smoke test.
@@ -38,19 +39,37 @@ here, follow these rules. When this file is copied into a host repo, fill in the
 
 ## Commands
 
-The platform needs only Node (>= 20) and the `sqlite3` CLI. There are no runtime
-dependencies to install.
+The core platform needs only Node (>= 20) and the `sqlite3` CLI — no runtime
+dependencies. (The optional governance MCP server uses `@modelcontextprotocol/sdk`;
+run `npm install` if you want it. Nothing else in the platform requires it.)
 
-- Build/refresh the database: `npm run setup`
+- Build/refresh an empty database: `npm run setup`
+- Build/refresh the ADG worked-example database: `npm run setup:demo`
 - Validate the backlog: `npm run backlog:validate`
+- Classify work lane / risk: `npm run work:classify -- --intent "..." --file path`
+- Install/update Proofline in a host repo: `npm run adg:install -- --target /path/to/repo` / `npm run adg:update -- --target /path/to/repo`. Add `--client claude` to also install the deterministic Claude Code layer (PreToolUse guardrail hook, `.claude/settings.json`, slash commands, the doctor, and a `CLAUDE.md` generated from the host's `AGENTS.md`), tracked and backed up in `adg-install-state.json`.
+- Conformance doctor (catch adopter drift): `npm run adg:doctor -- --target /path/to/repo`
+- Governance MCP server (read-only `classify_work` / `context_packet`, append-only `record_audit`): `npm run adg:mcp`
 - Validate the audit log: `npm run audit:validate`
 - Record an audit event: `npm run audit:record -- --feature S07 --type status --status in-progress --summary "..."`
 - Check the guardrail policy: `npm run guardrails:check`
 - Run agent evals / AI-security scenarios: `npm run agent:evals`
 - Capture delivery metrics: `npm run metrics:dora`
 - Context broker test: `npm run test:agent-context`
+- Elicitation validation: `npm run elicitation:validate`
+- Elicitation packet: `npm run elicitation:packet -- --feature S07 --format toon`
+- Elicitation graph: `npm run elicitation:graph -- --feature S07 --format toon`
+- Bounded context slice: `npm run context:slice -- --feature S07 --workflow agentic-tooling`
+- UX-as-code validation: `npm run ux:validate`
+- Standards/control validation: `npm run standards:validate`
+- Deliverable audit validation: `npm run deliverable:audit`
+- ADG plugin validation: `npm run plugin:validate`
+- Maturity validation / scorecard: `npm run maturity:validate` / `npm run maturity:score`
+- Skill manifest validation: `npm run skills:validate`
 - **Full gate:** `npm run ci:governance`
 - Context packets: `npm run context:feature -- --feature S07 --workflow route`
+- ADG aliases for host repos / signoff docs: `npm run adg:context`,
+  `npm run adg:validate`, `npm run adg:sync`, `npm run ci:traceability`
 
 ## Guardrails And Risk Classes
 
@@ -66,17 +85,65 @@ Before performing a sensitive action, resolve it against the policy
 Do not weaken the policy to make work proceed; if a gate must be waived, record a
 `decision` audit event with reason, risk, and rollback.
 
+## Proofline v0.9 Delivery Lanes
+
+Use Proofline lanes to keep exploration cheap while preserving evidence for real
+claims. Start material work by classifying it:
+
+```sh
+npm run work:classify -- --intent "small UI spacing fix" --file docs/setup.html
+```
+
+- `L0 spike` — read-only exploration, options, triage, and debugging. No audit or
+  full gate unless a decision or implementation claim is made.
+- `L1 quick-fix` — copy, CSS, small UI state, docs, or obvious low-risk bugs. Use
+  the nearest focused check, screenshot, or smoke proof; do not run full governance.
+- `L2 bounded slice` — normal feature work. Use an ADG context slice, targeted
+  tests, and material evidence.
+- `L3 sensitive` — auth, RBAC, tenant/business scope, schema, migrations, secrets,
+  billing, production, guardrails, audit, or governance tooling. Run the relevant
+  policy gate and negative tests where possible.
+- `L4 release signoff` — pre-push, RC, GA, release, verified, or signed-off claims.
+  Run the full governance/traceability gate.
+
+Host repos install or refresh the portable lane guard with `npm run adg:install`
+and `npm run adg:update`. The installer writes `config/agentic/adg-install-state.json`
+so updates are versioned and managed files can be refreshed without relying on
+chat instructions.
+
+If new evidence raises risk, upgrade the lane immediately. Never downgrade a lane
+without recording why when the work touches sensitive behavior. L0/L1 work may use
+ultra caveman mode: report only lane, files, checks, pass/fail, and next move.
+
 ## SQL-First Backlog
 
-The canonical backlog is `data/backlog.sqlite`, rebuilt from
-`data/seed/backlog.seed.json` and `data/audit/audit-log.jsonl`. Treat the SQLite
+The canonical backlog is `data/backlog.sqlite`, rebuilt from a seed file. Default
+`npm run setup` uses `data/seed/backlog.seed.json`, which is intentionally empty
+for clean installs. Use `npm run setup:demo` to load the self-referential ADG
+worked example and mirror the append-only audit log into SQL. Treat the SQLite
 database as generated and queryable; treat `data/backlog-source.sql` and
-`data/schema.sql` as the reviewable mirrors. Do not invent a parallel spreadsheet or
-Markdown-only backlog — the SQL backlog is the requirements/elicitation system.
+`data/schema.sql` as the reviewable mirrors. Do not invent a parallel spreadsheet
+or Markdown-only backlog — the SQL backlog is the requirements/elicitation system.
+
+Feature elicitation is modeled in `config/agentic/elicitation.json` and mirrored to
+`data/elicitation.sqlite`. Experience contracts are the agent build documents;
+journey matrices and test-first specs are supporting evidence. Advisory gaps are
+allowed, but they must stay structured and queryable.
+
+Requirements-to-UX lineage is projected as a SQL graph: feature → story → use case
+→ requirement → criteria → scenario → experience contract → journey/test evidence.
+Use this graph to keep agents on the relevant build slice, reduce rework, and make
+bugs traceable back to the requirement and UX contract that produced them.
 
 Use the item lifecycle (`backlog:next` → `claim` → `start` → `complete` → `verify`)
 and keep current state *derived* from events, never hand-edited. See
 [`docs/sql-data-layer.md`](docs/sql-data-layer.md).
+
+For complete-dev delivery, work in **feature slices** rather than micro-items:
+plan the slice, design the behavior and checks, build the scoped code/tests, then
+test with targeted commands. Record failed test runs with `npm run backlog:fail`.
+Use one consolidated verification/audit event for a slice when the same command
+evidence covers several tasks, tests, use cases, or success criteria.
 
 ## Append-Only Audit And Traceability
 
@@ -85,6 +152,28 @@ append a corrective `comment` or `decision`. Never put secrets, tokens, or custo
 data in audit events (`audit:validate` will flag likely secrets). Record an audit
 event before finishing material work. Use `$agentic-traceability` for the full
 discipline.
+
+## Evidence Tiers And The Release Gate
+
+Every verify/audit event carries an ordered **evidence tier** —
+`asserted` < `config` < `test` < `live` — that records what *kind* of proof backs
+the claim, not just a path or command:
+
+- `asserted` — a claim with no artifact (the default; never enough to sign off).
+- `config` — the controlling configuration exists (Terraform / env / flag).
+- `test` — an automated check passed.
+- `live` — observed true in the running or deployed system (probe, response header,
+  measured metric, restore drill).
+
+Pass the tier with `--tier` on `backlog:verify` and `audit:record`. A feature is
+declared part of a **sensitive release class** with a `release-class:<class>` label
+(`deploy`, `infra`, `performance`, `runtime-security`, `data-residency`; canonical
+list in `config/agentic/guardrails.json` under `evidence`). The **release gate**
+then enforces one rule: an item under a `release-class:*` feature cannot be signed
+off (status `verified`) on `asserted`/`config`/`test` evidence alone — it requires a
+`live` event. `backlog:validate` fails while the `release_gate_violations` view is
+non-empty. Config existing is not the system being observed correct; do not record
+`verified` for a deploy/infra/runtime claim on `config` evidence.
 
 ## Context Discipline
 
@@ -101,7 +190,20 @@ Before finishing material work, run the relevant gates:
 - `npm run guardrails:check` when tool/action policy changes.
 - `npm run agent:evals` for guardrail, eval, or AI-security changes.
 - `npm run metrics:dora` for delivery-process changes.
-- `npm run ci:governance` before considering work done.
+- `npm run ci:governance` at feature completion, before push, or when process/tooling
+  changes affect governance behavior.
+- `npm run adg:doctor` to check an install has not drifted from ADG's invariants —
+  tracked generated `*.sqlite`/mirrors, a committed-artifact diff gate, volatile
+  provenance (git SHA/timestamp) in tracked docs, or `CLAUDE.md` out of sync with
+  `AGENTS.md`. Folded into `ci:governance`; `adg:install:status` runs it and
+  `adg:update` warns on drift.
+
+During implementation, prefer the smallest targeted checks from the context packet.
+Do not run the full gate after every small item unless the change is high risk.
+Full governance is required for L4 signoff, L3 process/tooling/security changes
+that alter behavior, pre-push, and explicit `verified` / `release-ready` claims.
+It is not required for L0/L1 work unless the classifier or local evidence upgrades
+the lane.
 
 If no reviewer is available, enforce strict solo-dev gates. Any waived gate needs an
 audit `decision` event with reason, risk, and rollback.

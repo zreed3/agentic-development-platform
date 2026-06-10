@@ -1,0 +1,860 @@
+<!doctype html>
+<html lang="en-AU">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta
+      name="description"
+      content="Static HTML view of the Agentic Development Governance plugin SQL engine, derived SQLite views, and read-only plugin command map."
+    >
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='10' fill='%230f766e'/%3E%3Ctext x='32' y='39' font-size='20' font-family='Arial' font-weight='700' text-anchor='middle' fill='white'%3ESQL%3C/text%3E%3C/svg%3E"
+    >
+    <title>ADG Plugin SQL Engine View</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --ink: #172026;
+        --muted: #52616b;
+        --canvas: #f3f6f5;
+        --surface: #ffffff;
+        --soft: #f9fbfa;
+        --line: #d6dedc;
+        --teal: #0f766e;
+        --blue: #2563eb;
+        --gold: #b7791f;
+        --red: #b42318;
+        --violet: #6b21a8;
+        --code: #101820;
+        --code-soft: #1b2a32;
+        --shadow: 0 20px 54px rgba(23, 32, 38, 0.08);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html {
+        scroll-behavior: smooth;
+      }
+
+      body {
+        margin: 0;
+        color: var(--ink);
+        background: var(--canvas);
+        font-family:
+          Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+          "Segoe UI", sans-serif;
+        line-height: 1.55;
+      }
+
+      a {
+        color: var(--teal);
+        text-underline-offset: 0.18em;
+      }
+
+      .shell {
+        width: min(1180px, calc(100% - 32px));
+        margin: 0 auto;
+      }
+
+      .site-header {
+        border-bottom: 1px solid var(--line);
+        background: rgba(255, 255, 255, 0.92);
+        position: sticky;
+        top: 0;
+        z-index: 10;
+        backdrop-filter: blur(12px);
+      }
+
+      .site-header .shell {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 20px;
+        min-height: 68px;
+      }
+
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        color: var(--ink);
+        font-weight: 800;
+        text-decoration: none;
+      }
+
+      .mark {
+        display: grid;
+        place-items: center;
+        width: 42px;
+        height: 38px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        color: var(--teal);
+        background: var(--soft);
+        font-size: 13px;
+        font-weight: 900;
+      }
+
+      nav {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 14px;
+        font-size: 14px;
+      }
+
+      nav a {
+        color: var(--muted);
+        font-weight: 700;
+        text-decoration: none;
+      }
+
+      nav a:hover,
+      nav a:focus-visible {
+        color: var(--ink);
+        text-decoration: underline;
+      }
+
+      main {
+        padding-bottom: 56px;
+      }
+
+      .hero {
+        padding: 58px 0 30px;
+      }
+
+      .hero-grid {
+        display: grid;
+        grid-template-columns: minmax(0, 1.1fr) minmax(320px, 0.9fr);
+        align-items: stretch;
+        gap: 22px;
+      }
+
+      .eyebrow {
+        margin: 0 0 12px;
+        color: var(--teal);
+        font-size: 13px;
+        font-weight: 850;
+        letter-spacing: 0;
+        text-transform: uppercase;
+      }
+
+      h1,
+      h2,
+      h3 {
+        margin: 0;
+        line-height: 1.1;
+        letter-spacing: 0;
+      }
+
+      h1 {
+        max-width: 780px;
+        font-size: clamp(40px, 7vw, 76px);
+      }
+
+      h2 {
+        font-size: clamp(27px, 4vw, 42px);
+      }
+
+      h3 {
+        font-size: 18px;
+      }
+
+      p {
+        margin: 0;
+      }
+
+      .lede {
+        max-width: 760px;
+        margin-top: 18px;
+        color: var(--muted);
+        font-size: 19px;
+      }
+
+      .summary {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 12px;
+        padding: 18px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: var(--surface);
+        box-shadow: var(--shadow);
+      }
+
+      .metric {
+        min-height: 118px;
+        padding: 16px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: var(--soft);
+      }
+
+      .metric strong {
+        display: block;
+        margin-top: 8px;
+        color: var(--ink);
+        font-size: 36px;
+        line-height: 1;
+      }
+
+      .metric span {
+        color: var(--muted);
+        font-size: 13px;
+        font-weight: 750;
+        text-transform: uppercase;
+      }
+
+      section {
+        margin-top: 22px;
+      }
+
+      .panel {
+        padding: 24px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: var(--surface);
+        box-shadow: var(--shadow);
+      }
+
+      .section-head {
+        display: flex;
+        align-items: end;
+        justify-content: space-between;
+        gap: 18px;
+        margin-bottom: 18px;
+      }
+
+      .section-head p {
+        max-width: 620px;
+        color: var(--muted);
+      }
+
+      .pipeline {
+        display: grid;
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+        gap: 12px;
+      }
+
+      .stage {
+        min-height: 168px;
+        padding: 16px;
+        border: 1px solid var(--line);
+        border-left: 4px solid var(--teal);
+        border-radius: 8px;
+        background: var(--soft);
+      }
+
+      .stage:nth-child(2) {
+        border-left-color: var(--blue);
+      }
+
+      .stage:nth-child(3) {
+        border-left-color: var(--gold);
+      }
+
+      .stage:nth-child(4) {
+        border-left-color: var(--violet);
+      }
+
+      .stage:nth-child(5) {
+        border-left-color: var(--red);
+      }
+
+      .stage p {
+        margin-top: 9px;
+        color: var(--muted);
+        font-size: 14px;
+      }
+
+      .stage code,
+      td code,
+      .pill,
+      .inline-code {
+        border: 1px solid #dce5e2;
+        border-radius: 6px;
+        background: #eef4f2;
+        color: #1f2937;
+        padding: 1px 6px;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        font-size: 0.92em;
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 16px;
+      }
+
+      .query-grid {
+        margin-top: 16px;
+      }
+
+      .query-card {
+        min-width: 0;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: var(--soft);
+      }
+
+      .query-card header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 14px 14px 0;
+      }
+
+      .copy-button {
+        min-height: 34px;
+        border: 1px solid var(--teal);
+        border-radius: 8px;
+        color: #ffffff;
+        background: var(--teal);
+        cursor: pointer;
+        font: inherit;
+        font-size: 13px;
+        font-weight: 750;
+        padding: 0 12px;
+      }
+
+      .copy-button.secondary {
+        color: var(--teal);
+        background: transparent;
+      }
+
+      .copy-button:focus-visible {
+        outline: 3px solid rgba(15, 118, 110, 0.24);
+        outline-offset: 2px;
+      }
+
+      pre {
+        margin: 14px;
+        overflow-x: auto;
+        border-radius: 8px;
+        background: var(--code);
+        color: #f7fbfb;
+        white-space: pre;
+      }
+
+      pre code {
+        display: block;
+        min-width: 100%;
+        padding: 14px;
+        color: inherit;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        font-size: 13px;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 14px;
+      }
+
+      .table-wrap {
+        overflow-x: auto;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+      }
+
+      .table-wrap table {
+        min-width: 720px;
+      }
+
+      th,
+      td {
+        border-bottom: 1px solid var(--line);
+        padding: 12px 10px;
+        text-align: left;
+        vertical-align: top;
+      }
+
+      th {
+        color: #344047;
+        background: #f7faf9;
+        font-size: 13px;
+      }
+
+      tr:last-child td {
+        border-bottom: 0;
+      }
+
+      .risk {
+        display: inline-flex;
+        align-items: center;
+        min-height: 24px;
+        border: 1px solid #b7d6cd;
+        border-radius: 999px;
+        color: #0f5d56;
+        background: #e7f5f1;
+        font-size: 12px;
+        font-weight: 800;
+        padding: 0 9px;
+      }
+
+      .note {
+        margin-top: 14px;
+        color: var(--muted);
+        font-size: 14px;
+      }
+
+      .workbench {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 12px;
+        align-items: center;
+        margin-bottom: 14px;
+      }
+
+      label {
+        display: grid;
+        gap: 6px;
+        color: var(--muted);
+        font-size: 13px;
+        font-weight: 800;
+        text-transform: uppercase;
+      }
+
+      select {
+        width: 100%;
+        min-height: 44px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        color: var(--ink);
+        background: var(--surface);
+        font: inherit;
+        padding: 0 12px;
+      }
+
+      footer {
+        padding: 24px 0 40px;
+        color: var(--muted);
+        font-size: 14px;
+      }
+
+      @media (max-width: 980px) {
+        .hero-grid,
+        .pipeline,
+        .grid {
+          grid-template-columns: 1fr;
+        }
+
+        .summary {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+      }
+
+      @media (max-width: 720px) {
+        .site-header {
+          position: static;
+        }
+
+        .site-header .shell,
+        .section-head,
+        .workbench {
+          align-items: stretch;
+          flex-direction: column;
+          grid-template-columns: 1fr;
+        }
+
+        nav {
+          justify-content: flex-start;
+        }
+
+        .summary {
+          grid-template-columns: 1fr;
+        }
+
+        .panel {
+          padding: 18px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="shell">
+        <a class="brand" href="../README.md">
+          <span class="mark">SQL</span>
+          <span>ADG Engine View</span>
+        </a>
+        <nav aria-label="Page sections">
+          <a href="#flow">Flow</a>
+          <a href="#views">Views</a>
+          <a href="#queries">Queries</a>
+          <a href="#plugin">Plugin</a>
+          <a href="#evidence">Evidence</a>
+        </nav>
+      </div>
+    </header>
+
+    <main>
+      <section class="hero">
+        <div class="shell hero-grid">
+          <div>
+            <p class="eyebrow">Agentic Development Governance</p>
+            <h1>Plugin SQL Engine View</h1>
+            <p class="lede">
+              A static map of the local SQLite engine that powers the ADG backlog,
+              audit mirror, bounded context broker, and read-only governance plugin commands.
+            </p>
+          </div>
+          <aside class="summary" aria-label="SQL engine summary">
+            <div class="metric">
+              <span>Canonical inputs</span>
+              <strong>2</strong>
+              <p>Seed JSON and append-only JSONL audit events.</p>
+            </div>
+            <div class="metric">
+              <span>Base tables</span>
+              <strong>13</strong>
+              <p>Planning, routing, audit, lifecycle, and claim state.</p>
+            </div>
+            <div class="metric">
+              <span>Derived views</span>
+              <strong>8</strong>
+              <p>Current status is computed, never hand-edited.</p>
+            </div>
+            <div class="metric">
+              <span>Plugin commands</span>
+              <strong>7</strong>
+              <p>Deterministic read-only workflows exposed by the manifest.</p>
+            </div>
+          </aside>
+        </div>
+      </section>
+
+      <section id="flow" class="shell panel">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">Engine topology</p>
+            <h2>From source text to bounded agent context</h2>
+          </div>
+          <p>
+            The plugin does not own an autonomous runtime. It exposes deterministic commands
+            that read local governance sources and return bounded evidence.
+          </p>
+        </div>
+        <div class="pipeline" aria-label="SQL engine flow">
+          <article class="stage">
+            <h3>Canonical Inputs</h3>
+            <p><code>data/seed/backlog.seed.json</code></p>
+            <p><code>data/audit/audit-log.jsonl</code></p>
+          </article>
+          <article class="stage">
+            <h3>SQL Engine</h3>
+            <p><code>scripts/backlog-db.mjs</code> rebuilds and mutates the local database.</p>
+          </article>
+          <article class="stage">
+            <h3>Queryable Store</h3>
+            <p><code>data/backlog.sqlite</code> is generated, local, and safe to rebuild.</p>
+          </article>
+          <article class="stage">
+            <h3>Derived State</h3>
+            <p>SQLite views fold audit events, item events, claims, routes, and workflows.</p>
+          </article>
+          <article class="stage">
+            <h3>Plugin Surface</h3>
+            <p><code>plugins/adg-governance/agentic-plugin.manifest.json</code> maps commands to risk classes.</p>
+          </article>
+        </div>
+      </section>
+
+      <section id="views" class="shell panel">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">SQLite views</p>
+            <h2>Derived state the plugin can trust</h2>
+          </div>
+          <p>
+            These views are declared by <span class="inline-code">scripts/backlog-db.mjs</span>
+            and mirrored into <span class="inline-code">data/schema.sql</span>.
+          </p>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>View</th>
+                <th>What it shows</th>
+                <th>Primary use</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>backlog_summary</code></td>
+                <td>Feature rows with epic, priority, release band, task count, and test count.</td>
+                <td>Backlog overview and next-work selection.</td>
+              </tr>
+              <tr>
+                <td><code>feature_current_status</code></td>
+                <td>Feature planned status plus latest status and summary from audit events.</td>
+                <td>Truthful feature state without rewriting feature rows.</td>
+              </tr>
+              <tr>
+                <td><code>backlog_item_current_status</code></td>
+                <td>Item lifecycle status, latest event, active claim actor, expiry, and write scope.</td>
+                <td>Claim/start/complete/verify coordination.</td>
+              </tr>
+              <tr>
+                <td><code>feature_tasks</code></td>
+                <td>Task-only slice from <code>feature_items</code>.</td>
+                <td>Implementation work packets.</td>
+              </tr>
+              <tr>
+                <td><code>feature_test_cases</code></td>
+                <td>Test-case slice from <code>feature_items</code>.</td>
+                <td>Targeted verification planning.</td>
+              </tr>
+              <tr>
+                <td><code>feature_success_criteria</code></td>
+                <td>Success-criterion slice from <code>feature_items</code>.</td>
+                <td>Completion evidence checks.</td>
+              </tr>
+              <tr>
+                <td><code>feature_use_cases</code></td>
+                <td>Use-case slice from <code>feature_items</code>.</td>
+                <td>Requirement and UX lineage.</td>
+              </tr>
+              <tr>
+                <td><code>persona_workflows</code></td>
+                <td>Persona, RBAC role, realm, access level, route, and expected state per feature.</td>
+                <td>Route/persona truth passes and UX-as-code checks.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="queries" class="shell panel">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">SQL workbench</p>
+            <h2>Copyable local queries</h2>
+          </div>
+          <p>
+            The HTML file stays static. Copy a command and run it from the repository root
+            after <span class="inline-code">npm run setup</span> or <span class="inline-code">npm run setup:demo</span>.
+          </p>
+        </div>
+
+        <div class="workbench">
+          <label for="query-select">
+            Query preset
+            <select id="query-select">
+              <option value="feature-status">Feature status board</option>
+              <option value="active-claims">Active item claims</option>
+              <option value="plugin-slice">Plugin slice audit trail</option>
+              <option value="routes">Routes and integration inventory</option>
+              <option value="schema">Schema view inventory</option>
+            </select>
+          </label>
+          <button class="copy-button" type="button" data-copy-for="selected-query">Copy query</button>
+        </div>
+
+        <div class="query-card">
+          <header>
+            <h3 id="selected-title">Feature status board</h3>
+            <span class="pill">sqlite3</span>
+          </header>
+          <pre><code id="selected-query">sqlite3 data/backlog.sqlite "select feature_id,title,planned_status,current_status,latest_update_at,latest_update from feature_current_status order by feature_id;"</code></pre>
+        </div>
+
+        <div class="grid query-grid">
+          <article class="query-card">
+            <header>
+              <h3>Backlog summary</h3>
+              <button class="copy-button secondary" type="button" data-copy-for="query-backlog">Copy</button>
+            </header>
+            <pre><code id="query-backlog">sqlite3 data/backlog.sqlite "select id,epic,title,status,release_band,task_count,test_count from backlog_summary order by id;"</code></pre>
+          </article>
+          <article class="query-card">
+            <header>
+              <h3>Item lifecycle board</h3>
+              <button class="copy-button secondary" type="button" data-copy-for="query-items">Copy</button>
+            </header>
+            <pre><code id="query-items">sqlite3 data/backlog.sqlite "select id,feature_id,item_type,current_status,active_claim_actor,active_claim_expires_at from backlog_item_current_status order by feature_id,position;"</code></pre>
+          </article>
+        </div>
+      </section>
+
+      <section id="plugin" class="shell panel">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">Plugin command map</p>
+            <h2>Read-only controls exposed to Codex</h2>
+          </div>
+          <p>
+            The neutral manifest keeps the plugin portable: each command names its script,
+            output contract, and guardrail risk class.
+          </p>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Command</th>
+                <th>Script</th>
+                <th>Risk</th>
+                <th>Output shape</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>elicitation-graph</code></td>
+                <td><code>node scripts/adg-elicitation.mjs graph --feature &lt;feature&gt; --format json</code></td>
+                <td><span class="risk">read-only</span></td>
+                <td>Requirements graph nodes, edges, and dangling-edge failures.</td>
+              </tr>
+              <tr>
+                <td><code>context-slice</code></td>
+                <td><code>node scripts/adg-context.mjs slice --feature &lt;feature&gt; --workflow &lt;workflow&gt;</code></td>
+                <td><span class="risk">read-only</span></td>
+                <td>Bounded packet, efficiency metrics, and stop conditions.</td>
+              </tr>
+              <tr>
+                <td><code>ux-validate</code></td>
+                <td><code>node scripts/adg-ux.mjs validate --feature &lt;feature&gt;</code></td>
+                <td><span class="risk">read-only</span></td>
+                <td>Coverage, journey specificity, evidence, and RBAC/persona gaps.</td>
+              </tr>
+              <tr>
+                <td><code>ux-truth-pass</code></td>
+                <td><code>node scripts/adg-ux.mjs truth-pass --feature &lt;feature&gt; --format markdown --check</code></td>
+                <td><span class="risk">read-only</span></td>
+                <td>Lifecycle classification, route/persona matrix, and downgrade recommendations.</td>
+              </tr>
+              <tr>
+                <td><code>ux-downgrade-report</code></td>
+                <td><code>node scripts/adg-ux.mjs downgrade --feature &lt;feature&gt; --format json</code></td>
+                <td><span class="risk">read-only</span></td>
+                <td>Audit-ready downgrade recommendations for failing route/persona expectations.</td>
+              </tr>
+              <tr>
+                <td><code>standards-matrix</code></td>
+                <td><code>node scripts/adg-standards.mjs matrix --format json</code></td>
+                <td><span class="risk">read-only</span></td>
+                <td>Standards controls, evidence links, and maturity domains.</td>
+              </tr>
+              <tr>
+                <td><code>deliverable-audit</code></td>
+                <td><code>node scripts/adg-deliverable.mjs audit</code></td>
+                <td><span class="risk">read-only</span></td>
+                <td>Deliverable evidence records and traceability failures.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="evidence" class="shell panel">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">Evidence commands</p>
+            <h2>Checks that prove this surface</h2>
+          </div>
+          <p>
+            Use the targeted checks for this HTML view and the plugin manifest.
+            Use the full governance gate only at a feature or release checkpoint.
+          </p>
+        </div>
+        <div class="grid">
+          <article class="query-card">
+            <header>
+              <h3>Plugin validation</h3>
+              <button class="copy-button secondary" type="button" data-copy-for="query-plugin">Copy</button>
+            </header>
+            <pre><code id="query-plugin">npm run plugin:validate</code></pre>
+          </article>
+          <article class="query-card">
+            <header>
+              <h3>Audit validation</h3>
+              <button class="copy-button secondary" type="button" data-copy-for="query-audit">Copy</button>
+            </header>
+            <pre><code id="query-audit">npm run audit:validate</code></pre>
+          </article>
+        </div>
+        <p class="note">
+          Related source docs:
+          <a href="sql-data-layer.md">SQL data layer</a>,
+          <a href="../plugins/adg-governance/agentic-plugin.manifest.json">plugin manifest</a>,
+          <a href="../scripts/backlog-db.mjs">backlog engine</a>.
+        </p>
+      </section>
+    </main>
+
+    <footer class="shell">
+      <p>ADG is local-first: Node, sqlite3, JSON, JSONL, and deterministic shell commands.</p>
+    </footer>
+
+    <script>
+      const presets = {
+        "feature-status": {
+          title: "Feature status board",
+          command:
+            'sqlite3 data/backlog.sqlite "select feature_id,title,planned_status,current_status,latest_update_at,latest_update from feature_current_status order by feature_id;"',
+        },
+        "active-claims": {
+          title: "Active item claims",
+          command:
+            'sqlite3 data/backlog.sqlite "select id,feature_id,item_type,current_status,active_claim_actor,active_claim_expires_at from backlog_item_current_status where active_claim_actor <> \'\' order by active_claim_expires_at;"',
+        },
+        "plugin-slice": {
+          title: "Plugin slice audit trail",
+          command:
+            'sqlite3 data/backlog.sqlite "select occurred_at,event_type,status,summary from audit_events where feature_id = \'S07\' order by occurred_at;"',
+        },
+        "routes": {
+          title: "Routes and integration inventory",
+          command:
+            'sqlite3 data/backlog.sqlite "select \'route\' as kind,feature_id,path as name,status,file_path as source from routes union all select \'integration\',feature_id,name,status,source from integrations order by feature_id,kind,name;"',
+        },
+        "schema": {
+          title: "Schema view inventory",
+          command:
+            'sqlite3 data/backlog.sqlite "select name,type,sql from sqlite_schema where type in (\'table\',\'view\') order by type,name;"',
+        },
+      };
+
+      const select = document.querySelector("#query-select");
+      const title = document.querySelector("#selected-title");
+      const selectedQuery = document.querySelector("#selected-query");
+
+      function updateSelectedQuery() {
+        const preset = presets[select.value];
+        title.textContent = preset.title;
+        selectedQuery.textContent = preset.command;
+      }
+
+      async function copyText(text, button) {
+        try {
+          await navigator.clipboard.writeText(text);
+          const original = button.textContent;
+          button.textContent = "Copied";
+          window.setTimeout(() => {
+            button.textContent = original;
+          }, 1100);
+        } catch {
+          const original = button.textContent;
+          button.textContent = "Select text";
+          window.setTimeout(() => {
+            button.textContent = original;
+          }, 1400);
+        }
+      }
+
+      select.addEventListener("change", updateSelectedQuery);
+      document.querySelectorAll("[data-copy-for]").forEach((button) => {
+        button.addEventListener("click", () => {
+          const target = document.getElementById(button.dataset.copyFor);
+          if (target) copyText(target.textContent.trim(), button);
+        });
+      });
+    </script>
+  </body>
+</html>

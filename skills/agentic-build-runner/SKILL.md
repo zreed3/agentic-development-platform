@@ -12,6 +12,23 @@ evidence.
 
 Load `$agentic-traceability` first. Its audit and append-only rules are mandatory.
 
+## Fast Slice Loop
+
+Use a feature slice as the default unit in complete-dev mode:
+
+1. Plan: choose one bounded feature slice and the exact items/routes/contracts in scope.
+2. Design: decide behavior, RBAC/scope/state expectations, and test seams before editing.
+3. Build: edit the scoped code and directly related tests only.
+4. Test: run targeted checks first; reserve `npm run ci:governance` for feature completion, governance/tooling changes, or pre-push.
+
+Prefer one consolidated verification/audit event when one command set covers several
+tasks, test cases, use cases, or success criteria. If a targeted check fails, record
+it once with:
+
+```sh
+npm run backlog:fail -- --item S07-TASK-01 --summary "Targeted check failed" --evidence "npm run test:agent-context"
+```
+
 ## Build Loop
 
 1. Read `AGENTS.md`.
@@ -41,7 +58,7 @@ Load `$agentic-traceability` first. Its audit and append-only rules are mandator
    npm run backlog:complete -- --item S07-TASK-01 --summary "Implemented profile merge" --evidence scripts/agent-context.mjs
    npm run backlog:verify -- --item S07-TASK-01 --summary "Verified" --evidence "npm run test:agent-context"
    ```
-9. Run the governance gate:
+9. At a feature/release checkpoint, or after process/tooling changes, run the governance gate:
    ```sh
    npm run ci:governance
    ```
@@ -69,5 +86,6 @@ An item is commit-ready only when:
 - implementation matches the item title, tests, success criteria, and persona workflow;
 - relevant negative tests cover scope/role/permission cases where applicable;
 - `npm run backlog:verify` has evidence;
-- `npm run ci:governance` passes;
+- targeted checks from the context packet pass;
+- `npm run ci:governance` passes at the next feature/release checkpoint;
 - a documented audit `decision` explains any gate that was waived.

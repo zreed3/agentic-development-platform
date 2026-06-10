@@ -14,7 +14,7 @@ const root = process.cwd();
 const policyPath = "config/agentic/guardrails.json";
 
 function abs(file) {
-  return path.join(root, file);
+  return path.isAbsolute(file) ? file : path.join(root, file);
 }
 
 function parseArgs(argv) {

@@ -8,6 +8,7 @@ Local tooling for SQL-first context selection. The principle is simple:
 ## Commands
 
 ```sh
+npm run setup:demo
 npm run context:feature -- --feature S07 --workflow route
 npm run context:item -- --item S07-TASK-01 --workflow route --format toon
 npm run context:audit
