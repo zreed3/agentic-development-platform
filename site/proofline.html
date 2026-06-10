@@ -1,0 +1,341 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Proofline Delivery Lanes — ADG Education Site</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <header class="site-header">
+    <div class="wrap">
+      <a href="index.html" class="site-logo">
+        <span class="logo-badge">ADG</span>
+        Agentic Development Governance
+      </a>
+      <nav class="site-nav" aria-label="Primary navigation">
+        <a href="index.html">Overview</a>
+        <a href="context-inversion.html">Context Inversion</a>
+        <a href="proofline.html" class="active">Proofline Lanes</a>
+        <a href="sql-data-layer.html">SQL Data Layer</a>
+        <a href="evidence-gate.html">Evidence &amp; Gate</a>
+        <a href="harness.html">Harness &amp; Doctor</a>
+        <a href="get-started.html">Get Started</a>
+      </nav>
+    </div>
+  </header>
+
+  <section class="hero">
+    <div class="wrap">
+      <div class="hero-inner">
+        <div>
+          <span class="hero-eyebrow">Proofline v0.9</span>
+          <h1>Cheap work stays cheap. Every serious claim has a proof line.</h1>
+          <p>Proofline is ADG's delivery discipline. It separates exploration from claims by classifying every task into a lane before work begins. L0 spikes cost nothing; L4 release signoff requires the full gate.</p>
+        </div>
+        <aside class="hero-stat-box" aria-label="Lane count">
+          <span class="stat-label">Delivery lanes</span>
+          <span class="stat-value">5</span>
+          <span class="stat-note">L0 spike through L4 release signoff. The gate matches the risk — no more, no less.</span>
+        </aside>
+      </div>
+    </div>
+  </section>
+
+  <main class="page-main">
+    <div class="wrap">
+
+      <nav class="breadcrumb" aria-label="Breadcrumb">
+        <a href="index.html">Overview</a>
+        <span class="sep">/</span>
+        <span class="current">Proofline Delivery Lanes</span>
+      </nav>
+
+      <!-- Core idea -->
+      <section class="section panel" id="core-idea">
+        <div class="section-heading">
+          <h2>Classify first</h2>
+          <span class="section-tag">The discipline</span>
+        </div>
+        <p class="lead">The goal is not to run full governance on every small change. The goal is to separate <em>exploration</em> from <em>claims</em>.</p>
+        <div class="pipeline">
+          <div class="pipeline-step">
+            <span class="step-label">Step 1</span>
+            <span class="step-name">Classify</span>
+          </div>
+          <div class="pipeline-step">
+            <span class="step-label">Step 2</span>
+            <span class="step-name">Choose lane</span>
+          </div>
+          <div class="pipeline-step">
+            <span class="step-label">Step 3</span>
+            <span class="step-name">Bounded context</span>
+          </div>
+          <div class="pipeline-step">
+            <span class="step-label">Step 4</span>
+            <span class="step-name">Lane-sized checks</span>
+          </div>
+          <div class="pipeline-step">
+            <span class="step-label">Step 5</span>
+            <span class="step-name">Upgrade if risk appears</span>
+          </div>
+        </div>
+        <div class="callout" style="margin-top:20px">
+          <p><strong>The classifier is deterministic and conservative.</strong> If local evidence raises risk, upgrade the lane immediately. The lane cannot be <em>downgraded</em> once sensitive work is discovered — only upgraded.</p>
+        </div>
+      </section>
+
+      <!-- The five lanes -->
+      <section class="section panel" id="lanes">
+        <div class="section-heading">
+          <h2>The five lanes</h2>
+          <span class="section-tag">Reference</span>
+        </div>
+
+        <div class="grid-2" style="margin-bottom:0">
+
+          <article class="card card-blue" style="display:flex;flex-direction:column;gap:10px">
+            <div style="display:flex;align-items:center;gap:10px">
+              <span class="lane-pill l0">L0</span>
+              <h3 style="margin:0">Spike</h3>
+            </div>
+            <p><strong>Use for:</strong> Read-only exploration, options, triage, debugging.</p>
+            <p><strong>Evidence required:</strong> Notes only. No implementation or signoff claim.</p>
+            <p><strong>L0 can say:</strong> "observed", "checked". It cannot say "verified", "release-ready", or "signed-off" — those words require L4.</p>
+          </article>
+
+          <article class="card card-violet" style="display:flex;flex-direction:column;gap:10px">
+            <div style="display:flex;align-items:center;gap:10px">
+              <span class="lane-pill l1">L1</span>
+              <h3 style="margin:0">Quick-fix</h3>
+            </div>
+            <p><strong>Use for:</strong> Copy, CSS, small UI state, docs, obvious low-risk bugs.</p>
+            <p><strong>Evidence required:</strong> Nearest check, screenshot, or smoke proof.</p>
+            <p><strong>L1 can say:</strong> "changed", "observed". Full governance gate is not required.</p>
+          </article>
+
+          <article class="card card-amber" style="display:flex;flex-direction:column;gap:10px">
+            <div style="display:flex;align-items:center;gap:10px">
+              <span class="lane-pill l2">L2</span>
+              <h3 style="margin:0">Bounded slice</h3>
+            </div>
+            <p><strong>Use for:</strong> Normal scoped implementation — a feature slice with clear boundaries.</p>
+            <p><strong>Evidence required:</strong> ADG context slice plus targeted tests.</p>
+            <p><strong>Example:</strong> This education site (F-F) is classified L2 — docs/marketing, no policy change.</p>
+          </article>
+
+          <article class="card card-amber" style="display:flex;flex-direction:column;gap:10px">
+            <div style="display:flex;align-items:center;gap:10px">
+              <span class="lane-pill l3">L3</span>
+              <h3 style="margin:0">Sensitive</h3>
+            </div>
+            <p><strong>Use for:</strong> Auth, RBAC, tenant/business scope, schema, migrations, secrets, billing, production, guardrails, audit, governance tooling, CI policy.</p>
+            <p><strong>Evidence required:</strong> Policy-specific gate, negative tests where applicable, and ADG validation.</p>
+          </article>
+
+        </div>
+
+        <article class="card card-green" style="margin-top:16px;display:flex;flex-direction:column;gap:10px">
+          <div style="display:flex;align-items:center;gap:10px">
+            <span class="lane-pill l4">L4</span>
+            <h3 style="margin:0">Release signoff</h3>
+          </div>
+          <p><strong>Use for:</strong> GitHub push/PR, pre-push, release candidate, GA, release, verified, release-ready, or signed-off claims.</p>
+          <p><strong>Evidence required:</strong> Full governance / traceability gate (<code>npm run ci:governance</code>). GitHub-bound changes must always pass through here.</p>
+          <pre style="margin-top:10px"><code>npm run adg:guard -- --event github-push --intent "GitHub update pre-push"
+npm run ci:governance</code></pre>
+        </article>
+      </section>
+
+      <!-- Lanes at a glance table -->
+      <section class="section panel" id="lanes-table">
+        <div class="section-heading">
+          <h2>Lanes at a glance</h2>
+          <span class="section-tag">Quick reference</span>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Lane</th>
+                <th>Use for</th>
+                <th>Evidence</th>
+                <th>Full gate?</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><span class="lane-pill l0">L0</span> Spike</td>
+                <td>Exploration, triage, debugging</td>
+                <td>Notes only</td>
+                <td>No</td>
+              </tr>
+              <tr>
+                <td><span class="lane-pill l1">L1</span> Quick-fix</td>
+                <td>Copy, CSS, docs, obvious low-risk bugs</td>
+                <td>Nearest check or smoke proof</td>
+                <td>No</td>
+              </tr>
+              <tr>
+                <td><span class="lane-pill l2">L2</span> Bounded slice</td>
+                <td>Normal scoped implementation</td>
+                <td>ADG context slice + targeted tests</td>
+                <td>No (checkpoint only)</td>
+              </tr>
+              <tr>
+                <td><span class="lane-pill l3">L3</span> Sensitive</td>
+                <td>Auth, RBAC, schema, secrets, billing, governance</td>
+                <td>Policy gate + negative tests + ADG validation</td>
+                <td>On policy/schema/hook change</td>
+              </tr>
+              <tr>
+                <td><span class="lane-pill l4">L4</span> Release signoff</td>
+                <td>GitHub push, PR, RC, GA, verified claims</td>
+                <td>Full governance gate</td>
+                <td>Yes — always</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Work item classification example -->
+      <section class="section panel" id="classification-example">
+        <div class="section-heading">
+          <h2>Real classification example</h2>
+          <span class="section-tag">v0.9.2 work items</span>
+        </div>
+        <p style="margin-bottom:16px;color:var(--muted)">The ADG v0.9.2 plan used <code>work:classify</code> on each work item before development. These are the actual lane assignments:</p>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Item</th>
+                <th>Description</th>
+                <th>Lane</th>
+                <th>Why</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>F-A</td>
+                <td>Evidence tiers + release rule</td>
+                <td><span class="lane-pill l4">L4</span></td>
+                <td>Schema + release-gate semantics</td>
+              </tr>
+              <tr>
+                <td>F-B</td>
+                <td>Adopter conformance doctor</td>
+                <td><span class="lane-pill l3">L3</span></td>
+                <td>Governance tooling</td>
+              </tr>
+              <tr>
+                <td>F-C</td>
+                <td>Claude Code plugin</td>
+                <td><span class="lane-pill l3">L3</span></td>
+                <td>Enforces guardrails in-harness</td>
+              </tr>
+              <tr>
+                <td>F-D</td>
+                <td>CLAUDE.md generated mirror</td>
+                <td><span class="lane-pill l3">L3</span></td>
+                <td>Touches AGENTS.md</td>
+              </tr>
+              <tr>
+                <td>F-E</td>
+                <td>Packaging + install/update</td>
+                <td><span class="lane-pill l3">L3</span></td>
+                <td>Mutates host repos</td>
+              </tr>
+              <tr>
+                <td>F-F</td>
+                <td>cPanel education site (this site)</td>
+                <td><span class="lane-pill l2">L2</span></td>
+                <td>Docs/marketing, no policy change</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Signoff boundary -->
+      <section class="section panel" id="signoff-boundary">
+        <div class="section-heading">
+          <h2>The signoff boundary</h2>
+          <span class="section-tag">What "done" means</span>
+        </div>
+        <div class="grid-2">
+          <article class="card card-red">
+            <h3>L0 and L1 can say</h3>
+            <ul>
+              <li>"observed"</li>
+              <li>"changed"</li>
+              <li>"checked"</li>
+            </ul>
+            <p style="margin-top:8px">They cannot say <strong>"verified"</strong>, <strong>"release-ready"</strong>, or <strong>"signed-off"</strong>. Those words require L4.</p>
+          </article>
+          <article class="card card-green">
+            <h3>L4 can say</h3>
+            <ul>
+              <li>"verified"</li>
+              <li>"release-ready"</li>
+              <li>"signed-off"</li>
+            </ul>
+            <p style="margin-top:8px">Only after the full governance gate has passed. <code>npm run ci:governance</code> must succeed before any of these claims are recorded in the audit log.</p>
+          </article>
+        </div>
+      </section>
+
+      <!-- Ultra caveman mode -->
+      <section class="section panel" id="output-discipline">
+        <div class="section-heading">
+          <h2>Output discipline (L0/L1)</h2>
+          <span class="section-tag">Low-overhead format</span>
+        </div>
+        <p style="margin-bottom:16px;color:var(--muted)">For L0 and L1, keep agent output short. Do not paste large context packets, generated mirrors, or full test logs unless the failure needs them.</p>
+        <pre><code>lane L1 quick-fix
+files docs/setup.html
+checks screenshot
+full gate no
+next done</code></pre>
+      </section>
+
+      <!-- Commands -->
+      <section class="section panel" id="commands">
+        <div class="section-heading">
+          <h2>Classification commands</h2>
+          <span class="section-tag">Usage</span>
+        </div>
+        <pre><code># Classify a task before starting
+npm run work:classify -- --intent "quick css spacing fix" --file docs/setup.html
+npm run work:classify -- --intent "change tenant permission checks" --file src/auth.ts --format json
+
+# Gate before a GitHub push
+npm run adg:guard -- --event github-push --intent "GitHub update pre-push"
+npm run ci:governance
+
+# Install Proofline into a host repo
+npm run adg:install -- --target /path/to/host-repo
+
+# Check install state
+npm run adg:install:status -- --target /path/to/host-repo --format json</code></pre>
+      </section>
+
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <div class="wrap">
+      <p>&copy; 2026 Otterblock Pty Ltd &middot; ABN 91 614 672 794. Source-available under the PolyForm Noncommercial License.</p>
+      <nav class="footer-links" aria-label="Footer navigation">
+        <a href="index.html">Overview</a>
+        <a href="proofline.html">Proofline</a>
+        <a href="sql-data-layer.html">SQL Layer</a>
+        <a href="get-started.html">Get Started</a>
+      </nav>
+    </div>
+  </footer>
+
+</body>
+</html>

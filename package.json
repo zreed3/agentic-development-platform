@@ -72,6 +72,7 @@
     "maturity:score": "node scripts/adg-maturity.mjs score",
     "maturity:report": "node scripts/adg-maturity.mjs report",
     "skills:validate": "node scripts/adg-skills.mjs validate",
+    "site:build": "node -e \"const fs=require('fs'),path=require('path');const src='site',dst='dist-site';fs.rmSync(dst,{recursive:true,force:true});fs.mkdirSync(dst,{recursive:true});for(const f of fs.readdirSync(src)){fs.copyFileSync(path.join(src,f),path.join(dst,f));}console.log('dist-site/ built from site/');\"",
     "test:delivery-lanes": "node tooling/delivery-lanes/test-delivery-lanes.mjs",
     "ci:traceability": "npm run ci:governance",
     "ci:governance": "npm run adg:guard -- --event traceability --intent \"governance gate\" && npm run setup:demo && npm run backlog:validate && npm run audit:validate && npm run guardrails:check && npm run agent:evals && npm run metrics:dora && npm run elicitation:validate && npm run elicitation:graph -- --feature S07 && npm run context:slice -- --feature S07 --workflow agentic-tooling && npm run ux:validate && npm run standards:validate && npm run deliverable:audit && npm run plugin:validate && npm run maturity:validate && npm run skills:validate && npm run test:delivery-lanes && npm run test:adg-install && npm run test:agent-context && npm run test:adg-as-code && npm run test:backlog-evidence-gate && npm run adg:doctor && npm run test:adg-doctor && npm run test:adg-install-claude && npm run test:adg-codex-hook && npm run test:adg-mcp",

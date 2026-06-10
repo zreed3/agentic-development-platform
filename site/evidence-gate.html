@@ -1,0 +1,256 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Evidence Tiers &amp; Release Gate — ADG Education Site</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <header class="site-header">
+    <div class="wrap">
+      <a href="index.html" class="site-logo">
+        <span class="logo-badge">ADG</span>
+        Agentic Development Governance
+      </a>
+      <nav class="site-nav" aria-label="Primary navigation">
+        <a href="index.html">Overview</a>
+        <a href="context-inversion.html">Context Inversion</a>
+        <a href="proofline.html">Proofline Lanes</a>
+        <a href="sql-data-layer.html">SQL Data Layer</a>
+        <a href="evidence-gate.html" class="active">Evidence &amp; Gate</a>
+        <a href="harness.html">Harness &amp; Doctor</a>
+        <a href="get-started.html">Get Started</a>
+      </nav>
+    </div>
+  </header>
+
+  <section class="hero">
+    <div class="wrap">
+      <div class="hero-inner">
+        <div>
+          <span class="hero-eyebrow">Evidence tiers &amp; release gate</span>
+          <h1>Config-existence is not proof. The gate can tell the difference.</h1>
+          <p>ADG's evidence model has four ordered tiers. Sensitive release classes — deploy, infra, performance, data-residency, runtime-security — cannot be signed off on config or test alone. They require a <code>live</code> event.</p>
+        </div>
+        <aside class="hero-stat-box" aria-label="Evidence tiers">
+          <span class="stat-label">Evidence tiers</span>
+          <span class="stat-value">4</span>
+          <span class="stat-note">asserted &lt; config &lt; test &lt; live. Only <code>live</code> evidence closes a sensitive release claim.</span>
+        </aside>
+      </div>
+    </div>
+  </section>
+
+  <main class="page-main">
+    <div class="wrap">
+
+      <nav class="breadcrumb" aria-label="Breadcrumb">
+        <a href="index.html">Overview</a>
+        <span class="sep">/</span>
+        <span class="current">Evidence Tiers &amp; Release Gate</span>
+      </nav>
+
+      <!-- Why this matters -->
+      <section class="section panel" id="why">
+        <div class="section-heading">
+          <h2>Why evidence tiers exist</h2>
+          <span class="section-tag">Motivation</span>
+        </div>
+        <p class="lead">This problem emerged from real first-party use of ADG on a production system. A deployment task was recorded <strong>verified</strong> based solely on a Terraform config declaring the correct region. It was wrong.</p>
+
+        <div class="callout amber">
+          <p><strong>The concrete failure:</strong> A task to pin serverless functions to the Sydney region (co-located with an Australian database) was verified on the strength of the config declaring <code>syd1</code>. Production HAR captures later proved the functions were executing in <code>iad1</code> (US East) while the database sat in Sydney — every query crossing the Pacific, producing 4–6 second pages. The audit trail looked complete and honest; the claim was simply <strong>false at the only layer that mattered</strong>.</p>
+        </div>
+
+        <p style="margin-top:16px;color:var(--muted)">The backlog lifecycle (<code>claim → … → verify</code>) recorded evidence as a free-form command or path, with no distinction between <em>"the configuration that should make this true exists"</em> and <em>"this was observed true in the running system."</em> Evidence tiers close that gap.</p>
+      </section>
+
+      <!-- The four tiers -->
+      <section class="section panel" id="tiers">
+        <div class="section-heading">
+          <h2>The four evidence tiers</h2>
+          <span class="section-tag">Ordered scale</span>
+        </div>
+
+        <div class="tier-bar" style="margin-bottom:20px">
+          <div class="tier-seg">
+            <span class="tier-name">asserted</span>
+            <span class="tier-desc">Lowest</span>
+          </div>
+          <div class="tier-seg">
+            <span class="tier-name">config</span>
+            <span class="tier-desc">Configuration exists</span>
+          </div>
+          <div class="tier-seg">
+            <span class="tier-name">test</span>
+            <span class="tier-desc">Automated check passed</span>
+          </div>
+          <div class="tier-seg">
+            <span class="tier-name">live</span>
+            <span class="tier-desc">Highest — observed true</span>
+          </div>
+        </div>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Tier</th>
+                <th>Meaning</th>
+                <th>Examples</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>asserted</code></td>
+                <td>A human or agent claim with no supporting artifact.</td>
+                <td>"I believe this is done." A prose note in an audit event.</td>
+              </tr>
+              <tr>
+                <td><code>config</code></td>
+                <td>The controlling configuration exists — Terraform, environment variable, feature flag.</td>
+                <td>Terraform plan shows <code>syd1</code>. A <code>.env</code> setting is present. A flag is enabled in config.</td>
+              </tr>
+              <tr>
+                <td><code>test</code></td>
+                <td>An automated check passed — unit test, integration test, governance gate.</td>
+                <td><code>npm run ci:governance</code> passed. A test suite is green. A contract test validates the API shape.</td>
+              </tr>
+              <tr>
+                <td><code>live</code></td>
+                <td>Observed true in the running or deployed system.</td>
+                <td>A probe confirms the region. A response header shows the correct datacenter. A measured latency metric. A restore drill succeeded.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- The release gate rule -->
+      <section class="section panel" id="release-gate">
+        <div class="section-heading">
+          <h2>The release gate rule</h2>
+          <span class="section-tag">When <code>live</code> is required</span>
+        </div>
+        <p class="lead">Claims in <strong>declared-sensitive classes</strong> cannot gate a release on <code>config</code> or <code>test</code> alone. They require a <code>live</code> evidence event.</p>
+
+        <div class="callout green" style="margin-bottom:20px">
+          <p>This is a few-line addition to the schema — an enum column plus one view predicate on the release-gate view. It directly prevents the class of false-confidence failure described above.</p>
+        </div>
+
+        <h3 style="margin-bottom:12px">Sensitive release classes requiring <code>live</code> evidence</h3>
+        <div class="grid-3">
+          <article class="card card-red">
+            <h3>deploy</h3>
+            <p>Any claim that a deployment completed successfully in a real environment.</p>
+          </article>
+          <article class="card card-red">
+            <h3>infra</h3>
+            <p>Infrastructure configuration that affects availability, region, or capacity.</p>
+          </article>
+          <article class="card card-red">
+            <h3>performance</h3>
+            <p>Performance targets or SLAs (latency, throughput, page load time).</p>
+          </article>
+          <article class="card card-red">
+            <h3>runtime-security</h3>
+            <p>Security controls active in the running system (TLS, headers, firewall rules).</p>
+          </article>
+          <article class="card card-red">
+            <h3>data-residency</h3>
+            <p>Data locality or sovereignty claims (region, jurisdiction, transfer restrictions).</p>
+          </article>
+        </div>
+      </section>
+
+      <!-- How to record evidence -->
+      <section class="section panel" id="recording">
+        <div class="section-heading">
+          <h2>Recording evidence in the audit log</h2>
+          <span class="section-tag">Commands</span>
+        </div>
+        <p style="margin-bottom:16px;color:var(--muted)">Evidence is attached to backlog items and audit events. Always be specific — a vague note is <code>asserted</code> tier at best.</p>
+
+        <pre><code># Record a verified item with explicit evidence tier
+npm run backlog:verify -- --item S07-TASK-01 \
+  --summary "Context broker smoke test passes" \
+  --evidence "npm run test:agent-context" \
+  --evidence-tier test
+
+# Record a live-tier event in the audit log
+npm run audit:record -- \
+  --feature S07 \
+  --type evidence \
+  --status verified \
+  --summary "Confirmed broker returns bounded packets in production-equivalent run" \
+  --evidence "npm run test:agent-context" \
+  --evidence-tier live
+
+# A deployment claim with only config-tier evidence — will FAIL the release gate
+# for sensitive classes until a live event is also recorded
+npm run backlog:verify -- --item S04-TASK-01 \
+  --summary "Sydney region configured" \
+  --evidence "terraform plan" \
+  --evidence-tier config</code></pre>
+
+        <div class="callout" style="margin-top:16px">
+          <p><strong>Rule:</strong> Never record failed gates as passing. If a check fails, record it as a failure event — do not summarize it away. The audit trail is only useful if it is honest about failures.</p>
+        </div>
+      </section>
+
+      <!-- The full governance gate -->
+      <section class="section panel" id="full-gate">
+        <div class="section-heading">
+          <h2>The full governance gate</h2>
+          <span class="section-tag">ci:governance</span>
+        </div>
+        <p class="lead">The full gate is required at <span class="lane-pill l4">L4</span> and at any checkpoint where a policy, schema, or governance-behavior change has occurred.</p>
+
+        <pre><code>npm run ci:governance</code></pre>
+
+        <p style="margin-top:16px;margin-bottom:12px;color:var(--muted)">The gate runs all of these in sequence, and fails at the first error:</p>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Command</th>
+                <th>Checks</th>
+                <th>Required when</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td><code>backlog:validate</code></td><td>Every feature has tasks and test cases; no orphaned items.</td><td>After any backlog changes.</td></tr>
+              <tr><td><code>audit:validate</code></td><td>Audit log is parseable, IDs are unique, no obvious secrets.</td><td>After any audit append.</td></tr>
+              <tr><td><code>guardrails:check</code></td><td>Policy is valid, deny-by-default is set, risk classes are consistent.</td><td>When tool/action policy changes.</td></tr>
+              <tr><td><code>agent:evals</code></td><td>All eval scenarios pass their expected security outcomes.</td><td>When guardrail policy or AI-security behavior changes.</td></tr>
+              <tr><td><code>metrics:dora</code></td><td>DORA-style delivery metrics can be derived from git + audit.</td><td>For delivery-process changes.</td></tr>
+              <tr><td><code>test:agent-context</code></td><td>Context broker emits valid, bounded packets; forbidden files are excluded.</td><td>Any context-broker or profile change.</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="callout amber" style="margin-top:16px">
+          <p><strong>Waived gates need an audit decision.</strong> If a gate must be skipped, record a <code>decision</code> event in the audit log with reason, risk, and rollback. Do not weaken the policy to make work proceed.</p>
+        </div>
+      </section>
+
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <div class="wrap">
+      <p>&copy; 2026 Otterblock Pty Ltd &middot; ABN 91 614 672 794. Source-available under the PolyForm Noncommercial License.</p>
+      <nav class="footer-links" aria-label="Footer navigation">
+        <a href="index.html">Overview</a>
+        <a href="proofline.html">Proofline</a>
+        <a href="sql-data-layer.html">SQL Layer</a>
+        <a href="get-started.html">Get Started</a>
+      </nav>
+    </div>
+  </footer>
+
+</body>
+</html>

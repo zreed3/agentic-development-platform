@@ -22,3 +22,6 @@ data/delivery-metrics.json
 
 # Generated deliverables (PDF exports etc.). Sources stay tracked; outputs do not.
 output/
+
+# Education site build output (assembled from site/ by npm run site:build)
+dist-site/
