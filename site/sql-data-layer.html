@@ -1,0 +1,320 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SQL Data Layer — ADG Education Site</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <header class="site-header">
+    <div class="wrap">
+      <a href="index.html" class="site-logo">
+        <span class="logo-badge">ADG</span>
+        Agentic Development Governance
+      </a>
+      <nav class="site-nav" aria-label="Primary navigation">
+        <a href="index.html">Overview</a>
+        <a href="context-inversion.html">Context Inversion</a>
+        <a href="proofline.html">Proofline Lanes</a>
+        <a href="sql-data-layer.html" class="active">SQL Data Layer</a>
+        <a href="evidence-gate.html">Evidence &amp; Gate</a>
+        <a href="harness.html">Harness &amp; Doctor</a>
+        <a href="get-started.html">Get Started</a>
+      </nav>
+    </div>
+  </header>
+
+  <section class="hero">
+    <div class="wrap">
+      <div class="hero-inner">
+        <div>
+          <span class="hero-eyebrow">SQL-first backlog</span>
+          <h1>SQLite selects the context. SQLite is queried, never pasted.</h1>
+          <p>The platform's "SQL server" is a single local SQLite database — no daemon, no network, no driver. It is rebuilt from tracked text sources, queried by the context broker, and treated as generated rather than canonical.</p>
+        </div>
+        <aside class="hero-stat-box" aria-label="Technology stack">
+          <span class="stat-label">Runtime requirements</span>
+          <span class="stat-value">2</span>
+          <span class="stat-note">Node &ge;20 and the <code>sqlite3</code> CLI. No npm install, no database server, no daemon.</span>
+        </aside>
+      </div>
+    </div>
+  </section>
+
+  <main class="page-main">
+    <div class="wrap">
+
+      <nav class="breadcrumb" aria-label="Breadcrumb">
+        <a href="index.html">Overview</a>
+        <span class="sep">/</span>
+        <span class="current">SQL Data Layer</span>
+      </nav>
+
+      <!-- Canonical vs generated -->
+      <section class="section panel" id="canonical-vs-generated">
+        <div class="section-heading">
+          <h2>Canonical vs generated</h2>
+          <span class="section-tag">The core split</span>
+        </div>
+        <p class="lead">A deliberate split keeps the database cheap to trust and easy to review. There are three layers, and knowing which is which matters.</p>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Layer</th>
+                <th>Files</th>
+                <th>Role</th>
+                <th>Version-controlled?</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Canonical, human-editable</td>
+                <td><code>data/seed/backlog.seed.json</code>, <code>data/audit/audit-log.jsonl</code></td>
+                <td>The source of truth you edit.</td>
+                <td>Yes — always committed</td>
+              </tr>
+              <tr>
+                <td>Generated, queryable</td>
+                <td><code>data/backlog.sqlite</code></td>
+                <td>Rebuilt from the canonical sources. What you <em>query</em>.</td>
+                <td>No — gitignored, rebuilt by <code>npm run setup</code></td>
+              </tr>
+              <tr>
+                <td>Generated, reviewable</td>
+                <td><code>data/backlog-source.sql</code> (<code>.dump</code>), <code>data/schema.sql</code> (<code>.schema</code>)</td>
+                <td>Text mirrors for diffs and code review.</td>
+                <td>Yes — committed as review artifacts</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="callout amber" style="margin-top:16px">
+          <p><strong>Key rule:</strong> <code>data/backlog.sqlite</code> is <em>not</em> version-controlled. Neither are any other generated <code>*.sqlite</code> databases. If an adopter starts committing these files, the <code>adg:doctor</code> conformance check will flag it as a violation — it re-introduces exactly the anti-pattern ADG was built to prevent.</p>
+        </div>
+      </section>
+
+      <!-- Schema overview -->
+      <section class="section panel" id="schema">
+        <div class="section-heading">
+          <h2>Schema at a glance</h2>
+          <span class="section-tag">Tables and views</span>
+        </div>
+
+        <div class="grid-2" style="margin-bottom:16px">
+          <div>
+            <h3 style="margin-bottom:12px;font-size:0.9rem;text-transform:uppercase;letter-spacing:0.05em;color:var(--muted)">Planning tables</h3>
+            <div style="display:grid;gap:6px">
+              <div class="card" style="padding:12px">
+                <code>epics</code>, <code>features</code>, <code>feature_dependencies</code>
+                <p style="margin-top:4px;font-size:0.83rem">The backlog hierarchy.</p>
+              </div>
+              <div class="card" style="padding:12px">
+                <code>feature_items</code>
+                <p style="margin-top:4px;font-size:0.83rem">Tasks, test cases, success criteria, and use cases — one table, discriminated by <code>item_type</code>.</p>
+              </div>
+              <div class="card" style="padding:12px">
+                <code>feature_persona_workflows</code>
+                <p style="margin-top:4px;font-size:0.83rem">Persona / RBAC / access-level expectations per feature.</p>
+              </div>
+              <div class="card" style="padding:12px">
+                <code>routes</code>, <code>integrations</code>
+                <p style="margin-top:4px;font-size:0.83rem">Surface inventory the context broker reads.</p>
+              </div>
+            </div>
+          </div>
+          <div>
+            <h3 style="margin-bottom:12px;font-size:0.9rem;text-transform:uppercase;letter-spacing:0.05em;color:var(--muted)">Execution &amp; audit tables</h3>
+            <div style="display:grid;gap:6px">
+              <div class="card" style="padding:12px">
+                <code>backlog_item_events</code>
+                <p style="margin-top:4px;font-size:0.83rem">Append-only item lifecycle events (claim/start/complete/verify/…).</p>
+              </div>
+              <div class="card" style="padding:12px">
+                <code>backlog_item_claims</code>
+                <p style="margin-top:4px;font-size:0.83rem">Current claim per item, with TTL and write scope.</p>
+              </div>
+              <div class="card" style="padding:12px">
+                <code>audit_events</code>
+                <p style="margin-top:4px;font-size:0.83rem">SQL mirror of <code>data/audit/audit-log.jsonl</code>. Never edited; corrected by appending.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <h3 style="margin-bottom:12px;font-size:0.9rem;text-transform:uppercase;letter-spacing:0.05em;color:var(--muted)">Derived views — current state is always derived, never stored</h3>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>View</th>
+                <th>What it derives</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td><code>feature_current_status</code></td><td>Planned status + current status folded from the latest audit event.</td></tr>
+              <tr><td><code>backlog_item_current_status</code></td><td>Base status + current status from events + active claim, with claim expiry handled in SQL.</td></tr>
+              <tr><td><code>persona_workflows</code></td><td>Flattened persona/RBAC/workflow expectations.</td></tr>
+              <tr><td><code>feature_tasks</code>, <code>feature_test_cases</code>, <code>feature_success_criteria</code>, <code>feature_use_cases</code></td><td>Typed views over <code>feature_items</code>.</td></tr>
+              <tr><td><code>backlog_summary</code></td><td>Aggregate count of items by status across all features.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Item lifecycle -->
+      <section class="section panel" id="lifecycle">
+        <div class="section-heading">
+          <h2>The item lifecycle</h2>
+          <span class="section-tag">Claim model</span>
+        </div>
+        <p class="lead">Items move through a claim/transition model recorded as immutable events. The current status is computed from those events — the history is never overwritten.</p>
+
+        <div class="pipeline" style="margin-bottom:20px">
+          <div class="pipeline-step">
+            <span class="step-label">1</span>
+            <span class="step-name">backlog:next</span>
+          </div>
+          <div class="pipeline-step">
+            <span class="step-label">2</span>
+            <span class="step-name">claim</span>
+          </div>
+          <div class="pipeline-step">
+            <span class="step-label">3</span>
+            <span class="step-name">start</span>
+          </div>
+          <div class="pipeline-step">
+            <span class="step-label">4</span>
+            <span class="step-name">complete</span>
+          </div>
+          <div class="pipeline-step">
+            <span class="step-label">5</span>
+            <span class="step-name">verify</span>
+          </div>
+        </div>
+
+        <pre><code>npm run backlog:next   -- --feature S07 --type task --limit 5
+npm run backlog:show   -- --item S07-TASK-01
+npm run backlog:claim  -- --item S07-TASK-01 --actor agent --ttl-hours 8 --scope scripts/agent-context.mjs
+npm run backlog:start  -- --item S07-TASK-01 --summary "Started"
+npm run backlog:complete -- --item S07-TASK-01 --summary "Implemented" --evidence scripts/agent-context.mjs
+npm run backlog:verify -- --item S07-TASK-01 --summary "Verified" --evidence "npm run test:agent-context"
+npm run backlog:release -- --item S07-TASK-01    # give up a claim
+npm run backlog:active                            # list unexpired claims</code></pre>
+
+        <div class="callout green" style="margin-top:16px">
+          <p><strong>Claims have a TTL and a write scope.</strong> <code>backlog:next</code> skips items with an active claim, so parallel agents can each take disjoint work without colliding — the database is the coordination point.</p>
+        </div>
+      </section>
+
+      <!-- Event sourcing -->
+      <section class="section panel" id="event-sourcing">
+        <div class="section-heading">
+          <h2>Append-only by construction</h2>
+          <span class="section-tag">Event sourcing</span>
+        </div>
+        <div class="grid-2">
+          <article class="card card-green">
+            <h3>The audit log is the canonical source</h3>
+            <p><code>data/audit/audit-log.jsonl</code> is append-only. Never delete or rewrite an event. If a past one was wrong, append a corrective <code>comment</code> or <code>decision</code> event.</p>
+            <p style="margin-top:8px">This means neither the agent <em>nor a future you</em> can quietly launder history.</p>
+          </article>
+          <article class="card card-blue">
+            <h3>Current state is always derived</h3>
+            <p>A feature's current status, an item's lifecycle state, an active claim — all are computed by SQL views over the event stream. Nothing is ever edited in place.</p>
+            <p style="margin-top:8px">That makes the audit trail a real trust primitive instead of decoration.</p>
+          </article>
+        </div>
+
+        <div style="margin-top:16px">
+          <h3 style="margin-bottom:12px">Event types in the audit log</h3>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr><th>Event type</th><th>Use for</th></tr>
+              </thead>
+              <tbody>
+                <tr><td><code>status</code></td><td>Recording a feature or item status change.</td></tr>
+                <tr><td><code>evidence</code></td><td>Attaching verified evidence to a feature or item.</td></tr>
+                <tr><td><code>test-result</code></td><td>Recording a gate or check outcome (pass or fail).</td></tr>
+                <tr><td><code>decision</code></td><td>Waiving a gate — must include reason, risk, and rollback.</td></tr>
+                <tr><td><code>comment</code></td><td>A corrective note appended to an earlier event.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- Direct queries -->
+      <section class="section panel" id="querying">
+        <div class="section-heading">
+          <h2>Querying directly</h2>
+          <span class="section-tag">Shell examples</span>
+        </div>
+        <p style="margin-bottom:16px;color:var(--muted)">Everything is plain SQL. Run these after <code>npm run setup</code>:</p>
+        <pre><code># Feature status board
+sqlite3 data/backlog.sqlite \
+  "select feature_id,planned_status,current_status,latest_update from feature_current_status order by feature_id;"
+
+# What is claimed right now
+sqlite3 data/backlog.sqlite \
+  "select item_id,actor,expires_at from backlog_item_claims where status='active';"
+
+# Audit trail for a feature
+sqlite3 data/backlog.sqlite \
+  "select occurred_at,event_type,status,summary from audit_events where feature_id='S07' order by occurred_at;"</code></pre>
+      </section>
+
+      <!-- Adopting -->
+      <section class="section panel" id="adopting">
+        <div class="section-heading">
+          <h2>Adopting it in a new project</h2>
+          <span class="section-tag">Host repo setup</span>
+        </div>
+        <p style="margin-bottom:16px;color:var(--muted)">The schema is generic — nothing in it is specific to any one product. To adopt the layer in a host repo:</p>
+        <ol class="step-list">
+          <li>
+            <span class="step-num">1</span>
+            <div class="step-body">
+              <strong>Replace the seed</strong>
+              <p>Edit <code>data/seed/backlog.seed.json</code> with your project's epics, features, items, routes, and personas.</p>
+            </div>
+          </li>
+          <li>
+            <span class="step-num">2</span>
+            <div class="step-body">
+              <strong>Rebuild and validate</strong>
+              <p><code>npm run setup &amp;&amp; npm run backlog:validate</code>. The validate command enforces: every feature has at least one task and one test case, no orphaned dependencies or routes.</p>
+            </div>
+          </li>
+          <li>
+            <span class="step-num">3</span>
+            <div class="step-body">
+              <strong>Keep the .sqlite on .gitignore</strong>
+              <p>The database is generated from the text sources. Committing it re-introduces the anti-pattern ADG was built to prevent.</p>
+            </div>
+          </li>
+        </ol>
+      </section>
+
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <div class="wrap">
+      <p>&copy; 2026 Otterblock Pty Ltd &middot; ABN 91 614 672 794. Source-available under the PolyForm Noncommercial License.</p>
+      <nav class="footer-links" aria-label="Footer navigation">
+        <a href="index.html">Overview</a>
+        <a href="proofline.html">Proofline</a>
+        <a href="sql-data-layer.html">SQL Layer</a>
+        <a href="get-started.html">Get Started</a>
+      </nav>
+    </div>
+  </footer>
+
+</body>
+</html>

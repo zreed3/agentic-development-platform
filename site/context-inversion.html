@@ -1,0 +1,280 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Context Inversion — ADG Education Site</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <header class="site-header">
+    <div class="wrap">
+      <a href="index.html" class="site-logo">
+        <span class="logo-badge">ADG</span>
+        Agentic Development Governance
+      </a>
+      <nav class="site-nav" aria-label="Primary navigation">
+        <a href="index.html">Overview</a>
+        <a href="context-inversion.html" class="active">Context Inversion</a>
+        <a href="proofline.html">Proofline Lanes</a>
+        <a href="sql-data-layer.html">SQL Data Layer</a>
+        <a href="evidence-gate.html">Evidence &amp; Gate</a>
+        <a href="harness.html">Harness &amp; Doctor</a>
+        <a href="get-started.html">Get Started</a>
+      </nav>
+    </div>
+  </header>
+
+  <section class="hero">
+    <div class="wrap">
+      <div class="hero-inner">
+        <div>
+          <span class="hero-eyebrow">Context discipline</span>
+          <h1>The context inversion.</h1>
+          <p>Most context tools maximize what they pack in. ADG does the opposite: your richest generated artifacts go on a denylist, and SQLite hands the agent a few-KB packet of pointers instead.</p>
+        </div>
+        <aside class="hero-stat-box" aria-label="Measured packet sizes">
+          <span class="stat-label">Bounded packet (toon)</span>
+          <span class="stat-value">~2.0 KB</span>
+          <span class="stat-note">vs ~26 KB SQL dump and ~164 KB database on the demo backlog. At real-project scale the gap reaches millions of tokens.</span>
+        </aside>
+      </div>
+    </div>
+  </section>
+
+  <main class="page-main">
+    <div class="wrap">
+
+      <nav class="breadcrumb" aria-label="Breadcrumb">
+        <a href="index.html">Overview</a>
+        <span class="sep">/</span>
+        <span class="current">Context Inversion</span>
+      </nav>
+
+      <!-- The core idea -->
+      <section class="section panel" id="core-idea">
+        <div class="section-heading">
+          <h2>The core inversion</h2>
+          <span class="section-tag">Philosophy</span>
+        </div>
+        <p class="lead">Mainstream context tools (Repomix, code2prompt, files-to-prompt) <em>maximize</em> what they pack in. This platform does the <em>opposite</em>.</p>
+
+        <div class="grid-2" style="margin-top:20px">
+          <article class="card card-red">
+            <h3>The intuitive (wrong) approach</h3>
+            <p>Feed the agent the full tracker JSON, the SQL dump, and the generated HTML dashboard — "so it is well-informed." This approach pastes hundreds of thousands to millions of tokens into a context window before the agent writes a single line.</p>
+          </article>
+          <article class="card card-green">
+            <h3>The ADG approach</h3>
+            <p>Those exact files go on a <code>forbiddenBulkFiles</code> denylist. SQLite is positioned as the thing that <em>selects</em> a capped packet of context — feature, items, routes, recent audit events, and the specific files to read next.</p>
+          </article>
+        </div>
+
+        <div class="callout" style="margin-top:20px">
+          <p><strong>Key insight:</strong> Your richest artifacts are the ones most likely to poison the context window. The broker's whole job is to <em>withhold</em> them and hand back only pointers. Aider's repo map is the closest cousin — but it ranks <em>code symbols</em>; ADG selects by <em>project intent and traceability</em> (feature → items → routes → anchors → audit).</p>
+        </div>
+      </section>
+
+      <!-- Pipeline -->
+      <section class="section panel" id="pipeline">
+        <div class="section-heading">
+          <h2>The bounded context pipeline</h2>
+          <span class="section-tag">How it works</span>
+        </div>
+        <p style="margin-bottom:20px;color:var(--muted)">Every context request follows this six-step flow:</p>
+        <div class="pipeline">
+          <div class="pipeline-step">
+            <span class="step-label">Step 1</span>
+            <span class="step-name">Task</span>
+          </div>
+          <div class="pipeline-step">
+            <span class="step-label">Step 2</span>
+            <span class="step-name">Classify</span>
+          </div>
+          <div class="pipeline-step">
+            <span class="step-label">Step 3</span>
+            <span class="step-name">SQL lookup</span>
+          </div>
+          <div class="pipeline-step">
+            <span class="step-label">Step 4</span>
+            <span class="step-name">Capped packet</span>
+          </div>
+          <div class="pipeline-step">
+            <span class="step-label">Step 5</span>
+            <span class="step-name">Anchored files</span>
+          </div>
+          <div class="pipeline-step">
+            <span class="step-label">Step 6</span>
+            <span class="step-name">Targeted checks</span>
+          </div>
+        </div>
+        <p style="margin-top:16px;font-size:0.88rem;color:var(--muted)">The agent reads only the files the packet names. A <code>route</code> packet is not allowed to balloon into the whole repo.</p>
+      </section>
+
+      <!-- Four mechanisms -->
+      <section class="section panel" id="mechanisms">
+        <div class="section-heading">
+          <h2>Four enforcement mechanisms</h2>
+          <span class="section-tag">Implementation</span>
+        </div>
+
+        <div class="grid-2" style="margin-top:4px">
+          <article class="card card-blue">
+            <h3>1. Forbidden bulk files</h3>
+            <p>Each context profile inherits a <code>forbiddenBulkFiles</code> list. The broker will never name these in a packet. <code>npm run context:audit</code> fails if a packet manifest references one.</p>
+            <ul>
+              <li><code>data/backlog-source.sql</code></li>
+              <li><code>data/backlog.json</code></li>
+              <li><code>data/audit/audit-log.jsonl</code></li>
+              <li><code>docs/generated/**</code></li>
+            </ul>
+          </article>
+          <article class="card card-violet">
+            <h3>2. Per-workflow caps</h3>
+            <p>A profile caps audit rows, backlog events, routes, and — most importantly — <code>maxFiles</code>. Defaults are conservative:</p>
+            <ul>
+              <li>Max audit events: 5</li>
+              <li>Max backlog events: 5</li>
+              <li>Max backlog items: 12</li>
+              <li>Max routes: 12</li>
+              <li>Max files: 8–12 (varies by workflow)</li>
+            </ul>
+          </article>
+          <article class="card card-green">
+            <h3>3. Query selection</h3>
+            <p>A profile lists which SQL queries run. A <code>docs</code> task does not pull route files; an <code>rbac</code> task pulls persona workflows and negative-test anchors first. Available queries include:</p>
+            <ul>
+              <li><code>feature_current_status</code></li>
+              <li><code>backlog_items_by_feature</code></li>
+              <li><code>routes_by_feature</code></li>
+              <li><code>persona_workflows_by_feature</code></li>
+              <li><code>recent_audit</code></li>
+            </ul>
+          </article>
+          <article class="card card-amber">
+            <h3>4. TOON transport</h3>
+            <p>For uniform arrays (routes, items, audit rows) the broker can emit <strong>TOON</strong>: a compact, header-plus-rows table format. JSON/SQL/SQLite stay canonical; TOON is a transport used only for the LLM-facing packet, and only after measuring it is actually smaller.</p>
+          </article>
+        </div>
+      </section>
+
+      <!-- Measured numbers -->
+      <section class="section panel" id="measurements">
+        <div class="section-heading">
+          <h2>Measured sizes — demo backlog</h2>
+          <span class="section-tag">Evidence</span>
+        </div>
+        <p style="margin-bottom:16px;color:var(--muted)">Generated with the seeded demo backlog (7 features, 57 items, 8 audit events):</p>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Artifact</th>
+                <th>Size</th>
+                <th>Note</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>context:feature S07 route</code> (toon)</td>
+                <td><strong style="color:var(--green)">~2.0 KB</strong></td>
+                <td>LLM-facing packet — this is what the agent receives</td>
+              </tr>
+              <tr>
+                <td><code>context:feature S07 route</code> (markdown)</td>
+                <td>~2.8 KB</td>
+                <td>Human-facing packet</td>
+              </tr>
+              <tr>
+                <td><code>context:feature S07 route</code> (json)</td>
+                <td>~7.5 KB</td>
+                <td>Machine assertions</td>
+              </tr>
+              <tr>
+                <td><code>data/backlog-source.sql</code></td>
+                <td><strong style="color:var(--red)">~26 KB</strong></td>
+                <td>Forbidden bulk file — on the denylist</td>
+              </tr>
+              <tr>
+                <td><code>data/backlog.sqlite</code></td>
+                <td><strong style="color:var(--red)">~164 KB</strong></td>
+                <td>Queried, never pasted into context</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="callout green" style="margin-top:16px">
+          <p>The packet is roughly <strong>an order of magnitude smaller than the SQL dump</strong> and <strong>~80x smaller than the database</strong> — on a tiny demo backlog. The gap widens sharply with scale. In the product repo this layer was extracted from, the generated tracker JSON and SQL dump were multiple megabytes each: hundreds of thousands to millions of tokens.</p>
+        </div>
+      </section>
+
+      <!-- Workflow profiles -->
+      <section class="section panel" id="profiles">
+        <div class="section-heading">
+          <h2>Workflow profiles</h2>
+          <span class="section-tag">Configuration</span>
+        </div>
+        <p style="margin-bottom:16px;color:var(--muted)">Each workflow profile picks the queries and caps. Choose the right profile for the job:</p>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Workflow</th>
+                <th>Queries run</th>
+                <th>Required check</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td><code>route</code></td><td>Feature status, items, routes, recent audit</td><td><code>npm run backlog:validate</code></td></tr>
+              <tr><td><code>rbac</code></td><td>Feature status, items, persona workflows, recent audit</td><td><code>npm run agent:evals</code></td></tr>
+              <tr><td><code>db-migration</code></td><td>Feature status, items, recent backlog events</td><td><code>npm run backlog:validate</code></td></tr>
+              <tr><td><code>ui</code></td><td>Feature status, items, routes, recent audit</td><td><code>npm run test:agent-context</code></td></tr>
+              <tr><td><code>integration</code></td><td>Feature status, items, integrations, recent audit</td><td><code>npm run guardrails:check</code></td></tr>
+              <tr><td><code>docs</code></td><td>Feature status, items, recent audit</td><td><code>npm run audit:validate</code></td></tr>
+              <tr><td><code>agentic-tooling</code></td><td>Feature status, items, recent audit</td><td>guardrails:check + test:agent-context</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Commands -->
+      <section class="section panel" id="commands">
+        <div class="section-heading">
+          <h2>Commands</h2>
+          <span class="section-tag">Usage</span>
+        </div>
+        <pre><code># Generate a bounded context packet for a feature
+npm run context:feature -- --feature S07 --workflow route
+
+# Item-scoped packet in TOON format (most compact)
+npm run context:item -- --item S07-TASK-01 --workflow route --format toon
+
+# Audit the last packet manifest for violations
+npm run context:audit
+
+# Reproduce size measurements
+npm run setup
+for fmt in markdown json toon; do
+  printf "%-9s " "$fmt"
+  node scripts/agent-context.mjs feature --feature S07 --workflow route --format "$fmt" --no-manifest | wc -c
+done</code></pre>
+      </section>
+
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <div class="wrap">
+      <p>&copy; 2026 Otterblock Pty Ltd &middot; ABN 91 614 672 794. Source-available under the PolyForm Noncommercial License.</p>
+      <nav class="footer-links" aria-label="Footer navigation">
+        <a href="index.html">Overview</a>
+        <a href="proofline.html">Proofline</a>
+        <a href="sql-data-layer.html">SQL Layer</a>
+        <a href="get-started.html">Get Started</a>
+      </nav>
+    </div>
+  </footer>
+
+</body>
+</html>

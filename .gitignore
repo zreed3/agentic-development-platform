@@ -15,3 +15,6 @@ data/agent-evals.sql
 data/agent-evals.json
 data/delivery-metrics.sql
 data/delivery-metrics.json
+
+# Education site build output (assembled from site/ by npm run site:build)
+dist-site/

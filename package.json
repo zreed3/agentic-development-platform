@@ -33,6 +33,7 @@
     "agent:evals": "node scripts/run-agent-evals.mjs",
     "metrics:dora": "node scripts/dora-metrics.mjs",
     "ci:governance": "npm run backlog:validate && npm run audit:validate && npm run guardrails:check && npm run agent:evals && npm run metrics:dora && npm run test:agent-context",
+    "site:build": "node -e \"const fs=require('fs'),path=require('path');const src='site',dst='dist-site';fs.rmSync(dst,{recursive:true,force:true});fs.mkdirSync(dst,{recursive:true});for(const f of fs.readdirSync(src)){fs.copyFileSync(path.join(src,f),path.join(dst,f));}console.log('dist-site/ built from site/');\"",
     "prepush": "npm run ci:governance"
   },
   "author": "Otterblock Pty Ltd",

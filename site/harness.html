@@ -1,0 +1,276 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Dual-Harness &amp; Conformance Doctor — ADG Education Site</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <header class="site-header">
+    <div class="wrap">
+      <a href="index.html" class="site-logo">
+        <span class="logo-badge">ADG</span>
+        Agentic Development Governance
+      </a>
+      <nav class="site-nav" aria-label="Primary navigation">
+        <a href="index.html">Overview</a>
+        <a href="context-inversion.html">Context Inversion</a>
+        <a href="proofline.html">Proofline Lanes</a>
+        <a href="sql-data-layer.html">SQL Data Layer</a>
+        <a href="evidence-gate.html">Evidence &amp; Gate</a>
+        <a href="harness.html" class="active">Harness &amp; Doctor</a>
+        <a href="get-started.html">Get Started</a>
+      </nav>
+    </div>
+  </header>
+
+  <section class="hero">
+    <div class="wrap">
+      <div class="hero-inner">
+        <div>
+          <span class="hero-eyebrow">Dual-harness model</span>
+          <h1>Codex and Claude Code. One policy.</h1>
+          <p>ADG is published as one plugin with two adapters so Codex and Claude Code can run in the same repo and follow the same rules. The conformance doctor catches when an install has silently drifted from those rules.</p>
+        </div>
+        <aside class="hero-stat-box" aria-label="Shared components">
+          <span class="stat-label">Single source of truth</span>
+          <span class="stat-value">1</span>
+          <span class="stat-note"><code>guardrails.json</code> + <code>AGENTS.md</code> shared by both harnesses. Two adapters, one policy — structural prevention of divergence.</span>
+        </aside>
+      </div>
+    </div>
+  </section>
+
+  <main class="page-main">
+    <div class="wrap">
+
+      <nav class="breadcrumb" aria-label="Breadcrumb">
+        <a href="index.html">Overview</a>
+        <span class="sep">/</span>
+        <span class="current">Dual-Harness &amp; Conformance Doctor</span>
+      </nav>
+
+      <!-- The dual-harness model -->
+      <section class="section panel" id="dual-harness">
+        <div class="section-heading">
+          <h2>One source of rules, two adapters</h2>
+          <span class="section-tag">Architecture</span>
+        </div>
+        <p class="lead">Because <code>CLAUDE.md</code> is generated from <code>AGENTS.md</code>, the two harnesses cannot read different rulebooks — that is the structural guarantee of "same rules."</p>
+
+        <div class="table-wrap" style="margin-bottom:20px">
+          <table>
+            <thead>
+              <tr>
+                <th>Shared (single source of truth)</th>
+                <th>Used by</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>config/agentic/guardrails.json</code> — deny-by-default risk classes</td>
+                <td>Both harnesses</td>
+              </tr>
+              <tr>
+                <td><code>AGENTS.md</code> rulebook → generated <code>CLAUDE.md</code> (<code>npm run claude:generate</code>)</td>
+                <td>Both (identical text, structurally enforced)</td>
+              </tr>
+              <tr>
+                <td><code>plugins/adg-governance/agentic-plugin.manifest.json</code> — neutral commands + risk classes</td>
+                <td>Both harnesses</td>
+              </tr>
+              <tr>
+                <td><code>plugins/adg-governance/skills/</code> — portable skills</td>
+                <td>Both harnesses</td>
+              </tr>
+              <tr>
+                <td><code>plugins/adg-governance/hooks/adg-guardrail-hook.mjs</code> — the enforcement script</td>
+                <td>Claude Code (via hook); Codex via adapter when available</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="grid-2">
+          <article class="card card-blue">
+            <h3>Codex adapter</h3>
+            <p><code>.codex-plugin/plugin.json</code> — skills + commands + interface. Enforces through its approval policy plus the shared <code>guardrails.json</code> and the skills/commands that carry the same risk classes.</p>
+            <p style="margin-top:8px">When Codex exposes a pre-tool hook surface, the <strong>same</strong> <code>adg-guardrail-hook.mjs</code> can be wired behind an adapter — it reads a neutral <code>{tool_name, tool_input}</code> JSON event on stdin.</p>
+          </article>
+          <article class="card card-violet">
+            <h3>Claude Code adapter</h3>
+            <p><code>.claude-plugin/plugin.json</code> — skills + commands + the <code>PreToolUse</code> hook. Enforces <strong>deterministically</strong>: the hook hard-blocks destructive commands and raw reads of generated context hazards (exit 2), and asks on secrets / production / migration.</p>
+            <p style="margin-top:8px">The rules become <em>physically enforced</em> at the tool gate, not just documented.</p>
+          </article>
+        </div>
+      </section>
+
+      <!-- Four deterministic surfaces -->
+      <section class="section panel" id="determinism">
+        <div class="section-heading">
+          <h2>Four deterministic surfaces</h2>
+          <span class="section-tag">How Claude Code becomes deterministic</span>
+        </div>
+        <p class="lead">Claude Code's determinism is delivered by four surfaces, each mapped to an ADG control:</p>
+
+        <ol class="step-list">
+          <li>
+            <span class="step-num">1</span>
+            <div class="step-body">
+              <strong>Hooks (<code>hooks/hooks.json</code>) — the core lever</strong>
+              <p>A <code>PreToolUse</code> hook routes risky tool calls through <code>guardrail-check.mjs</code> (deny-by-default by risk class). A read/grep hook blocks <code>forbiddenBulkFiles</code>. An optional <code>Stop</code> hook runs the lane's gate. Hooks run deterministically on every matching event — not "please remember to," but enforced.</p>
+            </div>
+          </li>
+          <li>
+            <span class="step-num">2</span>
+            <div class="step-body">
+              <strong>Permissions template (<code>.claude/settings.json</code>)</strong>
+              <p>Allow/deny/ask lists that mirror the guardrail risk classes: read-only and code-change are allowed; migration, secrets, and production ask; destructive is denied.</p>
+            </div>
+          </li>
+          <li>
+            <span class="step-num">3</span>
+            <div class="step-body">
+              <strong>CLAUDE.md — the always-loaded rulebook</strong>
+              <p>Generated from <code>AGENTS.md</code> by <code>npm run claude:generate</code>. The doctor fails if the two files drift. One source of truth, two harnesses, zero manual sync.</p>
+            </div>
+          </li>
+          <li>
+            <span class="step-num">4</span>
+            <div class="step-body">
+              <strong>Slash commands</strong>
+              <p><code>/adg-classify</code>, <code>/adg-context</code>, <code>/adg-verify</code> (evidence-tier aware), <code>/adg-doctor</code> — repeatable wrappers over the existing scripts, so the workflow is canned, not improvised.</p>
+            </div>
+          </li>
+        </ol>
+      </section>
+
+      <!-- Conformance doctor -->
+      <section class="section panel" id="doctor">
+        <div class="section-heading">
+          <h2>The conformance doctor (<code>adg:doctor</code>)</h2>
+          <span class="section-tag">Drift detection</span>
+        </div>
+        <p class="lead">ADG's rule is explicit: generated <code>*.sqlite</code> databases are gitignored, not committed. An adopter can silently re-introduce the exact anti-pattern ADG was built to avoid — and until the doctor was added, nothing caught it.</p>
+
+        <div class="callout amber" style="margin-bottom:20px">
+          <p><strong>From a real session:</strong> Recording one fact in an adopter repo became a four-step dance — append audit event → regenerate → commit → drift gate goes red on <code>data/backlog.*</code> (which lag one regeneration pass) → <code>git commit --amend</code> → drift green. Hit twice in one session for single low-risk events. The doctor is the fix.</p>
+        </div>
+
+        <h3 style="margin-bottom:12px">What the doctor checks</h3>
+        <div class="grid-2">
+          <article class="card card-red">
+            <h3>Generated files tracked in git</h3>
+            <p>Generated <code>*.sqlite</code> or JSON/SQL mirrors are git-tracked. These should be on <code>.gitignore</code>.</p>
+            <p style="margin-top:8px">A 13–23 MB binary <code>.sqlite</code> change per governance commit is a clear sign the repo has drifted.</p>
+          </article>
+          <article class="card card-red">
+            <h3>Committed-artifact diff gate</h3>
+            <p>A custom gate diffs committed generated artifacts against a fresh regeneration. This re-introduces the regenerate-then-amend tax that makes cheap work expensive.</p>
+          </article>
+          <article class="card card-amber">
+            <h3>Volatile provenance in tracked docs</h3>
+            <p>Generated docs embed the git SHA or a timestamp in tracked frontmatter. These churn on every commit, creating unreviewable diffs.</p>
+          </article>
+          <article class="card card-green">
+            <h3>AGENTS.md / CLAUDE.md sync</h3>
+            <p>The two rulebook files must be identical. The doctor fails if they have drifted, preventing silent divergence between harnesses.</p>
+          </article>
+        </div>
+
+        <pre style="margin-top:20px"><code># Run the conformance doctor
+npm run adg:doctor
+
+# Check install state (includes doctor findings)
+npm run adg:install:status -- --target /path/to/host-repo --format json</code></pre>
+      </section>
+
+      <!-- Using both in one repo -->
+      <section class="section panel" id="using-both">
+        <div class="section-heading">
+          <h2>Using both harnesses in one repo</h2>
+          <span class="section-tag">Setup</span>
+        </div>
+        <ol class="step-list">
+          <li>
+            <span class="step-num">1</span>
+            <div class="step-body">
+              <strong>Install the marketplace (Claude Code)</strong>
+              <p><code>claude plugin marketplace add &lt;repo-url&gt;</code> then <code>claude plugin install adg-governance</code>.</p>
+            </div>
+          </li>
+          <li>
+            <span class="step-num">2</span>
+            <div class="step-body">
+              <strong>Install or refresh the Codex adapter</strong>
+              <p><code>npm run adg:install -- --target &lt;repo&gt;</code> copies the portable lane policy, classifier/guard, and docs into the host repo.</p>
+            </div>
+          </li>
+          <li>
+            <span class="step-num">3</span>
+            <div class="step-body">
+              <strong>Generate and check CLAUDE.md</strong>
+              <p><code>npm run claude:generate</code> mirrors <code>AGENTS.md</code> → <code>CLAUDE.md</code>. <code>npm run claude:check</code> fails if they drift. Wire <code>claude:check</code> into the governance gate.</p>
+            </div>
+          </li>
+          <li>
+            <span class="step-num">4</span>
+            <div class="step-body">
+              <strong>Both adapters now share one policy</strong>
+              <p>Every action resolves against the one <code>guardrails.json</code>. There is no conflict running both: they read per-harness rulebook files that are guaranteed identical.</p>
+            </div>
+          </li>
+        </ol>
+
+        <div class="callout green" style="margin-top:20px">
+          <p><strong>No conflict between harnesses.</strong> Codex reads <code>AGENTS.md</code>; Claude Code reads the generated <code>CLAUDE.md</code>. Both are identical by construction. Only the Claude adapter registers a hook; Codex follows the same rules through its approval policy.</p>
+        </div>
+      </section>
+
+      <!-- The plugin manifest -->
+      <section class="section panel" id="plugin-manifest">
+        <div class="section-heading">
+          <h2>The neutral plugin manifest</h2>
+          <span class="section-tag">Architecture</span>
+        </div>
+        <p style="margin-bottom:16px;color:var(--muted)">The <code>agentic-plugin.manifest.json</code> is the single source of commands and risk classes. Both adapters bind to it — this is what prevents the two harnesses from drifting:</p>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Command</th>
+                <th>Risk class</th>
+                <th>What it produces</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td><code>elicitation-graph</code></td><td>read-only</td><td>Requirements graph nodes, edges, dangling-edge failures.</td></tr>
+              <tr><td><code>context-slice</code></td><td>read-only</td><td>Bounded packet, efficiency metrics, stop conditions.</td></tr>
+              <tr><td><code>ux-validate</code></td><td>read-only</td><td>Structural coverage, journey coverage, RBAC/persona gaps.</td></tr>
+              <tr><td><code>ux-truth-pass</code></td><td>read-only</td><td>Feature lifecycle classification, route/persona journey matrix.</td></tr>
+              <tr><td><code>standards-matrix</code></td><td>read-only</td><td>Standards controls, evidence links, maturity domains.</td></tr>
+              <tr><td><code>deliverable-audit</code></td><td>read-only</td><td>Deliverable evidence records, traceability failures.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <div class="wrap">
+      <p>&copy; 2026 Otterblock Pty Ltd &middot; ABN 91 614 672 794. Source-available under the PolyForm Noncommercial License.</p>
+      <nav class="footer-links" aria-label="Footer navigation">
+        <a href="index.html">Overview</a>
+        <a href="proofline.html">Proofline</a>
+        <a href="sql-data-layer.html">SQL Layer</a>
+        <a href="get-started.html">Get Started</a>
+      </nav>
+    </div>
+  </footer>
+
+</body>
+</html>

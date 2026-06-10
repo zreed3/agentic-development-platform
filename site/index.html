@@ -1,0 +1,232 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Agentic Development Governance (ADG) — Education Site</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <header class="site-header">
+    <div class="wrap">
+      <a href="index.html" class="site-logo">
+        <span class="logo-badge">ADG</span>
+        Agentic Development Governance
+      </a>
+      <nav class="site-nav" aria-label="Primary navigation">
+        <a href="index.html" class="active">Overview</a>
+        <a href="context-inversion.html">Context Inversion</a>
+        <a href="proofline.html">Proofline Lanes</a>
+        <a href="sql-data-layer.html">SQL Data Layer</a>
+        <a href="evidence-gate.html">Evidence &amp; Gate</a>
+        <a href="harness.html">Harness &amp; Doctor</a>
+        <a href="get-started.html">Get Started</a>
+      </nav>
+    </div>
+  </header>
+
+  <section class="hero">
+    <div class="wrap">
+      <div class="hero-inner">
+        <div>
+          <span class="hero-eyebrow">Open Source / Non-Commercial</span>
+          <h1>SQL-first, deny-by-default governance for agent-assisted development.</h1>
+          <p>ADG gives your AI collaborator the apparatus of a regulated engineering org — deny-by-default guardrails, an append-only audit trail, AI-security evals, DORA-style delivery metrics, and a context broker that keeps token usage bounded.</p>
+          <div class="hero-cta">
+            <a href="get-started.html" class="btn btn-primary">Get started</a>
+            <a href="proofline.html" class="btn btn-outline">Explore the Proofline lanes</a>
+          </div>
+        </div>
+        <aside class="hero-stat-box" aria-label="Context reduction measurement">
+          <span class="stat-label">Context reduction</span>
+          <span class="stat-value">~80x</span>
+          <span class="stat-note">A bounded packet (~2 KB) versus the full SQL dump (~164 KB). At real-project scale the gap reaches hundreds of thousands of tokens.</span>
+        </aside>
+      </div>
+    </div>
+  </section>
+
+  <main class="page-main">
+    <div class="wrap">
+
+      <!-- What ADG is -->
+      <section class="section panel" id="what-is-adg">
+        <div class="section-heading">
+          <h2>What is ADG?</h2>
+          <span class="section-tag">Platform overview</span>
+        </div>
+        <p class="lead">The Agentic Development Platform is a small, local control plane that fixes two failure modes that dominate AI-assisted development.</p>
+
+        <div class="grid-2" style="margin-top:20px">
+          <article class="card card-red">
+            <h3>Problem 1 — Unbounded, unaudited actions</h3>
+            <p>Hand an AI agent your codebase and it does too much: destructive commands, policy-bypasses, work that cannot be audited or rolled back. ADG makes every tool map to a <strong>risk class</strong>; by default everything is denied unless explicitly permitted.</p>
+          </article>
+          <article class="card card-amber">
+            <h3>Problem 2 — Context window overflow</h3>
+            <p>You paste the whole tracker JSON and burn six figures of tokens before the agent writes a line. ADG's context broker <strong>refuses</strong> to load the artifacts that blow up a context window and returns a few-KB bounded packet instead.</p>
+          </article>
+        </div>
+
+        <div class="callout" style="margin-top:20px">
+          <p><strong>The platform in one line:</strong> <code>task → classify → SQL lookup → capped context packet → anchored files → targeted checks</code></p>
+        </div>
+      </section>
+
+      <!-- Five pillars -->
+      <section class="section panel" id="pillars">
+        <div class="section-heading">
+          <h2>Five design pillars</h2>
+          <span class="section-tag">Governance model</span>
+        </div>
+
+        <div class="grid-3" style="margin-bottom:0">
+          <article class="card card-blue">
+            <h3>1. Generated artifacts are hazards</h3>
+            <p>Full SQL dumps, JSON mirrors, and generated HTML go on a <code>forbiddenBulkFiles</code> denylist. SQLite <em>selects</em> the context instead of dumping it.</p>
+          </article>
+          <article class="card card-violet">
+            <h3>2. Governance for agents, not auditors</h3>
+            <p>Audit trails, DORA metrics, and decision events with reason/risk/rollback exist so that a <em>non-human collaborator's</em> work is non-repudiable — even solo.</p>
+          </article>
+          <article class="card card-red">
+            <h3>3. Threat-model your own agents</h3>
+            <p>Tools default to <code>deny</code>. Prompt-injection, cross-scope escalation, and excessive-agency are standing assumptions, not reactions. Agents are untrusted insiders.</p>
+          </article>
+          <article class="card card-green">
+            <h3>4. Append-only by construction</h3>
+            <p>The audit log is event-sourced and never rewritten. Current state (feature status, item lifecycle) is always <em>derived</em> from events via SQL views.</p>
+          </article>
+          <article class="card card-amber">
+            <h3>5. Deliberate restraint</h3>
+            <p><code>node</code> + <code>sqlite3</code> + JSONL. No SaaS, no vector database, no agent framework. Everything is grep-able, diffable, and offline. The full gate runs in seconds.</p>
+          </article>
+        </div>
+      </section>
+
+      <!-- Component map -->
+      <section class="section panel" id="components">
+        <div class="section-heading">
+          <h2>What is inside</h2>
+          <span class="section-tag">Component map</span>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Component</th>
+                <th>Key files</th>
+                <th>What it does</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Guardrail policy</td>
+                <td><code>config/agentic/guardrails.json</code></td>
+                <td>Deny-by-default risk classes; required evidence and confirmation per tool.</td>
+              </tr>
+              <tr>
+                <td>Append-only audit</td>
+                <td><code>data/audit/audit-log.jsonl</code></td>
+                <td>Event-sourced, never rewritten. Secret-scanned on validate.</td>
+              </tr>
+              <tr>
+                <td>AI-security evals</td>
+                <td><code>tooling/agent-evals/scenarios/</code></td>
+                <td>Prompt-injection / excessive-agency / resilience scenarios mapped to OWASP LLM and NIST AI-RMF.</td>
+              </tr>
+              <tr>
+                <td>DORA metrics</td>
+                <td><code>scripts/dora-metrics.mjs</code></td>
+                <td>Deployment frequency, lead time, and change failure rate from local git + audit log.</td>
+              </tr>
+              <tr>
+                <td>SQL backlog</td>
+                <td><code>scripts/backlog-db.mjs</code>, <code>data/schema.sql</code></td>
+                <td>One SQLite DB; claim/start/complete/verify lifecycle; reviewable SQL mirrors.</td>
+              </tr>
+              <tr>
+                <td>Context broker</td>
+                <td><code>scripts/agent-context.mjs</code></td>
+                <td>Bounded packets in markdown/json/toon; forbids bulk files.</td>
+              </tr>
+              <tr>
+                <td>Codex skills</td>
+                <td><code>skills/agentic-traceability</code>, <code>skills/agentic-build-runner</code></td>
+                <td>Portable disciplines installable into agent skill directories.</td>
+              </tr>
+              <tr>
+                <td>Rulebook</td>
+                <td><code>AGENTS.md</code></td>
+                <td>What every agent reads first; also a per-repo template.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Quick-start teaser -->
+      <section class="section panel" id="quick-start">
+        <div class="section-heading">
+          <h2>Quick start</h2>
+          <span class="section-tag">Setup</span>
+        </div>
+        <p class="lead">Requirements: <strong>Node ≥ 20</strong> and the <strong><code>sqlite3</code> CLI</strong> on PATH. No <code>npm install</code> needed — there are no runtime dependencies.</p>
+        <pre><code>npm run setup          # build data/backlog.sqlite from schema + seed + audit log
+npm run ci:governance  # full gate: backlog, audit, guardrails, evals, dora, broker</code></pre>
+        <div style="margin-top:16px">
+          <a href="get-started.html" class="btn btn-primary">Full get-started guide</a>
+        </div>
+      </section>
+
+      <!-- Navigation tiles -->
+      <section class="section" id="learn-more">
+        <div class="section-heading">
+          <h2>Learn more</h2>
+        </div>
+        <div class="grid-3">
+          <a href="context-inversion.html" class="card" style="text-decoration:none;display:block">
+            <h3>Context inversion</h3>
+            <p>Why generated artifacts are hazards, how the broker selects a few-KB packet, and what the measured reduction looks like in practice.</p>
+          </a>
+          <a href="proofline.html" class="card" style="text-decoration:none;display:block">
+            <h3>Proofline delivery lanes</h3>
+            <p>L0 spike through L4 release-signoff — when each lane applies, what evidence it requires, and how the gate enforces it.</p>
+          </a>
+          <a href="sql-data-layer.html" class="card" style="text-decoration:none;display:block">
+            <h3>SQL data layer</h3>
+            <p>The canonical vs generated split, the item lifecycle (claim → start → complete → verify), and how SQL views derive current state.</p>
+          </a>
+          <a href="evidence-gate.html" class="card" style="text-decoration:none;display:block">
+            <h3>Evidence tiers &amp; the release gate</h3>
+            <p>asserted &lt; config &lt; test &lt; live — what each tier means and why sensitive release classes need a live event to pass the gate.</p>
+          </a>
+          <a href="harness.html" class="card" style="text-decoration:none;display:block">
+            <h3>Dual-harness &amp; conformance doctor</h3>
+            <p>How Codex and Claude Code share a single policy, and how <code>adg:doctor</code> surfaces non-conforming items before you push.</p>
+          </a>
+          <a href="get-started.html" class="card" style="text-decoration:none;display:block">
+            <h3>Get started</h3>
+            <p>Install commands, the <code>--client claude</code> flag, skill installation, and how to adopt ADG in another repo.</p>
+          </a>
+        </div>
+      </section>
+
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <div class="wrap">
+      <p>&copy; 2026 Otterblock Pty Ltd &middot; ABN 91 614 672 794. Source-available under the PolyForm Noncommercial License. Commercial use: <a href="mailto:zach+github@otterblock.com.au">zach+github@otterblock.com.au</a></p>
+      <nav class="footer-links" aria-label="Footer navigation">
+        <a href="index.html">Overview</a>
+        <a href="proofline.html">Proofline</a>
+        <a href="sql-data-layer.html">SQL Layer</a>
+        <a href="get-started.html">Get Started</a>
+      </nav>
+    </div>
+  </footer>
+
+</body>
+</html>
