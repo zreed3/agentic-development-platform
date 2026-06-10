@@ -9,6 +9,8 @@ function run(command) {
   });
 }
 
+run("node scripts/adg-test-fixture.mjs demo-backlog");
+
 const jsonOutput = run("node scripts/agent-context.mjs feature --feature S07 --workflow route --format json --no-manifest");
 const packet = JSON.parse(jsonOutput);
 

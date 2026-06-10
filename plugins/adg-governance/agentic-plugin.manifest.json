@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "name": "adg-governance",
-  "version": "0.3.1",
-  "intent": "Expose deterministic governance workflows to Codex first and future agent clients through the same commands, schemas, and risk classes.",
+  "version": "0.4.0",
+  "intent": "Expose deterministic governance workflows to Codex and Claude Code (and future agent clients) through the same commands, schemas, and risk classes.",
   "runtimePolicy": "This plugin does not implement an autonomous runtime. It constrains whichever runtime invokes it through bounded context, validation, evidence, and stop conditions.",
   "commands": [
     {
@@ -48,14 +48,22 @@
       "outputs": ["deliverable evidence records", "traceability failures"]
     }
   ],
+  "sharedContract": "Both adapters bind to the SAME rules: config/agentic/guardrails.json (deny-by-default risk classes), the AGENTS.md rulebook (CLAUDE.md is generated from AGENTS.md so both harnesses read identical rules), the skills/, and the commands above. Install both in one repo and they enforce one policy.",
   "adapters": [
     {
       "client": "codex",
-      "status": "primary",
-      "manifest": ".codex-plugin/plugin.json"
+      "status": "supported",
+      "manifest": ".codex-plugin/plugin.json",
+      "enforcement": "Codex approval policy + the shared guardrails.json; commands and skills carry the same risk classes. A pre-tool hook adapter can reuse hooks/adg-guardrail-hook.mjs when Codex exposes pre-tool hooks."
     },
     {
-      "client": "claude-openclaw-opencode",
+      "client": "claude-code",
+      "status": "supported",
+      "manifest": ".claude-plugin/plugin.json",
+      "enforcement": "Deterministic: a PreToolUse hook (hooks/adg-guardrail-hook.mjs) hard-blocks destructive commands and raw context-hazard reads, and asks on secrets / production / migration."
+    },
+    {
+      "client": "opencode-and-future",
       "status": "future",
       "contract": "Use this neutral manifest plus SKILL.md workflow text and deterministic command outputs."
     }

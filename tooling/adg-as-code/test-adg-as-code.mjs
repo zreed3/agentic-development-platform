@@ -24,6 +24,8 @@ function runResult(command) {
   }
 }
 
+run("node scripts/adg-test-fixture.mjs demo-backlog");
+
 const elicitationValidation = JSON.parse(run("node scripts/adg-elicitation.mjs validate --format json"));
 assert.equal(elicitationValidation.valid, true);
 assert.equal(elicitationValidation.features, 1);

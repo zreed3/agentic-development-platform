@@ -19,7 +19,7 @@ const auditLogPath = "data/audit/audit-log.jsonl";
 const dbPath = "data/backlog.sqlite";
 
 function abs(file) {
-  return path.join(root, file);
+  return path.isAbsolute(file) ? file : path.join(root, file);
 }
 
 function exec(cmd, fallback = "") {
@@ -67,10 +67,23 @@ function multi(args, key) {
   return Array.isArray(raw) ? raw.map(String) : [String(raw)];
 }
 
+// Ordered evidence tiers (asserted < config < test < live). Mirrors
+// config/agentic/guardrails.json -> evidence.tiers and the audit_events CHECK
+// constraint in scripts/backlog-db.mjs. The tier records what kind of proof backs
+// the event; the release gate (backlog:validate) requires `live` to sign off a
+// declared-sensitive release class.
+const EVIDENCE_TIERS = ["asserted", "config", "test", "live"];
+
 const args = parseArgs(process.argv.slice(2));
 const summary = value(args, "summary");
 if (!summary) {
   console.error("--summary is required");
+  process.exit(1);
+}
+
+const evidenceTier = value(args, "tier", "asserted");
+if (!EVIDENCE_TIERS.includes(evidenceTier)) {
+  console.error(`Invalid --tier "${evidenceTier}". Expected one of: ${EVIDENCE_TIERS.join(", ")}`);
   process.exit(1);
 }
 
@@ -89,6 +102,7 @@ const event = {
   summary,
   details: value(args, "details"),
   evidence: multi(args, "evidence"),
+  evidenceTier,
   git: {
     branch: exec("git rev-parse --abbrev-ref HEAD", "unknown"),
     commit: exec("git rev-parse HEAD", "uncommitted"),
@@ -101,8 +115,8 @@ fs.mkdirSync(path.dirname(abs(auditLogPath)), { recursive: true });
 fs.appendFileSync(abs(auditLogPath), `${JSON.stringify(event)}\n`, "utf8");
 
 if (fs.existsSync(abs(dbPath))) {
-  const insert = `INSERT OR REPLACE INTO audit_events VALUES (${sqlString(event.id)}, ${sqlString(event.occurredAt)}, ${sqlString(event.actor)}, ${sqlString(event.eventType)}, ${sqlString(event.targetType)}, ${sqlString(event.targetId)}, ${sqlString(event.featureId)}, ${sqlString(event.status)}, ${sqlString(event.summary)}, ${sqlString(event.details)}, ${sqlString(JSON.stringify(event.evidence))});`;
+  const insert = `INSERT OR REPLACE INTO audit_events VALUES (${sqlString(event.id)}, ${sqlString(event.occurredAt)}, ${sqlString(event.actor)}, ${sqlString(event.eventType)}, ${sqlString(event.targetType)}, ${sqlString(event.targetId)}, ${sqlString(event.featureId)}, ${sqlString(event.status)}, ${sqlString(event.summary)}, ${sqlString(event.details)}, ${sqlString(JSON.stringify(event.evidence))}, ${sqlString(event.evidenceTier)});`;
   execSync(`sqlite3 ${JSON.stringify(abs(dbPath))} ${JSON.stringify(insert)}`, { cwd: root, shell: "/bin/zsh" });
 }
 
-console.log(JSON.stringify({ recorded: event.id, eventType: event.eventType, featureId: event.featureId, mirroredToDb: fs.existsSync(abs(dbPath)) }, null, 2));
+console.log(JSON.stringify({ recorded: event.id, eventType: event.eventType, featureId: event.featureId, evidenceTier: event.evidenceTier, mirroredToDb: fs.existsSync(abs(dbPath)) }, null, 2));

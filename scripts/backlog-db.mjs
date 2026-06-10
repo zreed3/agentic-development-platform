@@ -29,7 +29,7 @@ const defaultSeedPath = "data/seed/backlog.seed.json";
 const auditLogPath = "data/audit/audit-log.jsonl";
 
 function abs(file) {
-  return path.join(root, file);
+  return path.isAbsolute(file) ? file : path.join(root, file);
 }
 
 function exec(cmd) {
@@ -78,6 +78,40 @@ function values(args, key) {
   return Array.isArray(raw) ? raw.map(String) : [String(raw)];
 }
 
+// Ordered evidence tiers (weakest -> strongest). A claim's evidence_tier records
+// what kind of proof backs it: asserted < config < test < live. The release gate
+// (see release_gate_violations) requires a `live` event to sign off claims in a
+// declared-sensitive release class. Keep this list in sync with
+// config/agentic/guardrails.json -> evidence.tiers and the CHECK constraints below.
+const EVIDENCE_TIERS = ["asserted", "config", "test", "live"];
+
+function evidenceTierFromArgs(args, fallback = "asserted") {
+  const tier = value(args, "tier", fallback);
+  if (!EVIDENCE_TIERS.includes(tier)) {
+    throw new Error(`Invalid --tier "${tier}". Expected one of: ${EVIDENCE_TIERS.join(", ")}.`);
+  }
+  return tier;
+}
+
+// Canonical sensitive release classes are policy, read from guardrails.json so there
+// is a single source of truth (no SQL/JS drift). A feature opts into the release
+// gate with a `release-class:<class>` label. The gate itself (the
+// release_gate_violations view) fails safe -- it treats ANY release-class:* label as
+// sensitive, so a typo like release-class:deployy is still gated rather than silently
+// escaping -- and validateBacklog separately flags any class not in this list as a
+// misconfiguration to correct.
+const SENSITIVE_RELEASE_CLASSES_FALLBACK = ["deploy", "infra", "performance", "runtime-security", "data-residency"];
+
+function sensitiveReleaseClasses() {
+  try {
+    const policy = JSON.parse(fs.readFileSync(abs("config/agentic/guardrails.json"), "utf8"));
+    const classes = policy.evidence?.sensitiveReleaseClasses;
+    return Array.isArray(classes) && classes.length ? classes : SENSITIVE_RELEASE_CLASSES_FALLBACK;
+  } catch {
+    return SENSITIVE_RELEASE_CLASSES_FALLBACK;
+  }
+}
+
 function usage() {
   console.log(`Usage:
   node scripts/backlog-db.mjs setup [--force] [--seed data/seed/backlog.seed.json] [--with-audit]
@@ -91,8 +125,8 @@ function usage() {
   node scripts/backlog-db.mjs start --item S07-TASK-01 [--summary "..."]
   node scripts/backlog-db.mjs block --item S07-TASK-01 --summary "Blocked by ..."
   node scripts/backlog-db.mjs complete --item S07-TASK-01 --summary "..." [--evidence path]
-  node scripts/backlog-db.mjs verify --item S07-TASK-01 --summary "..." [--evidence command-or-path]
-  node scripts/backlog-db.mjs fail --item S07-TASK-01 --summary "Failed because ..." [--evidence command-or-path]
+  node scripts/backlog-db.mjs verify --item S07-TASK-01 --summary "..." [--evidence command-or-path] [--tier asserted|config|test|live]
+  node scripts/backlog-db.mjs fail --item S07-TASK-01 --summary "Failed because ..." [--evidence command-or-path] [--tier asserted|config|test|live]
   node scripts/backlog-db.mjs release --item S07-TASK-01 [--summary "..."]
   node scripts/backlog-db.mjs active               Active (unexpired) claims
 
@@ -154,8 +188,8 @@ function schemaStatements() {
     "CREATE TABLE feature_persona_workflows (id TEXT PRIMARY KEY, feature_id TEXT NOT NULL, persona_id TEXT NOT NULL, rbac_role TEXT NOT NULL DEFAULT '', realm TEXT NOT NULL DEFAULT '', access_level TEXT NOT NULL DEFAULT '', workflow TEXT NOT NULL DEFAULT '', expected_state TEXT NOT NULL DEFAULT '', primary_route TEXT NOT NULL DEFAULT '', notes TEXT NOT NULL DEFAULT '', status TEXT NOT NULL DEFAULT 'planned', FOREIGN KEY(feature_id) REFERENCES features(id));",
     "CREATE TABLE routes (id TEXT PRIMARY KEY, feature_id TEXT NOT NULL DEFAULT '', path TEXT NOT NULL, kind TEXT NOT NULL DEFAULT '', realm TEXT NOT NULL DEFAULT '', status TEXT NOT NULL DEFAULT 'planned', file_path TEXT NOT NULL DEFAULT '', permission TEXT NOT NULL DEFAULT '', rbac_roles TEXT NOT NULL DEFAULT '', notes TEXT NOT NULL DEFAULT '');",
     "CREATE TABLE integrations (id TEXT PRIMARY KEY, feature_id TEXT NOT NULL DEFAULT '', name TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'planned', owner TEXT NOT NULL DEFAULT '', source TEXT NOT NULL DEFAULT '', notes TEXT NOT NULL DEFAULT '');",
-    "CREATE TABLE audit_events (id TEXT PRIMARY KEY, occurred_at TEXT NOT NULL, actor TEXT NOT NULL DEFAULT '', event_type TEXT NOT NULL, target_type TEXT NOT NULL DEFAULT '', target_id TEXT NOT NULL DEFAULT '', feature_id TEXT NOT NULL DEFAULT '', status TEXT NOT NULL DEFAULT '', summary TEXT NOT NULL DEFAULT '', details TEXT NOT NULL DEFAULT '', evidence TEXT NOT NULL DEFAULT '[]');",
-    "CREATE TABLE backlog_item_events (id TEXT PRIMARY KEY, item_id TEXT NOT NULL, feature_id TEXT NOT NULL, event_type TEXT NOT NULL, status TEXT NOT NULL, actor TEXT NOT NULL, summary TEXT NOT NULL, details TEXT NOT NULL DEFAULT '', evidence_json TEXT NOT NULL DEFAULT '[]', created_at TEXT NOT NULL, git_branch TEXT NOT NULL DEFAULT '', git_commit TEXT NOT NULL DEFAULT '', git_status TEXT NOT NULL DEFAULT '', FOREIGN KEY(item_id) REFERENCES feature_items(id), FOREIGN KEY(feature_id) REFERENCES features(id));",
+    "CREATE TABLE audit_events (id TEXT PRIMARY KEY, occurred_at TEXT NOT NULL, actor TEXT NOT NULL DEFAULT '', event_type TEXT NOT NULL, target_type TEXT NOT NULL DEFAULT '', target_id TEXT NOT NULL DEFAULT '', feature_id TEXT NOT NULL DEFAULT '', status TEXT NOT NULL DEFAULT '', summary TEXT NOT NULL DEFAULT '', details TEXT NOT NULL DEFAULT '', evidence TEXT NOT NULL DEFAULT '[]', evidence_tier TEXT NOT NULL DEFAULT 'asserted' CHECK (evidence_tier IN ('asserted', 'config', 'test', 'live')));",
+    "CREATE TABLE backlog_item_events (id TEXT PRIMARY KEY, item_id TEXT NOT NULL, feature_id TEXT NOT NULL, event_type TEXT NOT NULL, status TEXT NOT NULL, actor TEXT NOT NULL, summary TEXT NOT NULL, details TEXT NOT NULL DEFAULT '', evidence_json TEXT NOT NULL DEFAULT '[]', created_at TEXT NOT NULL, git_branch TEXT NOT NULL DEFAULT '', git_commit TEXT NOT NULL DEFAULT '', git_status TEXT NOT NULL DEFAULT '', evidence_tier TEXT NOT NULL DEFAULT 'asserted' CHECK (evidence_tier IN ('asserted', 'config', 'test', 'live')), FOREIGN KEY(item_id) REFERENCES feature_items(id), FOREIGN KEY(feature_id) REFERENCES features(id));",
     "CREATE TABLE backlog_item_claims (item_id TEXT PRIMARY KEY, feature_id TEXT NOT NULL, actor TEXT NOT NULL, claimed_at TEXT NOT NULL, expires_at TEXT NOT NULL, status TEXT NOT NULL, write_scope_json TEXT NOT NULL DEFAULT '[]', notes TEXT NOT NULL DEFAULT '', last_event_id TEXT NOT NULL DEFAULT '', FOREIGN KEY(item_id) REFERENCES feature_items(id), FOREIGN KEY(feature_id) REFERENCES features(id));",
     "CREATE INDEX idx_feature_dependencies_feature ON feature_dependencies(feature_id);",
     "CREATE INDEX idx_feature_items_feature_type_order ON feature_items(feature_id, item_type, position);",
@@ -175,6 +209,13 @@ function schemaStatements() {
     // Current item status: base status from the item row, current status + claim from the event/claim tables.
     "CREATE VIEW backlog_item_current_status AS SELECT i.id, i.feature_id, i.item_type, i.position, i.title, i.status AS base_status, COALESCE((SELECT e.status FROM backlog_item_events e WHERE e.item_id = i.id AND e.status <> '' ORDER BY e.created_at DESC, e.id DESC LIMIT 1), i.status) AS current_status, (SELECT e.summary FROM backlog_item_events e WHERE e.item_id = i.id ORDER BY e.created_at DESC, e.id DESC LIMIT 1) AS latest_update, (SELECT e.created_at FROM backlog_item_events e WHERE e.item_id = i.id ORDER BY e.created_at DESC, e.id DESC LIMIT 1) AS latest_update_at, CASE WHEN c.status = 'active' AND c.expires_at > strftime('%Y-%m-%dT%H:%M:%fZ','now') THEN c.actor ELSE '' END AS active_claim_actor, CASE WHEN c.status = 'active' AND c.expires_at > strftime('%Y-%m-%dT%H:%M:%fZ','now') THEN c.expires_at ELSE '' END AS active_claim_expires_at, c.write_scope_json AS write_scope_json FROM feature_items i LEFT JOIN backlog_item_claims c ON c.item_id = i.id;",
     "CREATE VIEW backlog_summary AS SELECT f.id, e.name AS epic, f.feature_key, f.title, f.priority, f.estimate, f.status, f.release_band, (SELECT count(*) FROM feature_items t WHERE t.feature_id = f.id AND t.item_type = 'task') AS task_count, (SELECT count(*) FROM feature_items tc WHERE tc.feature_id = f.id AND tc.item_type = 'test_case') AS test_count FROM features f JOIN epics e ON e.id = f.epic_id ORDER BY f.id;",
+    // Release gate (F-A / v0.9.1 F2): an item whose feature carries a `release-class:*`
+    // label is in a declared-sensitive class (deploy/infra/performance/runtime-security/
+    // data-residency). Such an item cannot be signed off (current_status = 'verified')
+    // on asserted/config/test evidence alone -- it requires at least one backlog event
+    // with evidence_tier = 'live'. Every row of this view is a blocking violation;
+    // `backlog:validate` fails while it is non-empty.
+    "CREATE VIEW release_gate_violations AS SELECT i.id AS item_id, i.feature_id, f.title AS feature_title, (SELECT group_concat(replace(fl.label, 'release-class:', ''), ', ') FROM feature_labels fl WHERE fl.feature_id = f.id AND fl.label LIKE 'release-class:%') AS release_classes, s.current_status, COALESCE((SELECT max(CASE e.evidence_tier WHEN 'live' THEN 3 WHEN 'test' THEN 2 WHEN 'config' THEN 1 ELSE 0 END) FROM backlog_item_events e WHERE e.item_id = i.id), 0) AS max_evidence_rank FROM feature_items i JOIN features f ON f.id = i.feature_id JOIN backlog_item_current_status s ON s.id = i.id WHERE EXISTS (SELECT 1 FROM feature_labels fl WHERE fl.feature_id = f.id AND fl.label LIKE 'release-class:%') AND s.current_status = 'verified' AND NOT EXISTS (SELECT 1 FROM backlog_item_events e WHERE e.item_id = i.id AND e.evidence_tier = 'live');",
   ];
 }
 
@@ -241,7 +282,7 @@ function auditImportStatements() {
   const lines = fs.readFileSync(abs(auditLogPath), "utf8").split(/\r?\n/u).filter(Boolean);
   return lines.map((line) => {
     const event = JSON.parse(line);
-    return `INSERT OR REPLACE INTO audit_events VALUES (${sqlString(event.id)}, ${sqlString(event.occurredAt)}, ${sqlString(event.actor ?? "")}, ${sqlString(event.eventType)}, ${sqlString(event.targetType ?? "")}, ${sqlString(event.targetId ?? "")}, ${sqlString(event.featureId ?? "")}, ${sqlString(event.status ?? "")}, ${sqlString(event.summary ?? "")}, ${sqlString(event.details ?? "")}, ${sqlString(JSON.stringify(event.evidence ?? []))});`;
+    return `INSERT OR REPLACE INTO audit_events VALUES (${sqlString(event.id)}, ${sqlString(event.occurredAt)}, ${sqlString(event.actor ?? "")}, ${sqlString(event.eventType)}, ${sqlString(event.targetType ?? "")}, ${sqlString(event.targetId ?? "")}, ${sqlString(event.featureId ?? "")}, ${sqlString(event.status ?? "")}, ${sqlString(event.summary ?? "")}, ${sqlString(event.details ?? "")}, ${sqlString(JSON.stringify(event.evidence ?? []))}, ${sqlString(EVIDENCE_TIERS.includes(event.evidenceTier) ? event.evidenceTier : "asserted")});`;
   });
 }
 
@@ -297,7 +338,7 @@ function itemEventId() {
   return `BIE-${nowIso().replace(/[-:.TZ]/gu, "").slice(0, 14)}-${randomBytes(3).toString("hex")}`;
 }
 
-function recordItemEvent({ itemId, eventType, status, summary, details = "", evidence = [], actor = "agent", claimSql = "" }) {
+function recordItemEvent({ itemId, eventType, status, summary, details = "", evidence = [], actor = "agent", claimSql = "", evidenceTier = "asserted" }) {
   const item = getItem(itemId);
   const id = itemEventId();
   const createdAt = nowIso();
@@ -306,14 +347,14 @@ function recordItemEvent({ itemId, eventType, status, summary, details = "", evi
 PRAGMA foreign_keys=ON;
 BEGIN TRANSACTION;
 INSERT INTO backlog_item_events VALUES (
-  ${sqlString(id)}, ${sqlString(item.id)}, ${sqlString(item.feature_id)}, ${sqlString(eventType)}, ${sqlString(status)}, ${sqlString(actor)}, ${sqlString(summary)}, ${sqlString(details)}, ${sqlString(JSON.stringify(evidence))}, ${sqlString(createdAt)}, ${sqlString(git.branch)}, ${sqlString(git.commit)}, ${sqlString(git.status)}
+  ${sqlString(id)}, ${sqlString(item.id)}, ${sqlString(item.feature_id)}, ${sqlString(eventType)}, ${sqlString(status)}, ${sqlString(actor)}, ${sqlString(summary)}, ${sqlString(details)}, ${sqlString(JSON.stringify(evidence))}, ${sqlString(createdAt)}, ${sqlString(git.branch)}, ${sqlString(git.commit)}, ${sqlString(git.status)}, ${sqlString(evidenceTier)}
 );
 ${status ? `UPDATE feature_items SET status = ${sqlString(status)} WHERE id = ${sqlString(item.id)};` : ""}
 ${claimSql}
 COMMIT;
 `);
   exportSql();
-  console.log(JSON.stringify({ id, itemId: item.id, featureId: item.feature_id, eventType, status, summary, evidence }, null, 2));
+  console.log(JSON.stringify({ id, itemId: item.id, featureId: item.feature_id, eventType, status, summary, evidence, evidenceTier }, null, 2));
 }
 
 function claimItem(args) {
@@ -338,7 +379,7 @@ function claimItem(args) {
   runSqlFile(`
 PRAGMA foreign_keys=ON;
 BEGIN TRANSACTION;
-INSERT INTO backlog_item_events VALUES (${sqlString(eventId)}, ${sqlString(item.id)}, ${sqlString(item.feature_id)}, 'claim', 'claimed', ${sqlString(actor)}, ${sqlString(`Claimed ${item.id}`)}, ${sqlString(notes)}, ${sqlString(JSON.stringify(writeScope))}, ${sqlString(claimedAt)}, ${sqlString(git.branch)}, ${sqlString(git.commit)}, ${sqlString(git.status)});
+INSERT INTO backlog_item_events VALUES (${sqlString(eventId)}, ${sqlString(item.id)}, ${sqlString(item.feature_id)}, 'claim', 'claimed', ${sqlString(actor)}, ${sqlString(`Claimed ${item.id}`)}, ${sqlString(notes)}, ${sqlString(JSON.stringify(writeScope))}, ${sqlString(claimedAt)}, ${sqlString(git.branch)}, ${sqlString(git.commit)}, ${sqlString(git.status)}, 'asserted');
 INSERT OR REPLACE INTO backlog_item_claims VALUES (${sqlString(item.id)}, ${sqlString(item.feature_id)}, ${sqlString(actor)}, ${sqlString(claimedAt)}, ${sqlString(expiresAt)}, 'active', ${sqlString(JSON.stringify(writeScope))}, ${sqlString(notes)}, ${sqlString(eventId)});
 UPDATE feature_items SET status = 'claimed' WHERE id = ${sqlString(item.id)};
 COMMIT;
@@ -354,10 +395,11 @@ function transitionItem(args, eventType, status, defaultSummary) {
   const summary = value(args, "summary", defaultSummary);
   const details = value(args, "details");
   const evidence = values(args, "evidence");
+  const evidenceTier = evidenceTierFromArgs(args);
   const claimStatus = status === "implemented" || status === "verified" ? "completed" : status === "blocked" ? "blocked" : "active";
   const item = getItem(itemId);
   const claimSql = `UPDATE backlog_item_claims SET status = ${sqlString(claimStatus)}, last_event_id = (select id from backlog_item_events where item_id = ${sqlString(item.id)} order by created_at desc, id desc limit 1) WHERE item_id = ${sqlString(item.id)};`;
-  recordItemEvent({ itemId, eventType, status, actor, summary, details, evidence, claimSql });
+  recordItemEvent({ itemId, eventType, status, actor, summary, details, evidence, claimSql, evidenceTier });
 }
 
 function releaseItem(args) {
@@ -366,6 +408,9 @@ function releaseItem(args) {
   const actor = value(args, "actor", process.env.USER ?? "agent");
   const summary = value(args, "summary", `Released claim for ${itemId}`);
   const item = getItem(itemId);
+  // A release gives up a claim (status -> planned); it makes no evidence claim, so it
+  // intentionally does not accept --tier and records the default 'asserted'. Evidence
+  // tiers belong on verify/complete/fail events, which the release gate reads.
   recordItemEvent({
     itemId,
     eventType: "release",
@@ -449,9 +494,34 @@ function validateBacklog() {
     ["features_without_tests", "select count(*) as count from features f where not exists (select 1 from feature_items t where t.feature_id = f.id and t.item_type = 'test_case')"],
   ];
   const results = checks.map(([name, sql]) => ({ name, count: sqlite(sql, { json: true })[0]?.count ?? 0 }));
-  const failures = results.filter((row) => (row.name.startsWith("orphan") || row.name.startsWith("features_without")) && row.count > 0);
-  console.log(JSON.stringify({ database: dbPath, valid: failures.length === 0, results }, null, 2));
-  if (failures.length > 0) process.exitCode = 1;
+  const structuralFailures = results.filter((row) => (row.name.startsWith("orphan") || row.name.startsWith("features_without")) && row.count > 0);
+  // Release gate (F-A): sign-offs on declared-sensitive release classes require live evidence.
+  const releaseGateViolations = sqlite(
+    "select item_id, feature_id, feature_title, release_classes, current_status, max_evidence_rank from release_gate_violations order by item_id",
+    { json: true },
+  );
+  // Any release-class:<class> label must name a canonical sensitive class (policy in
+  // guardrails.json). The gate fails safe on any release-class:* label; this check
+  // surfaces typos/misuse so they are corrected rather than silently mis-declared.
+  const canonicalClasses = sensitiveReleaseClasses();
+  const declaredClasses = sqlite(
+    "select distinct replace(label, 'release-class:', '') as class from feature_labels where label like 'release-class:%' order by class",
+    { json: true },
+  ).map((row) => row.class);
+  const unknownReleaseClasses = declaredClasses.filter((cls) => !canonicalClasses.includes(cls));
+  const valid = structuralFailures.length === 0 && releaseGateViolations.length === 0 && unknownReleaseClasses.length === 0;
+  console.log(JSON.stringify({
+    database: dbPath,
+    valid,
+    results,
+    releaseGate: {
+      rule: "Items under a feature labelled release-class:<class> cannot be signed off (status 'verified') on asserted/config/test evidence alone -- they require a backlog event with evidence_tier 'live'. Declared classes must be one of the canonical sensitive classes.",
+      sensitiveReleaseClasses: canonicalClasses,
+      violations: releaseGateViolations,
+      unknownReleaseClasses,
+    },
+  }, null, 2));
+  if (!valid) process.exitCode = 1;
 }
 
 const args = parseArgs(process.argv.slice(2));

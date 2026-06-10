@@ -16,7 +16,7 @@ const auditLogPath = "data/audit/audit-log.jsonl";
 const policyPath = "config/agentic/guardrails.json";
 
 function abs(file) {
-  return path.join(root, file);
+  return path.isAbsolute(file) ? file : path.join(root, file);
 }
 
 const KNOWN_EVENT_TYPES = new Set([
@@ -35,6 +35,18 @@ function loadRedactKeys() {
     return Array.isArray(policy.redactFields) ? policy.redactFields : [];
   } catch {
     return ["password", "secret", "token", "apiKey", "authorization", "cookie", "privateKey", "webhookSecret"];
+  }
+}
+
+const DEFAULT_EVIDENCE_TIERS = ["asserted", "config", "test", "live"];
+
+function loadEvidenceTiers() {
+  try {
+    const policy = JSON.parse(fs.readFileSync(abs(policyPath), "utf8"));
+    const tiers = policy.evidence?.tiers;
+    return Array.isArray(tiers) && tiers.length ? tiers : DEFAULT_EVIDENCE_TIERS;
+  } catch {
+    return DEFAULT_EVIDENCE_TIERS;
   }
 }
 
@@ -61,6 +73,7 @@ function main() {
     return;
   }
   const redactKeys = loadRedactKeys();
+  const evidenceTiers = loadEvidenceTiers();
   const lines = fs.readFileSync(abs(auditLogPath), "utf8").split(/\r?\n/u);
   const failures = [];
   const warnings = [];
@@ -94,6 +107,10 @@ function main() {
     }
 
     if (!event.summary) warnings.push(`Line ${lineNo}: empty summary`);
+
+    if (event.evidenceTier !== undefined && !evidenceTiers.includes(event.evidenceTier)) {
+      failures.push(`Line ${lineNo}: invalid evidenceTier "${event.evidenceTier}" (expected one of: ${evidenceTiers.join(", ")})`);
+    }
 
     const evidenceText = Array.isArray(event.evidence) ? event.evidence.join(" ") : "";
     const secretHit = looksLikeSecret(event.summary, redactKeys) || looksLikeSecret(event.details, redactKeys) || looksLikeSecret(evidenceText, redactKeys);
