@@ -1,0 +1,182 @@
+/* ADG Ledger — stark monochrome governance dashboard */
+
+:root {
+  --ink: #000000;
+  --paper: #ffffff;
+  --grey-1: #f4f4f2;
+  --grey-2: #e3e3e0;
+  --grey-3: #8a8a86;
+  --grey-4: #4a4a47;
+  --hairline: 1px solid var(--ink);
+  --serif: 'Instrument Serif', Georgia, serif;
+  --mono: 'IBM Plex Mono', 'SF Mono', monospace;
+  --rail-w: 232px;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+body {
+  font-family: var(--mono);
+  font-size: 13px;
+  line-height: 1.5;
+  background: var(--paper);
+  color: var(--ink);
+}
+
+::selection {
+  background: var(--ink);
+  color: var(--paper);
+}
+
+a {
+  color: inherit;
+}
+
+/* ---- shared primitives ---- */
+
+.label {
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--grey-4);
+}
+
+.page-title {
+  font-family: var(--serif);
+  font-size: clamp(40px, 5vw, 64px);
+  font-weight: 400;
+  line-height: 1;
+  letter-spacing: -0.01em;
+}
+
+.page-title em {
+  font-style: italic;
+}
+
+.stat-figure {
+  font-family: var(--serif);
+  font-size: clamp(48px, 6vw, 88px);
+  font-weight: 400;
+  line-height: 0.9;
+  font-variant-numeric: lining-nums;
+}
+
+.rule {
+  border: 0;
+  border-top: var(--hairline);
+}
+
+/* ---- data tables ---- */
+
+table.ledger {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+table.ledger th {
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--grey-3);
+  text-align: left;
+  padding: 10px 16px 10px 0;
+  border-bottom: var(--hairline);
+  white-space: nowrap;
+}
+
+table.ledger td {
+  padding: 10px 16px 10px 0;
+  border-bottom: 1px solid var(--grey-2);
+  vertical-align: top;
+}
+
+table.ledger tbody tr {
+  transition: background 0.12s ease, color 0.12s ease;
+}
+
+table.ledger tbody tr:hover {
+  background: var(--ink);
+  color: var(--paper);
+}
+
+table.ledger tbody tr:hover .label,
+table.ledger tbody tr:hover .dim {
+  color: var(--grey-2);
+}
+
+table.ledger tbody tr:hover .pill {
+  border-color: var(--paper);
+}
+
+.dim {
+  color: var(--grey-3);
+}
+
+.num {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- status pills ---- */
+
+.pill {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  border: 1px solid var(--ink);
+  padding: 2px 8px;
+  white-space: nowrap;
+}
+
+.pill.solid {
+  background: var(--ink);
+  color: var(--paper);
+}
+
+tr:hover .pill.solid {
+  background: var(--paper);
+  color: var(--ink);
+}
+
+/* ---- load animation ---- */
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.rise {
+  animation: rise 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.rise:nth-child(2) { animation-delay: 0.05s; }
+.rise:nth-child(3) { animation-delay: 0.1s; }
+.rise:nth-child(4) { animation-delay: 0.15s; }
+.rise:nth-child(5) { animation-delay: 0.2s; }
+.rise:nth-child(6) { animation-delay: 0.25s; }
+
+@media (prefers-reduced-motion: reduce) {
+  .rise {
+    animation: none;
+  }
+}

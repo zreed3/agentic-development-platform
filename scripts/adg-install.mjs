@@ -67,12 +67,54 @@ const clientPackageScripts = {
 // the claude files (the unmodified ones) and records the host back as base.
 const SUPPORTED_CLIENTS = new Set(["base", "claude"]);
 
-function activeManagedFiles(client) {
-  return client && clientManagedFiles[client] ? [...managedFiles, ...clientManagedFiles[client]] : managedFiles;
+// Optional read-only governance dashboard (`--dashboard on`). Installed into the host
+// at apps/adg-dashboard/ so operators can watch what the agent is doing: backlog,
+// append-only audit log, guardrail policy, evals, delivery proxies. It reads the
+// host's data/ and config/agentic/ artifacts directly and renders empty states for
+// artifacts the host has not adopted yet. `--dashboard off` prunes it on update.
+const dashboardSourceDir = "apps/dashboard";
+const dashboardTargetDir = "apps/adg-dashboard";
+const dashboardManagedFiles = [
+  "package.json",
+  "svelte.config.js",
+  "vite.config.js",
+  ".gitignore",
+  "README.md",
+  "Dockerfile",
+  ".dockerignore",
+  "src/app.html",
+  "src/app.css",
+  "src/lib/server/data.js",
+  "src/routes/+layout.svelte",
+  "src/routes/+page.server.js",
+  "src/routes/+page.svelte",
+  "src/routes/backlog/+page.server.js",
+  "src/routes/backlog/+page.svelte",
+  "src/routes/audit/+page.server.js",
+  "src/routes/audit/+page.svelte",
+  "src/routes/guardrails/+page.server.js",
+  "src/routes/guardrails/+page.svelte",
+  "src/routes/evals/+page.server.js",
+  "src/routes/evals/+page.svelte",
+].map((file) => ({
+  source: `${dashboardSourceDir}/${file}`,
+  target: `${dashboardTargetDir}/${file}`,
+}));
+
+// First run installs the dashboard's own dev dependencies; nothing is added to the
+// host's root dependency tree.
+const dashboardPackageScripts = {
+  "adg:dashboard": `npm --prefix ${dashboardTargetDir} install && npm --prefix ${dashboardTargetDir} run dev`,
+};
+
+function activeManagedFiles(client, dashboard) {
+  const files = client && clientManagedFiles[client] ? [...managedFiles, ...clientManagedFiles[client]] : [...managedFiles];
+  return dashboard ? [...files, ...dashboardManagedFiles] : files;
 }
 
-function activePackageScripts(client) {
-  return client && clientPackageScripts[client] ? { ...packageScripts, ...clientPackageScripts[client] } : packageScripts;
+function activePackageScripts(client, dashboard) {
+  const scripts = client && clientPackageScripts[client] ? { ...packageScripts, ...clientPackageScripts[client] } : { ...packageScripts };
+  return dashboard ? { ...scripts, ...dashboardPackageScripts } : scripts;
 }
 
 function parseArgs(argv) {
@@ -208,6 +250,18 @@ function updatePackageScripts({ targetRoot, dryRun, forceScripts, scripts }) {
   const pkg = readJson(packagePath);
   pkg.scripts ??= {};
   const changes = {};
+
+  // Prune previously managed scripts that fell out of scope (e.g. --dashboard off),
+  // but only when the host still has the exact command we wrote — never a hand edit.
+  const previousScripts = loadState(targetRoot)?.packageScripts ?? {};
+  for (const [name, command] of Object.entries(previousScripts)) {
+    if (scripts[name] !== undefined) continue;
+    if (pkg.scripts[name] === command) {
+      changes[name] = { from: command, to: null };
+      delete pkg.scripts[name];
+    }
+  }
+
   for (const [name, command] of Object.entries(scripts)) {
     const current = pkg.scripts[name];
     if (current === undefined || current === command || forceScripts) {
@@ -225,12 +279,13 @@ function updatePackageScripts({ targetRoot, dryRun, forceScripts, scripts }) {
   return { changed: Object.keys(changes).length > 0, scripts: changes };
 }
 
-function writeState({ targetRoot, installed, dryRun, client, scripts }) {
+function writeState({ targetRoot, installed, dryRun, client, dashboard, scripts }) {
   const state = {
     schemaVersion: 1,
     system: "Proofline",
     version: sourceVersion(),
     client: client || "base",
+    dashboard: Boolean(dashboard),
     installedAt: new Date().toISOString(),
     source: path.relative(targetRoot, sourceRoot) || ".",
     files: installed.map(({ source, target, sha256 }) => ({ source, target, sha256 })),
@@ -273,6 +328,7 @@ function status({ targetRoot, files }) {
   return {
     system: "Proofline",
     client: state?.client ?? "base",
+    dashboard: Boolean(state?.dashboard),
     sourceVersion: version,
     installedVersion: state?.version ?? null,
     stateFile: fs.existsSync(abs(targetRoot, statePath)) ? statePath : null,
@@ -289,6 +345,7 @@ function printResult(result, format) {
   console.log(`Proofline ${result.action ?? "status"}: ${result.version ?? result.sourceVersion}`);
   if (result.target) console.log(`target: ${result.target}`);
   if (result.client && result.client !== "base") console.log(`client: ${result.client}`);
+  if (result.dashboard) console.log("dashboard: on");
   for (const file of result.files ?? []) {
     console.log(`${file.status ?? (file.changed ? "updated" : "current")}: ${file.target}`);
   }
@@ -318,14 +375,19 @@ function printConformance(report) {
 
 function usage() {
   console.log(`Usage:
-node scripts/adg-install.mjs status [--target /repo] [--client claude] [--format json]
-node scripts/adg-install.mjs install --target /repo [--client claude] [--force] [--dry-run]
-node scripts/adg-install.mjs update --target /repo [--client claude] [--force] [--force-scripts] [--dry-run]
+node scripts/adg-install.mjs status [--target /repo] [--client claude] [--dashboard on|off] [--format json]
+node scripts/adg-install.mjs install --target /repo [--client claude] [--dashboard on|off] [--force] [--dry-run]
+node scripts/adg-install.mjs update --target /repo [--client claude] [--dashboard on|off] [--force] [--force-scripts] [--dry-run]
 
 Installs the portable ADG lane guard into any Node-backed repo. With --client claude
 it also installs the deterministic Claude Code layer: the PreToolUse guardrail hook,
 .claude/settings.json (hook + deny-by-default permissions), the slash commands, the
-conformance doctor, and a CLAUDE.md generated from the host's AGENTS.md.`);
+conformance doctor, and a CLAUDE.md generated from the host's AGENTS.md.
+
+With --dashboard on it also installs the read-only governance dashboard (SvelteKit)
+at apps/adg-dashboard/ plus an "adg:dashboard" package script, so operators can watch
+the backlog, audit log, guardrails, and evals in a browser. --dashboard off on update
+prunes it. The choice is recorded in adg-install-state.json and reused by update.`);
 }
 
 function main() {
@@ -341,14 +403,29 @@ function main() {
 
   // Resolve the client: explicit --client wins; otherwise reuse what the install
   // state recorded, so update/status operate on whatever was installed.
-  const recordedClient = loadState(targetRoot)?.client;
+  const recordedState = loadState(targetRoot);
+  const recordedClient = recordedState?.client;
   const client = value(args, "client", "") || (recordedClient && recordedClient !== "base" ? recordedClient : "");
   if (client && !SUPPORTED_CLIENTS.has(client)) {
     console.error(`Unsupported --client "${client}". Supported: ${[...SUPPORTED_CLIENTS].join(", ")}.`);
     process.exit(1);
   }
-  const files = activeManagedFiles(client);
-  const scripts = activePackageScripts(client);
+
+  // Resolve the dashboard component the same way: explicit --dashboard on/off wins;
+  // otherwise reuse what the install state recorded. Bare --dashboard means on.
+  const dashboardRaw = args.values.dashboard;
+  let dashboard = Boolean(recordedState?.dashboard);
+  if (dashboardRaw !== undefined) {
+    const normalized = dashboardRaw === true ? "on" : String(dashboardRaw).toLowerCase();
+    if (!["on", "off"].includes(normalized)) {
+      console.error(`Unsupported --dashboard "${dashboardRaw}". Use on or off.`);
+      process.exit(1);
+    }
+    dashboard = normalized === "on";
+  }
+
+  const files = activeManagedFiles(client, dashboard);
+  const scripts = activePackageScripts(client, dashboard);
 
   if (args.command === "status") {
     // Status doubles as the adopter conformance report (F-B): it runs the doctor
@@ -384,7 +461,7 @@ function main() {
     if (claudeMd.generated) installed.push({ source: "(generated from AGENTS.md)", target: claudeMd.target, sha256: claudeMd.sha256, changed: claudeMd.created });
   }
 
-  const state = writeState({ targetRoot, installed, dryRun, client, scripts });
+  const state = writeState({ targetRoot, installed, dryRun, client, dashboard, scripts });
   // After install/update, warn (don't fail) on conformance drift so the operator
   // sees regenerate-then-amend hazards without blocking the install (F-B / R1).
   const conformance = doctor({ targetRoot });
@@ -393,6 +470,7 @@ function main() {
     action: args.command,
     target: targetRoot,
     client: client || "base",
+    dashboard,
     version: state.version,
     files: installed,
     pruned,
