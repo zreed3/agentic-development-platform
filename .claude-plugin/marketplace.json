@@ -1,19 +1,22 @@
 {
   "name": "adg-governance",
   "owner": {
-    "name": "Otterblock Pty Ltd",
-    "email": "zach+github@otterblock.com"
+    "name": "Zach Reeder (OtterBlock Pty Ltd)",
+    "email": "zach+github@otterblock.com.au",
+    "url": "https://github.com/zreed3"
   },
   "description": "Agentic Development Governance — deny-by-default, SQL-first governance for agent-assisted development. Install the plugin to gate tool use deterministically and run the ADG lane / backlog / audit workflow inside Claude Code.",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "plugins": [
     {
       "name": "adg-governance",
       "source": "./plugins/adg-governance",
       "description": "Deterministic deny-by-default tool gating (PreToolUse hook), bounded context, a generated CLAUDE.md rulebook, and the ADG lane / backlog / audit workflow as slash commands and skills.",
-      "version": "0.4.0",
+      "version": "0.4.1",
       "author": {
-        "name": "Otterblock Pty Ltd"
+        "name": "Zach Reeder",
+        "email": "zach+github@otterblock.com.au",
+        "url": "https://github.com/zreed3"
       },
       "license": "PolyForm-Noncommercial-1.0.0",
       "keywords": ["governance", "guardrails", "deterministic", "audit"]

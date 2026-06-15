@@ -81,7 +81,7 @@
     "dashboard:build": "npm --prefix apps/dashboard run build",
     "dashboard:docker": "docker build -t adg-dashboard apps/dashboard && docker run --rm -p 3000:3000 -v \"$PWD:/repo:ro\" adg-dashboard"
   },
-  "author": "Otterblock Pty Ltd",
+  "author": "Zach Reeder (OtterBlock Pty Ltd) <zach+github@otterblock.com.au> (https://github.com/zreed3)",
   "license": "SEE LICENSE IN LICENSE",
   "dependencies": {
     "@modelcontextprotocol/sdk": "1.29.0"
