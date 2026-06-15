@@ -126,6 +126,7 @@ npm run context:feature -- --feature S07 --workflow spike
 
 ## Documentation
 
+- **📖 Start here:** [`docs/adg-introduction.md`](docs/adg-introduction.md) — *Most teams are governing their AI coding agents wrong* — the introduction to ADG: why a fleet of agents is a governance problem, the context inversion, and the five design principles.
 - [`AGENTS.md`](AGENTS.md) — the agent rulebook / per-repo template.
 - [`docs/architecture/governance-model.md`](docs/architecture/governance-model.md) — the five design principles.
 - [`docs/architecture/agentic-application-development-pipeline.md`](docs/architecture/agentic-application-development-pipeline.md) — the end-to-end pipeline and benchmark sources.
