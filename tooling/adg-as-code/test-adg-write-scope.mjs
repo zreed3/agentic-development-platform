@@ -254,6 +254,10 @@ const ALLOWED = [
   bash("eslint --fix --rulesdir tools allowed/x.ts"), // `tools` is the --rulesdir value
   bash("rustfmt --edition 2021 allowed/x.rs"), // `2021` is the --edition value
   bash("sed -i s/a/b/ allowed/a.txt allowed/b.txt"), // multi-file in-place, all in scope
+  // eleventh-round: isort's SHORT read-only flags (-c == --check-only, -d == --diff) check/print
+  // without modifying the file, so a worker linting import order out of scope is a READ, not a write.
+  bash("isort -c src/x.py"), // -c is the short form of --check-only (read)
+  bash("isort -d src/x.py"), // -d is the short form of --diff (read)
 ];
 for (const ev of ALLOWED) {
   check(`allowed: ${ev.tool_name} ${JSON.stringify(ev.tool_input).slice(0, 56)}`, hook(HOOK, ev, SCOPE) === 0);
