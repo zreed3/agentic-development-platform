@@ -23,7 +23,27 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-const hookPath = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../hooks/adg-guardrail-hook.mjs");
+// Resolve the shared hook in a way that survives installation into a host repo,
+// where this adapter and the hook both land in scripts/. The source-tree-relative
+// path (../../hooks/) is only correct in the ADG repo, so try the host layouts first.
+// ADG_GUARDRAILS_HOOK is an explicit override (mirrors ADG_GUARDRAILS_PATH).
+function resolveHookPath() {
+  const here = path.dirname(fileURLToPath(import.meta.url));
+  const candidates = [
+    process.env.ADG_GUARDRAILS_HOOK,
+    path.join(here, "adg-guardrail-hook.mjs"), // host: adapter + hook both in scripts/
+    path.join(process.cwd(), "scripts/adg-guardrail-hook.mjs"), // host cwd layout
+    path.resolve(here, "../../hooks/adg-guardrail-hook.mjs"), // ADG source tree
+  ].filter(Boolean);
+  for (const candidate of candidates) {
+    if (fs.existsSync(candidate)) return candidate;
+  }
+  // None found: return the host-default path so the spawn fails closed for mutating
+  // tools (a missing hook is a hook error, which this adapter blocks).
+  return candidates[candidates.length - 1];
+}
+
+const hookPath = resolveHookPath();
 
 function readStdin() {
   try {
@@ -83,9 +103,19 @@ export function decide(event, runner = spawnSync) {
   return { decision: "allow", reason: "", exit: 0 };
 }
 
-// CLI entry (skip when imported by the test).
-const isMain = process.argv[1] && path.resolve(process.argv[1]) === path.resolve(fileURLToPath(import.meta.url));
-if (isMain) {
+// CLI entry (skip when imported by the test). Resolve symlinks on both sides:
+// path.resolve does not canonicalize symlinks, so on a symlinked install path (e.g.
+// macOS /var -> /private/var, or a symlinked host dir) argv[1] and import.meta.url
+// would differ and the CLI would silently no-op. realpathSync makes it robust.
+function isMainModule() {
+  if (!process.argv[1]) return false;
+  try {
+    return fs.realpathSync(process.argv[1]) === fs.realpathSync(fileURLToPath(import.meta.url));
+  } catch {
+    return path.resolve(process.argv[1]) === path.resolve(fileURLToPath(import.meta.url));
+  }
+}
+if (isMainModule()) {
   const result = decide(normalizeEvent(readStdin()));
   const payload = result.decision === "allow" ? { decision: "allow" } : { decision: result.decision, reason: result.reason };
   process.stdout.write(`${JSON.stringify(payload)}\n`);

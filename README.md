@@ -33,10 +33,18 @@ For delivery speed, the default operating unit is a **feature slice**:
 targeted checks during implementation, records failures explicitly, and reserves the
 full governance gate for feature/release checkpoints.
 
-The lightweight operating name for this discipline is **Proofline v0.9**: exploration
+The lightweight operating name for this discipline is **Proofline** (1.0): exploration
 and quick fixes stay cheap, while release/signoff claims still need evidence. Use
 `npm run work:classify -- --intent "..." --file path` to choose a lane before
 burning tokens on context or gates.
+
+The 1.0 release adds toggleable guardrail controls as policy-as-code (with always-on
+pins for destructive-deny, audit-append-only, and forbidden-bulk-read that no toggle can
+reach), a rolling hash chain over the append-only audit log, a single install that ships
+one policy source to both the Claude Code and Codex adapters, and a read-only governance
+dashboard. Deny-by-default and the append-only audit log are never weakened; toggling a
+control is itself a governed, audited action. See
+[`docs/release-notes-1.0.md`](docs/release-notes-1.0.md).
 
 ## What makes it different
 
@@ -127,6 +135,9 @@ npm run context:feature -- --feature S07 --workflow spike
 ## Documentation
 
 - **📖 Start here:** [`docs/adg-introduction.md`](docs/adg-introduction.md) — *Most teams are governing their AI coding agents wrong* — the introduction to ADG: why a fleet of agents is a governance problem, the context inversion, and the five design principles.
+- **🚀 1.1 release notes:** [`docs/release-notes-1.1.md`](docs/release-notes-1.1.md) — deterministic asset-lint quality gate (Rust pixel reader), artifact-typed control packs, the visual-evidence release gate, and the uncovered-intent flag.
+- **🚀 1.0 release notes:** [`docs/release-notes-1.0.md`](docs/release-notes-1.0.md) — toggleable controls, the audit hash chain, one-install consolidation, and the governance alignment assessment.
+- [`docs/governance-alignment.md`](docs/governance-alignment.md) — ADG controls mapped to OWASP LLM Top 10, ISO/IEC 42001, the Three Lines model, and ISO 31000.
 - [`AGENTS.md`](AGENTS.md) — the agent rulebook / per-repo template.
 - [`docs/architecture/governance-model.md`](docs/architecture/governance-model.md) — the five design principles.
 - [`docs/architecture/agentic-application-development-pipeline.md`](docs/architecture/agentic-application-development-pipeline.md) — the end-to-end pipeline and benchmark sources.

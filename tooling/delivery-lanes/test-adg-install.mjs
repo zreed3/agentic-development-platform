@@ -18,7 +18,7 @@ function run(args, cwd = root) {
 fs.writeFileSync(path.join(tempRoot, "package.json"), `${JSON.stringify({ name: "host", scripts: {} }, null, 2)}\n`);
 
 const install = JSON.parse(run(["install", "--target", tempRoot, "--format", "json"]));
-assert.equal(install.version, "0.9.0");
+assert.equal(install.version, "1.1.0");
 assert.ok(fs.existsSync(path.join(tempRoot, "config/agentic/delivery-lanes.json")));
 assert.ok(fs.existsSync(path.join(tempRoot, "scripts/adg-work-classify.mjs")));
 assert.ok(fs.existsSync(path.join(tempRoot, "docs/adg/proofline-delivery-lanes.md")));

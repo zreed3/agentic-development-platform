@@ -588,9 +588,11 @@ function renderToonRows(name, rows, columns) {
 }
 
 function renderToon(packet) {
+  // generatedAt is the only volatile field; it is emitted LAST (a trailing _meta
+  // block) so the leading content is a stable prefix that prompt caching can reuse
+  // across repeated same-feature calls. See docs/token-reduction.md.
   return [
     "context:",
-    `  generatedAt: ${packet.generatedAt}`,
     `  workflow: ${packet.workflow}`,
     `  feature: ${packet.feature.id}`,
     `  item: ${packet.selectedItem?.id ?? ""}`,
@@ -611,11 +613,18 @@ function renderToon(packet) {
     renderToonRows("deliveryFlow", (packet.profile.deliveryFlow ?? []).map((step) => ({ step })), ["step"]),
     renderToonRows("verificationPolicy", (packet.profile.verificationPolicy ?? []).map((policy) => ({ policy })), ["policy"]),
     renderToonRows("forbiddenBulkFiles", packet.forbiddenBulkFiles.map((pathValue) => ({ path: pathValue })), ["path"]),
+    "_meta:",
+    `  generatedAt: ${packet.generatedAt}`,
   ].join("\n");
 }
 
 function renderPacket(packet, format) {
-  if (format === "json") return `${JSON.stringify(packet, null, 2)}\n`;
+  // In JSON, move the volatile generatedAt to the END of the object so the leading
+  // content stays a stable, cache-eligible prefix (only the tail varies per call).
+  if (format === "json") {
+    const { generatedAt, ...rest } = packet;
+    return `${JSON.stringify({ ...rest, generatedAt }, null, 2)}\n`;
+  }
   if (format === "toon") return `${renderToon(packet)}\n`;
   if (format === "markdown") return renderMarkdown(packet);
   throw new Error(`Unsupported format ${format}. Use markdown, json, or toon.`);

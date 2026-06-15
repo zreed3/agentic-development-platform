@@ -1,6 +1,6 @@
 {
   "name": "adg-governance",
-  "version": "0.4.1",
+  "version": "1.1.0",
   "description": "Deterministic ADG governance workflows for bounded agent delivery, route/persona UX truth passes, standards evidence, and auditable deliverables. Shares one policy and rulebook with the Claude Code adapter (.claude-plugin) so both harnesses enforce the same rules in one repo.",
   "author": {
     "name": "Zach Reeder",

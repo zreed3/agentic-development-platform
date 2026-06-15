@@ -17,6 +17,7 @@ Use this to keep proof truthful and compact.
 ## Rules
 
 - Record failed commands instead of hiding them behind a passing summary.
+- For a deliverable that renders to a user, a rendered artifact (screenshot or montage) plus `npm run asset:lint` on any image assets is the evidence; metric-only evidence is a lower tier and needs a `live` event under `release-class:visual`.
 - Do not use a narrow check to prove a broad claim.
 - Evidence should name commands, paths, artifacts, or audit ids.
 - Advisory gaps are allowed, but must remain queryable.

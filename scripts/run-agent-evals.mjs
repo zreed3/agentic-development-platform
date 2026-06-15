@@ -6,13 +6,34 @@
 // input and allowed-tool set. Results are mirrored into SQLite/SQL/JSON so they
 // are queryable and reviewable. Exits non-zero if any scenario fails.
 
-import { execSync } from "node:child_process";
+import { execSync, spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 
 const root = process.cwd();
 const scenarioDir = "tooling/agent-evals/scenarios";
 const policyPath = "config/agentic/guardrails.json";
+const hookPath = "plugins/adg-governance/hooks/adg-guardrail-hook.mjs";
+
+// Drive the REAL deterministic PreToolUse hook with a synthesized event so the eval
+// gate exercises the enforcement surface, not just the abstract policy table. Maps
+// the hook's exit code / output to block | ask | allow.
+function runHookProbe(probe) {
+  const res = spawnSync(process.execPath, [path.join(root, hookPath)], {
+    input: JSON.stringify(probe),
+    encoding: "utf8",
+  });
+  if (res.status === 2) return "block";
+  try {
+    const out = res.stdout ? JSON.parse(res.stdout) : null;
+    const decision = out?.hookSpecificOutput?.permissionDecision;
+    if (decision === "ask") return "ask";
+    if (decision === "deny") return "block";
+  } catch {
+    /* fall through */
+  }
+  return "allow";
+}
 const outJson = "data/agent-evals.json";
 const outSqlite = "data/agent-evals.sqlite";
 const outSql = "data/agent-evals.sql";
@@ -48,10 +69,15 @@ const results = scenarios.map((scenario) => {
   const tool = toolMap.get(scenario.expected.tool);
   const actualDecision = tool?.allowed && scenario.allowedTools.includes(scenario.expected.tool) ? "allow" : "deny";
   const actualRequiresConfirmation = Boolean(tool?.requiresConfirmation ?? policy.riskClasses?.[tool?.riskClass]?.requiresConfirmation);
+  // Optional: exercise the real deterministic hook for this scenario.
+  const hookProbed = Boolean(scenario.hookProbe);
+  const actualHookDecision = hookProbed ? runHookProbe(scenario.hookProbe) : null;
+  const hookPass = !hookProbed || actualHookDecision === scenario.expectedHookDecision;
   const pass =
     actualDecision === scenario.expected.decision &&
     actualRequiresConfirmation === scenario.expected.requiresConfirmation &&
-    (scenario.expected.decision === "deny" || scenario.allowedTools.includes(scenario.expected.tool));
+    (scenario.expected.decision === "deny" || scenario.allowedTools.includes(scenario.expected.tool)) &&
+    hookPass;
   return {
     id: scenario.id,
     title: scenario.title,
@@ -64,6 +90,9 @@ const results = scenarios.map((scenario) => {
     actualRequiresConfirmation,
     expectedRequiresConfirmation: scenario.expected.requiresConfirmation,
     expectedSecurityOutcome: scenario.expected.securityOutcome,
+    hookProbed,
+    expectedHookDecision: scenario.expectedHookDecision ?? null,
+    actualHookDecision,
     status: pass ? "passed" : "failed",
     assertions: scenario.assertions,
   };
@@ -75,6 +104,7 @@ const payload = {
   scenarioCount: results.length,
   passed: results.filter((result) => result.status === "passed").length,
   failed: results.filter((result) => result.status === "failed").length,
+  hookProbed: results.filter((result) => result.hookProbed).length,
   results,
 };
 
@@ -103,5 +133,22 @@ fs.writeFileSync(abs(outSql), `${statements.join("\n")}\n`, "utf8");
 if (fs.existsSync(abs(outSqlite))) fs.rmSync(abs(outSqlite));
 exec(`sqlite3 ${JSON.stringify(abs(outSqlite))} < ${JSON.stringify(abs(outSql))}`);
 
-console.log(JSON.stringify(payload, null, 2));
+// Compact stdout for the gate: the high-signal counts plus any failures only. The
+// full per-scenario detail stays in data/agent-evals.json and the SQL mirror for the
+// dashboard, so this keeps the gate output small without losing queryable evidence.
+const summary = {
+  kind: "agent-evals",
+  policyVersion: payload.policyVersion,
+  scenarioCount: payload.scenarioCount,
+  passed: payload.passed,
+  failed: payload.failed,
+  hookProbed: payload.hookProbed,
+  report: outJson,
+};
+if (payload.failed > 0) {
+  summary.failures = results
+    .filter((r) => r.status === "failed")
+    .map((r) => ({ id: r.id, decision: `${r.expectedDecision}/${r.actualDecision}`, hook: r.hookProbed ? `${r.expectedHookDecision}/${r.actualHookDecision}` : null }));
+}
+console.log(JSON.stringify(summary, null, 2));
 if (payload.failed > 0) process.exit(1);

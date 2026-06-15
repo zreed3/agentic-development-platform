@@ -100,7 +100,7 @@ function evidenceTierFromArgs(args, fallback = "asserted") {
 // sensitive, so a typo like release-class:deployy is still gated rather than silently
 // escaping -- and validateBacklog separately flags any class not in this list as a
 // misconfiguration to correct.
-const SENSITIVE_RELEASE_CLASSES_FALLBACK = ["deploy", "infra", "performance", "runtime-security", "data-residency"];
+const SENSITIVE_RELEASE_CLASSES_FALLBACK = ["deploy", "infra", "performance", "runtime-security", "data-residency", "governance-controls", "visual"];
 
 function sensitiveReleaseClasses() {
   try {

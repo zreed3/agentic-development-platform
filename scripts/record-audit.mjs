@@ -13,10 +13,22 @@ import { execSync } from "node:child_process";
 import { randomBytes } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
+import {
+  advanceChainState,
+  chainEvent,
+  deriveChainState,
+  entriesFromText,
+  nextPrevHash,
+  readChainState,
+  writeChainState,
+} from "./audit-chain.mjs";
 
 const root = process.cwd();
-const auditLogPath = "data/audit/audit-log.jsonl";
-const dbPath = "data/backlog.sqlite";
+// Canonical append-only log + DB mirror. ADG_AUDIT_LOG_PATH / ADG_AUDIT_DB_PATH
+// override them for hermetic tests only; both default to the canonical paths and
+// the write stays strictly append-only (fs.appendFileSync, never a rewrite).
+const auditLogPath = process.env.ADG_AUDIT_LOG_PATH || "data/audit/audit-log.jsonl";
+const dbPath = process.env.ADG_AUDIT_LOG_PATH && !process.env.ADG_AUDIT_DB_PATH ? "" : (process.env.ADG_AUDIT_DB_PATH || "data/backlog.sqlite");
 
 function abs(file) {
   return path.isAbsolute(file) ? file : path.join(root, file);
@@ -111,12 +123,34 @@ const event = {
   source: auditLogPath,
 };
 
+// Stamp the rolling hash chain: prevHash = the prior chained event's hash (or the
+// GENESIS sentinel for the first chained event), and hash = the canonical projection
+// of this event. prevHash/hash stay top-level (out of summary/details/evidence) so the
+// secret scan never mistakes a 64-hex hash for a secret. The write stays a single
+// append; no earlier line is ever read-modify-written.
 fs.mkdirSync(path.dirname(abs(auditLogPath)), { recursive: true });
+const existingLines = fs.existsSync(abs(auditLogPath)) ? fs.readFileSync(abs(auditLogPath), "utf8").split(/\r?\n/u) : [];
+chainEvent(event, nextPrevHash(existingLines));
 fs.appendFileSync(abs(auditLogPath), `${JSON.stringify(event)}\n`, "utf8");
 
-if (fs.existsSync(abs(dbPath))) {
+// Advance the chain-state high-water-mark sidecar. This is the tamper-evidence the
+// chain alone cannot provide: it lets validation detect a later rewrite that strips
+// hashes (downgrading chained events to "legacy") or truncates the chained tip.
+// Re-read the now-appended log, derive the snapshot, and merge so the mark never
+// regresses and the legacy prefix stays frozen. A sidecar failure must never block the
+// append (the log is the primary record and is already written), so warn and continue.
+try {
+  const entries = entriesFromText(fs.readFileSync(abs(auditLogPath), "utf8"));
+  const nextState = advanceChainState(readChainState(abs(auditLogPath)), deriveChainState(entries));
+  writeChainState(abs(auditLogPath), nextState);
+} catch (error) {
+  console.error(`warning: could not update audit chain-state sidecar (${error instanceof Error ? error.message : error})`);
+}
+
+const mirrorToDb = Boolean(dbPath) && fs.existsSync(abs(dbPath));
+if (mirrorToDb) {
   const insert = `INSERT OR REPLACE INTO audit_events VALUES (${sqlString(event.id)}, ${sqlString(event.occurredAt)}, ${sqlString(event.actor)}, ${sqlString(event.eventType)}, ${sqlString(event.targetType)}, ${sqlString(event.targetId)}, ${sqlString(event.featureId)}, ${sqlString(event.status)}, ${sqlString(event.summary)}, ${sqlString(event.details)}, ${sqlString(JSON.stringify(event.evidence))}, ${sqlString(event.evidenceTier)});`;
   execSync(`sqlite3 ${JSON.stringify(abs(dbPath))} ${JSON.stringify(insert)}`, { cwd: root, shell: "/bin/zsh" });
 }
 
-console.log(JSON.stringify({ recorded: event.id, eventType: event.eventType, featureId: event.featureId, evidenceTier: event.evidenceTier, mirroredToDb: fs.existsSync(abs(dbPath)) }, null, 2));
+console.log(JSON.stringify({ recorded: event.id, eventType: event.eventType, featureId: event.featureId, evidenceTier: event.evidenceTier, mirroredToDb: mirrorToDb }, null, 2));

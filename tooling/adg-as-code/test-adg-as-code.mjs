@@ -76,6 +76,16 @@ assert.ok(partialValidation.advisoryGaps.some((gap) => /low-level functional req
 assert.ok(partialValidation.advisoryGaps.some((gap) => /anti-success/u.test(gap.summary)));
 assert.ok(partialValidation.advisoryGaps.some((gap) => /sad scenario/u.test(gap.summary)));
 
+// Uncovered-intent flag: a requirement covered by no acceptance criterion is an advisory
+// gap (1.1). A well-formed feature produces none; an orphan requirement is flagged.
+const orphanConfigPath = path.join(tempDir, "orphan-requirement.json");
+const orphanConfig = structuredClone(config);
+orphanConfig.features[0].functionalRequirements.push({ id: "S07-FR-ORPHAN", level: "low", statement: "Orphan requirement covered by no acceptance check" });
+fs.writeFileSync(orphanConfigPath, `${JSON.stringify(orphanConfig, null, 2)}\n`);
+const orphanValidation = JSON.parse(run(`node scripts/adg-elicitation.mjs validate --config ${JSON.stringify(orphanConfigPath)} --format json --no-sqlite`));
+assert.equal(orphanValidation.valid, true, "an uncovered requirement is advisory, not a hard failure");
+assert.ok(orphanValidation.advisoryGaps.some((gap) => gap.domain === "coverage" && /S07-FR-ORPHAN/u.test(gap.summary) && /uncovered intent/u.test(gap.summary)), "an uncovered requirement must be flagged as uncovered intent");
+
 const maturityValidation = JSON.parse(run("node scripts/adg-maturity.mjs validate --format json"));
 assert.equal(maturityValidation.valid, true);
 assert.equal(maturityValidation.summary.belowTarget, 0);
@@ -218,6 +228,17 @@ const deliverableRecord = JSON.parse(run(`node scripts/adg-deliverable.mjs recor
 assert.equal(deliverableRecord.valid, true);
 const deliverableTempAudit = JSON.parse(run(`node scripts/adg-deliverable.mjs audit --config ${JSON.stringify("config/agentic/deliverables.json")} --log ${JSON.stringify(tempDeliverableLog)}`));
 assert.equal(deliverableTempAudit.valid, true);
+
+// Artifact-typed deliverable (1.1): a typed web-image-asset must carry its type's check
+// set (npm run asset:lint) or it is rejected. With the evidence it records cleanly.
+const missingCfg = path.join(tempDir, "no-deliverable-config.json");
+const typedGood = JSON.parse(run(`node scripts/adg-deliverable.mjs record --log ${JSON.stringify(path.join(tempDir, "typed-ok.jsonl"))} --id DEL-IMG-OK --feature S07 --type web-image-asset --summary ${JSON.stringify("logo tiles")} --node feature:S07 --input config/agentic/elicitation.json --file public/images/logo.png --test ${JSON.stringify("npm run asset:lint")} --decision ${JSON.stringify("ship tiles")} --evidence ${JSON.stringify("artifacts/logo-montage.png")}`));
+assert.equal(typedGood.valid, true, "a typed web-image-asset with asset:lint evidence records cleanly");
+const typedBad = runResult(`node scripts/adg-deliverable.mjs record --log ${JSON.stringify(path.join(tempDir, "typed-bad.jsonl"))} --id DEL-IMG-BAD --feature S07 --type web-image-asset --summary ${JSON.stringify("logo tiles")} --node feature:S07 --input x --file public/images/logo.png --test ${JSON.stringify("npm run test:agent-context")} --decision d --evidence ${JSON.stringify("screenshot.png")}`);
+assert.notEqual(typedBad.status, 0, "a typed web-image-asset without asset:lint evidence must be rejected");
+assert.match(typedBad.stdout, /requires evidence of `npm run asset:lint`/u, "the rejection names the missing check-set command");
+const unknownType = runResult(`node scripts/adg-deliverable.mjs record --log ${JSON.stringify(path.join(tempDir, "typed-unknown.jsonl"))} --id DEL-X --feature S07 --type made-up --summary s --node feature:S07 --input a --file b --test c --decision d --evidence e`);
+assert.notEqual(unknownType.status, 0, "an unknown deliverable type is rejected");
 
 const pluginValidation = JSON.parse(run("node scripts/adg-plugin.mjs validate"));
 assert.equal(pluginValidation.valid, true);

@@ -1,0 +1,19 @@
+[package]
+name = "adg-asset-lint"
+version = "1.1.0"
+edition = "2021"
+description = "ADG deterministic pixel measurements for the assetLint quality gate (edge-clip, blank, format). Pure measurement: policy and thresholds live in the Node orchestrator."
+license = "SEE LICENSE IN ../../LICENSE"
+
+[[bin]]
+name = "adg-asset-lint"
+path = "src/main.rs"
+
+# Only the image decoder is a real dependency. JSON output is hand-rolled so there is
+# no serde in the tree. default-features=false keeps the build to the formats we use.
+[dependencies]
+image = { version = "0.25", default-features = false, features = ["png", "jpeg", "webp"] }
+
+[profile.release]
+opt-level = 2
+strip = true
