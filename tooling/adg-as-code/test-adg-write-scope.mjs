@@ -166,6 +166,23 @@ const BLOCKED = [
   bash("sed -i s/a/b/ src/evil.ts allowed/a.txt"), // out-of-scope file is not last
   bash("sed --in-place s/x/y/ src/evil.ts allowed/ok.txt"),
   bash("sed -i.bak s/a/b/ allowed/a.txt src/evil.ts"), // backup-suffix form, out-of-scope last
+  // eleventh-round red-team: an UNLISTED boolean flag must not swallow the file after it
+  // (fail-open via the old allowlist), and a value flag that for one tool means line-length
+  // (black -l) must not be mistaken for a read-only mode.
+  bash("rustfmt --backup src/evil.rs"), // --backup is a boolean; rustfmt still rewrites the file
+  bash("black -q src/evil.py"), // -q is a boolean; black rewrites by default
+  bash("prettier --write --no-semi src/evil.ts"), // --no-semi boolean before the path
+  bash("black -l 100 src/evil.py"), // black -l is --line-length (a write), not a read-only mode
+  // twelfth-round red-team: perl/ruby in-place ONE-LINERS using the -n loop (not just -p).
+  bash("perl -i -ne 'print if /keep/' src/evil.ts"), // -ne loop with -i rewrites in place
+  bash("perl -i.bak -ne 'print' src/evil.ts"),
+  bash("ruby -i -ne 'puts $_' src/evil.ts"),
+  // thirteenth-round red-team: a SHORT flag that is boolean for THIS tool must not swallow the
+  // out-of-scope file as if it were the flag's value. -r is --recursive (boolean) for autopep8/
+  // yapf; -l is --list-different (boolean) for prettier. Both still write the named file.
+  bash("autopep8 -i -r src/evil.py"), // -r is boolean here; src/evil.py is still rewritten
+  bash("yapf -i -r src/evil.py"),
+  bash("prettier --write -l src/evil.ts"), // -l (--list-different) is boolean for prettier
 ];
 for (const ev of BLOCKED) {
   check(`blocked: ${ev.tool_name} ${JSON.stringify(ev.tool_input).slice(0, 56)}`, hook(HOOK, ev, SCOPE) === 2);
@@ -258,6 +275,19 @@ const ALLOWED = [
   // without modifying the file, so a worker linting import order out of scope is a READ, not a write.
   bash("isort -c src/x.py"), // -c is the short form of --check-only (read)
   bash("isort -d src/x.py"), // -d is the short form of --diff (read)
+  bash("black -l 100 allowed/x.py"), // black -l (line-length) writing in scope is allowed
+  bash("prettier -l src/x.ts"), // prettier --list-different is read-only (no write toggle)
+  bash("rustfmt --backup allowed/x.rs"), // boolean flag + in-scope rewrite is allowed
+  // twelfth-round: separated value flags whose VALUE (a count/rule-code/width) is not a path
+  // must not be mis-collected, so an in-scope autofix/format with such a flag stays allowed.
+  bash("eslint --fix --max-warnings 0 allowed/x.ts"), // `0` is the --max-warnings value
+  bash("ruff check --fix --select E501 allowed/x.py"), // `E501` is the --select value
+  bash("prettier --write --tab-width 2 allowed/x.ts"), // `2` is the --tab-width value
+  // thirteenth-round: the per-family valued SHORT flags still consume their value so an in-scope
+  // rewrite with such a flag is allowed (-l line-length for black, -c config for eslint).
+  bash("autopep8 -i -r allowed/x.py"), // boolean -r + in-scope rewrite
+  bash("eslint --fix -c configs/e.json allowed/x.ts"), // eslint -c is --config (a read path)
+  bash("black -t py311 allowed/x.py"), // black -t is --target-version (value)
 ];
 for (const ev of ALLOWED) {
   check(`allowed: ${ev.tool_name} ${JSON.stringify(ev.tool_input).slice(0, 56)}`, hook(HOOK, ev, SCOPE) === 0);

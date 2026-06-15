@@ -279,7 +279,10 @@ const INTERP = "(?:python[23]?|node|ts-node|tsx|deno|bun|perl6?|raku|ruby|swift|
 // detector keyed on -c keeps `bash script.sh`/`bash -e script.sh` (running a script) allowed
 // while blocking `bash -c "..."` inline code, symmetric with node -e / python -c above.
 const SHELL_C_RE = new RegExp(`(?:^|[;&|]\\s*)(?:${WRAP})*(?:sh|bash|zsh|dash|ksh|mksh|ash)\\b[^\\n]*?\\s-c\\b`, "u");
-const INTERP_RE = new RegExp(`(?:^|[;&|]\\s*)(?:${WRAP})*${INTERP}\\b[^\\n]*?\\s(?:-e|-c|-E|--eval|--exec|--command|-Command|-EncodedCommand|-pi?e)\\b`, "iu");
+// The trailing -[ipn]*[pn][ipn]*e arm matches perl/ruby loop one-liners -pe/-pie/-ne/-nie/-ine
+// (a cluster of i/p/n containing at least one p or n and ending in e); with -i these rewrite a
+// file in place. Both the print loop (-p) and the no-auto-print loop (-n) must be covered.
+const INTERP_RE = new RegExp(`(?:^|[;&|]\\s*)(?:${WRAP})*${INTERP}\\b[^\\n]*?\\s(?:-e|-c|-E|--eval|--exec|--command|-Command|-EncodedCommand|-[ipn]*[pn][ipn]*e)\\b`, "iu");
 const EDITOR_RE = new RegExp(`(?:^|[;&|]\\s*)(?:${WRAP})*(?:ed|ex|vi|vim|nvim|view|nano|emacs|pico|joe|sponge)\\b`, "iu");
 
 function opaqueWriteRiskUnderScope(cmd) {
@@ -384,7 +387,13 @@ function isDynamicTarget(t) {
 // resolve out of scope, so `eslint --fix .` correctly blocks under a narrow scope.
 const RUNNER = `(?:${WRAP})*(?:npx\\s+|pnpm\\s+(?:dlx\\s+|exec\\s+)?|yarn\\s+(?:dlx\\s+)?|bunx\\s+|uvx\\s+|uv\\s+run\\s+|poetry\\s+run\\s+|pdm\\s+run\\s+)?`;
 const WRITE_TOGGLE = /(?:^|\s)(?:--write|-w|--fix(?![\w-])|--in-place|-i|--apply)\b/u;
-const READONLY_MODE = /(?:^|\s)(?:--check(?:-only)?|--diff|--dry-run|--list-different|-l|-n|-c|-d)\b/u;
+// Read-only modes of the WRITE-BY-DEFAULT family (black/isort/rustfmt/ruff). Only flags that
+// mean "do not write" for THAT family belong here: --check/--check-only/--diff/--dry-run and
+// the isort short forms -c/-d. The prettier-only -l/--list-different/-n are deliberately NOT
+// here -- prettier is toggle-gated (never consults this), and for black -l means --line-length
+// (a value flag that still REWRITES), so listing it would make `black -l 100 src/evil.py` read
+// as a no-write and slip an out-of-scope rewrite (a fail-open). -l is a VALUE_OPT instead.
+const READONLY_MODE = /(?:^|\s)(?:--check(?:-only)?|--diff|--dry-run|-c|-d)\b/u;
 function inPlaceRewriteTargets(cmd) {
   const out = [];
   // a value-taking option consumes the next token as its VALUE (a parser name, config path,
@@ -396,27 +405,40 @@ function inPlaceRewriteTargets(cmd) {
   // as non-consuming) is fail-closed; an unrecognised value option only over-collects one token,
   // which is then scope-checked and, if in-scope, harmless. (A real --output-file is still caught
   // by the dedicated --out* extractor in bashWriteTargets, independent of this.)
-  const VALUE_OPT = /^(?:--parser|--plugin|--plugin-search-dir|--config|--config-path|--cache-location|--ignore-path|--log-level|--loglevel|--rulesdir|--resolve-plugins-relative-to|--parser-options|--rule|--ext|--style|-style|--fallback-style|-assume-filename|--assume-filename|--emit|--edition|--style-edition|--color|--profile|--line-length|-l|--target-version|-t|--extend-exclude|--src|--settings-path|--sp|--config-file)$/u;
-  const grab = (argstr) => {
+  // Long value-options are unambiguous across these tools (their value is a parser name,
+  // rule code, count, width, edition, or a config/ignore PATH the tool READS), so skip the
+  // token after them. SHORT value-options are PER-FAMILY because the same letter means a
+  // boolean in one tool and a value in another: -l is --line-length for black/isort (value)
+  // but --list-different for prettier (boolean), -c is --config for eslint (value); -r is
+  // --recursive (boolean) for autopep8/yapf and must NEVER consume, or `autopep8 -i -r
+  // src/evil.py` would swallow the file. A flag NOT listed is treated as non-consuming
+  // (fail-closed: at worst over-collect a value token, which is then scope-checked).
+  const LONG_VALUE = "--parser|--plugin|--plugin-search-dir|--config|--config-path|--config-file|--cache-location|--cache-strategy|--ignore-path|--ignore-pattern|--log-level|--loglevel|--rulesdir|--resolve-plugins-relative-to|--parser-options|--rule|--ext|--style|-style|--fallback-style|-assume-filename|--assume-filename|--emit|--edition|--style-edition|--color|--profile|--line-length|--target-version|--extend-exclude|--exclude|--extend|--include|--src|--settings-path|--sp|--known-first-party|--known-third-party|--max-warnings|--format|--select|--ignore|--extend-select|--extend-ignore|--per-file-ignores|--tab-width|--print-width|--max-line-length|--indent-size|--lines|--end-of-line|--quote-props|--trailing-comma|--arrow-parens|--prose-wrap|--embedded-language-formatting|--html-whitespace-sensitivity|--multi-line|--force-grid-wrap|--workers|--print-config|--output-format";
+  const grab = (argstr, shortValue) => {
+    const valueOpt = new RegExp(`^(?:${LONG_VALUE}${shortValue ? `|${shortValue}` : ""})$`, "u");
     const toks = argstr.trim().split(/\s+/u).filter(Boolean);
     for (let i = 0; i < toks.length; i += 1) {
       const a = toks[i];
       if (a.startsWith("-")) {
-        if (VALUE_OPT.test(a) && !a.includes("=") && toks[i + 1] && !toks[i + 1].startsWith("-")) i += 1;
+        if (valueOpt.test(a) && !a.includes("=") && toks[i + 1] && !toks[i + 1].startsWith("-")) i += 1;
         continue;
       }
       if (/^(?:format|check|fmt|lint)$/u.test(a)) continue; // a subcommand word, not a path
       out.push(unquote(a));
     }
   };
-  const scan = (toolRe, writes) => {
+  const scan = (toolRe, writes, shortValue) => {
     for (const m of cmd.matchAll(new RegExp(`(?:^|[;&|]\\s*)${RUNNER}(?:${toolRe})\\b([^\\n;|&<>]*)`, "giu"))) {
-      if (writes(m[1])) grab(m[1]);
+      if (writes(m[1])) grab(m[1], shortValue);
     }
   };
-  scan("prettier|eslint|stylelint|gofmt|clang-format|autopep8|yapf|biome", (a) => WRITE_TOGGLE.test(a));
-  scan("black|isort|rustfmt", (a) => !READONLY_MODE.test(a));
-  scan("ruff", (a) => (/(?:^|\s)format\b/u.test(a) && !READONLY_MODE.test(a)) || WRITE_TOGGLE.test(a));
+  // toggle family: eslint -c/--config, eslint -f/--format, autopep8 -j/--jobs are valued; -l
+  // (prettier --list-different) and -r (autopep8/yapf --recursive) are booleans here, so excluded.
+  scan("prettier|eslint|stylelint|gofmt|clang-format|autopep8|yapf|biome", (a) => WRITE_TOGGLE.test(a), "-c|-f|-j");
+  // write-by-default family: black/isort -l/--line-length, black -t/--target-version, isort
+  // -m/--multi-line, -j/--jobs are valued; -r is not used here.
+  scan("black|isort|rustfmt", (a) => !READONLY_MODE.test(a), "-l|-t|-m|-j");
+  scan("ruff", (a) => (/(?:^|\s)format\b/u.test(a) && !READONLY_MODE.test(a)) || WRITE_TOGGLE.test(a), "");
   return out;
 }
 
@@ -603,7 +625,7 @@ try {
   }
 
   if (["Edit", "Write", "MultiEdit", "NotebookEdit"].includes(tool)) {
-    const target = String(input.file_path || input.path || "");
+    const target = String(input.file_path || input.path || input.notebook_path || "");
     // Always-on floor: the audit log is append-only; editing it in place is blocked.
     if (AUDIT_LOG.test(target)) {
       block(`the append-only audit log may not be edited in place. Append via npm run audit:record.`);
