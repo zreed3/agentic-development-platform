@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "_comment": "ADG loop governor policy. The governor is a Stop/SubagentStop hook that (a) holds a turn ceiling as a runaway failsafe (P3 hard stop) and (b) refuses turn-end while a release-class item is signed off without 'live' evidence (P12 verifier-as-authority). It is a QUALITY gate, not a security floor: it fails OPEN (allows stop) on any error, missing DB, or missing config. The deny-by-default PreToolUse hook remains the security floor. It yields on stop_hook_active so it nudges at most once per genuine stop and can never trap the agent.",
+  "caps": {
+    "maxTurns": 60,
+    "maxToolCalls": 500
+  },
+  "releaseGate": {
+    "mode": "block",
+    "_modes": "block = refuse turn-end on a release-gate violation; warn = allow but print advisory; off = disabled"
+  }
+}

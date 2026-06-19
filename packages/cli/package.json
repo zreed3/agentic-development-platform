@@ -1,0 +1,10 @@
+{
+  "name": "@adg/cli",
+  "version": "2.0.0",
+  "description": "The ADG command line: one `adg` entrypoint for init, install/update, classify, model selection, context packets, and the conformance doctor. A thin dispatcher over the deterministic ADG scripts.",
+  "type": "module",
+  "license": "PolyForm-Noncommercial-1.0.0",
+  "bin": { "adg": "./adg.mjs" },
+  "files": ["adg.mjs", "README.md"],
+  "engines": { "node": ">=20" }
+}
