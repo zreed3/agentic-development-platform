@@ -4,6 +4,11 @@
 SDK* over the vendor agent loops — keeping AI coding agents bounded, auditable, and
 context-disciplined, in a handful of Node scripts and SQLite files.**
 
+> **🚀 ADG v2.0.0 is released.** The deny-by-default overlay is now a *tiered governed
+> harness + SDK* over the Claude and Codex agent loops: a loop governor, backpressure,
+> context-lifecycle hooks, a subagent fan-out cap, and a model orchestrator, all enforced
+> outside the model. See the [**v2.0 release notes**](docs/release-notes-2.0.md).
+
 Hand an AI agent your codebase and two failure modes dominate:
 
 1. **It does too much** — unbounded, unaudited, occasionally destructive or
@@ -277,7 +282,7 @@ The generated `data/*.sqlite` databases are gitignored. A clean install starts e
 - **📊 Scorecard:** [`docs/adg-scorecard.md`](docs/adg-scorecard.md) — how ADG scores on each principle.
 - **🧭 Harness plan:** [`docs/adg-2.0-overhaul-plan.md`](docs/adg-2.0-overhaul-plan.md) — Phases 0–7, vendor-SDK mapping, deferred follow-ups.
 - **🔌 Surfaces & dual-harness:** [`docs/adg-surfaces.md`](docs/adg-surfaces.md) · [`docs/dual-harness.md`](docs/dual-harness.md) · [`docs/adg-adapter-contract.md`](docs/adg-adapter-contract.md) · [`docs/adg-distribution.md`](docs/adg-distribution.md).
-- **🚀 Release notes:** [`docs/release-notes-1.1.md`](docs/release-notes-1.1.md) · [`docs/release-notes-1.0.md`](docs/release-notes-1.0.md).
+- **🚀 Release notes:** [`docs/release-notes-2.0.md`](docs/release-notes-2.0.md) · [`docs/release-notes-1.1.md`](docs/release-notes-1.1.md) · [`docs/release-notes-1.0.md`](docs/release-notes-1.0.md).
 - **🛡 Governance:** [`docs/governance-alignment.md`](docs/governance-alignment.md) — mapped to OWASP LLM Top 10, ISO/IEC 42001, the Three Lines model, ISO 31000.
 - **🗃 SQL layer:** [`docs/sql-data-layer.md`](docs/sql-data-layer.md) · [`docs/audit-chain.md`](docs/audit-chain.md).
 - **⚡ Lanes & tokens:** [`docs/proofline-delivery-lanes.md`](docs/proofline-delivery-lanes.md) · [`docs/token-reduction.md`](docs/token-reduction.md).

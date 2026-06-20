@@ -56,7 +56,7 @@ run `npm install` if you want it. Nothing else in the platform requires it.)
 - Install/update Proofline in a host repo: `npm run adg:install -- --target /path/to/repo` / `npm run adg:update -- --target /path/to/repo`. Add `--client claude` to also install the deterministic Claude Code layer (PreToolUse guardrail hook, `.claude/settings.json`, slash commands, the doctor, and a `CLAUDE.md` generated from the host's `AGENTS.md`), tracked and backed up in `adg-install-state.json`. Add `--dashboard on` to also install the read-only governance dashboard (SvelteKit, no auth) at `apps/adg-dashboard/` with an `adg:dashboard` package script, so operators can watch the backlog, audit log, guardrails, and evals in a browser; `--dashboard off` on update prunes it.
 - Governance dashboard (this repo): `npm run dashboard:dev` serves `apps/dashboard` (read-only views over `backlog.sqlite`, the audit log, guardrails, evals, and DORA proxies); `npm run dashboard:build` builds it.
 - Conformance doctor (catch adopter drift): `npm run adg:doctor -- --target /path/to/repo`
-- Governance MCP server (read-only `classify_work` / `context_packet`, append-only `record_audit`): `npm run adg:mcp`
+- Governance MCP server (read-only `classify_work` / `context_packet` / `control_state`, append-only `record_audit`): `npm run adg:mcp`
 - Validate the audit log: `npm run audit:validate`
 - Record an audit event: `npm run audit:record -- --feature S07 --type status --status in-progress --summary "..."`
 - Check the guardrail policy: `npm run guardrails:check`

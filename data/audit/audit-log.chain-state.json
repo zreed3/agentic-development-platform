@@ -1,7 +1,7 @@
 {
   "version": "adg-audit-chain-state-v1",
-  "chainedCount": 11,
-  "tipHash": "5846cd7bb44d41a497dbce723260173a29002cea20b71ace479c06cae196369d",
+  "chainedCount": 13,
+  "tipHash": "a122194c8c96db735d38f9ed3995da37b7a3df4ee2613952f6ace6f96b3e46cd",
   "legacyCount": 44,
   "legacyDigest": "d6df755c885186daf551e7e25fe131f10a0f05869ef7da47a565ae58416f600e"
 }
