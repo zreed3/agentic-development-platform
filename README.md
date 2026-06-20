@@ -272,6 +272,7 @@ The generated `data/*.sqlite` databases are gitignored. A clean install starts e
 ## Documentation
 
 - **📖 Start here:** [`docs/adg-introduction.md`](docs/adg-introduction.md) — why a fleet of agents is a governance problem.
+- **🤖 Set it up with an agent:** [`docs/agent-setup-guide.md`](docs/agent-setup-guide.md) — a paste-into-an-agent runbook that installs/configures ADG and verifies it.
 - **🔁 Agent loops:** [`loops-research.md`](loops-research.md) + [`research/agentic-field-map-2026-06-20.md`](research/agentic-field-map-2026-06-20.md) — the P1–P12 framework and the 2026 field map.
 - **📊 Scorecard:** [`docs/adg-scorecard.md`](docs/adg-scorecard.md) — how ADG scores on each principle.
 - **🧭 Harness plan:** [`docs/adg-2.0-overhaul-plan.md`](docs/adg-2.0-overhaul-plan.md) — Phases 0–7, vendor-SDK mapping, deferred follow-ups.
@@ -287,7 +288,9 @@ The generated `data/*.sqlite` databases are gitignored. A clean install starts e
 Use `npm run adg:install -- --target /path/to/repo --client claude|codex|both` (add
 `--dashboard on` for the read-only dashboard), then `npm run adg:doctor -- --target …` to
 check for drift. The installer writes `config/agentic/adg-install-state.json` so updates
-are versioned. Manual route and full steps:
+are versioned. **Or hand it to an agent:** paste
+[`docs/agent-setup-guide.md`](docs/agent-setup-guide.md) into a fresh agent session and it
+will install, configure, and verify ADG for you. Manual route and full steps:
 [`docs/reference/extraction-notes.md`](docs/reference/extraction-notes.md).
 
 ## License

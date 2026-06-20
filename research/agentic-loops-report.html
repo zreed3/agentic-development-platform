@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Agent Loops — a hand-drawn field report (mid-2026)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;700&family=Kalam:wght@300;400;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#1b1a17; --ink2:#403e38; --ink3:#6c6a61; --faint:#a7a49a;
+    --paper:#f4f1e8; --paper2:#efebde; --line:#d8d3c4; --hi:#e7e2d2;
+    --disp:'Caveat','Comic Sans MS',cursive; --hand:'Kalam','Comic Sans MS',cursive;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{
+    font-family:var(--hand); color:var(--ink); line-height:1.55;
+    background-color:var(--paper);
+    background-image:
+      radial-gradient(var(--line) 1px, transparent 1.4px);
+    background-size:26px 26px;
+    -webkit-font-smoothing:antialiased;
+  }
+  .sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+  .wrap{max-width:1000px;margin:0 auto;padding:0 22px 80px}
+  a{color:var(--ink);text-decoration:none;border-bottom:1.5px dotted var(--ink3)}
+  a:hover{border-bottom-style:solid}
+
+  header.hero{padding:46px 0 10px;text-align:center;position:relative}
+  .hero h1{font-family:var(--disp);font-weight:700;font-size:clamp(40px,7vw,76px);line-height:.95;margin:0}
+  .hero .sub{font-family:var(--hand);font-weight:300;font-size:clamp(15px,2.4vw,20px);color:var(--ink2);margin:10px auto 0;max-width:680px}
+  .hero .meta{font-family:var(--hand);font-size:13px;color:var(--ink3);margin-top:14px;letter-spacing:.3px}
+  .stamp{display:inline-block;font-family:var(--disp);font-weight:700;font-size:15px;color:var(--ink);
+    border:2px solid var(--ink);border-radius:50% 48% 50% 49%/49% 50% 48% 50%;padding:6px 14px;transform:rotate(-7deg);margin-top:16px}
+
+  nav.tabs{position:sticky;top:0;z-index:50;display:flex;flex-wrap:wrap;gap:6px;justify-content:center;
+    padding:12px 0;margin:14px 0 26px;background:linear-gradient(var(--paper),var(--paper) 70%,rgba(244,241,232,0));}
+  .tab{font-family:var(--disp);font-weight:700;font-size:20px;color:var(--ink2);background:transparent;border:none;
+    cursor:pointer;padding:4px 12px 6px;position:relative}
+  .tab:hover{color:var(--ink)}
+  .tab[aria-selected="true"]{color:var(--ink)}
+  .tab[aria-selected="true"]::after{content:"";position:absolute;left:6px;right:6px;bottom:-1px;height:7px;
+    background:var(--ink);clip-path:polygon(0 40%,8% 60%,18% 35%,30% 65%,42% 38%,55% 62%,68% 36%,80% 64%,92% 40%,100% 58%,100% 100%,0 100%);opacity:.85}
+
+  .panel{display:none;animation:fade .25s ease}
+  .panel.on{display:block}
+  @keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+
+  h2.sec{font-family:var(--disp);font-weight:700;font-size:clamp(30px,5vw,46px);margin:6px 0 2px}
+  .lead{font-size:17px;color:var(--ink2);max-width:760px;margin:0 0 22px}
+  .note{font-size:14px;color:var(--ink3)}
+
+  .card{position:relative;background:var(--paper2);padding:18px 18px 16px;margin:0;border-radius:10px}
+  .card>*{position:relative;z-index:1}
+  .sketch-svg{position:absolute;inset:-6px;width:calc(100% + 12px);height:calc(100% + 12px);z-index:0;pointer-events:none;overflow:visible}
+  .card.fallback{border:2px solid var(--ink);border-radius:14px 10px 13px 9px/9px 13px 10px 14px}
+
+  .grid{display:grid;gap:16px}
+  .g2{grid-template-columns:repeat(auto-fit,minmax(280px,1fr))}
+  .g3{grid-template-columns:repeat(auto-fit,minmax(230px,1fr))}
+  .g4{grid-template-columns:repeat(auto-fit,minmax(200px,1fr))}
+
+  .ptitle{font-family:var(--disp);font-weight:700;font-size:24px;display:flex;align-items:baseline;gap:10px}
+  .pnum{font-size:30px;color:var(--ink)}
+  .pclaim{font-size:15px;color:var(--ink2);margin-top:4px}
+  .pmore{max-height:0;overflow:hidden;transition:max-height .3s ease;font-size:14px;color:var(--ink2)}
+  .pcard.open .pmore{max-height:280px;margin-top:10px;border-top:1.5px dashed var(--line);padding-top:10px}
+  .pcard{cursor:pointer}
+  .pcard .adg{display:block;margin-top:8px;font-weight:700;color:var(--ink)}
+  .taghint{font-family:var(--hand);font-size:12px;color:var(--faint);float:right}
+
+  .chip{font-family:var(--disp);font-weight:700;font-size:14px;border:1.6px solid var(--ink);border-radius:40% 60% 55% 45%/55% 45% 60% 40%;padding:1px 9px;display:inline-block;transform:rotate(-3deg)}
+  .chip.fresh{border-style:dashed;color:var(--ink3);border-color:var(--ink3)}
+  .lab h3,.fig h3{font-family:var(--disp);font-weight:700;font-size:23px;margin:0 0 2px}
+  .lab .phil{font-style:italic;color:var(--ink3);font-size:14px;margin:0 0 8px}
+  .lab .rec,.fig .rec{font-size:14px;color:var(--ink2)}
+  .fig .idea{font-size:14px;color:var(--ink2)}
+
+  .controls{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin:0 0 16px}
+  .controls input,.controls button{font-family:var(--hand);font-size:15px;color:var(--ink);background:var(--paper2);
+    border:1.6px solid var(--ink3);border-radius:8px;padding:6px 11px}
+  .controls button{cursor:pointer;font-family:var(--disp);font-weight:700;font-size:17px}
+  .controls button[aria-pressed="true"]{background:var(--ink);color:var(--paper)}
+
+  table.repos{width:100%;border-collapse:collapse;font-size:14px}
+  table.repos th{font-family:var(--disp);font-weight:700;font-size:18px;text-align:left;cursor:pointer;
+    padding:6px 8px;border-bottom:2px solid var(--ink);white-space:nowrap;user-select:none}
+  table.repos th .ar{font-size:13px;color:var(--ink3)}
+  table.repos td{padding:7px 8px;border-bottom:1.4px dotted var(--line);vertical-align:middle}
+  table.repos tr:hover td{background:var(--hi)}
+  .repo-name{font-family:var(--disp);font-weight:700;font-size:18px}
+  .bar{position:relative;height:16px;display:flex;align-items:center;gap:7px}
+  .barfill{height:11px;min-width:6px;border:1.5px solid var(--ink);border-radius:5px 3px 4px 3px;
+    background-image:repeating-linear-gradient(-42deg,var(--ink) 0,var(--ink) 1.2px,transparent 1.2px,transparent 4px)}
+  .bar .val{font-family:var(--disp);font-weight:700;font-size:16px}
+  .tiny{font-size:12.5px;color:var(--ink3)}
+
+  table.score{width:100%;border-collapse:collapse;font-size:15px}
+  table.score td{padding:7px 8px;border-bottom:1.4px dotted var(--line)}
+  table.score .pl{font-family:var(--disp);font-weight:700;font-size:19px;width:46px}
+  .grade{font-family:var(--disp);font-weight:700;font-size:24px;display:inline-block;min-width:42px;text-align:center}
+  .arrowto{color:var(--faint);font-size:16px;padding:0 4px}
+  .pre{color:var(--faint);font-size:18px}
+
+  .debate{display:grid;grid-template-columns:1fr auto 1fr;gap:14px;align-items:start}
+  @media(max-width:720px){.debate{grid-template-columns:1fr}}
+  .debate h3{font-family:var(--disp);font-weight:700;font-size:26px;margin:0 0 6px}
+  .vs{font-family:var(--disp);font-weight:700;font-size:40px;align-self:center;text-align:center}
+  .verdict{margin-top:18px}
+  .verdict .card{background:var(--paper)}
+
+  ul.scribble{list-style:none;padding:0;margin:8px 0 0}
+  ul.scribble li{position:relative;padding-left:22px;margin:7px 0;font-size:14px;color:var(--ink2)}
+  ul.scribble li::before{content:"";position:absolute;left:2px;top:8px;width:9px;height:9px;border:1.6px solid var(--ink);border-radius:60% 40% 55% 45%/50% 60% 40% 50%}
+
+  footer{margin-top:46px;border-top:2px dashed var(--line);padding-top:16px;font-size:13px;color:var(--ink3)}
+  footer a{color:var(--ink2)}
+  .loopline{display:flex;flex-wrap:wrap;gap:8px;align-items:center;font-family:var(--disp);font-weight:700;font-size:24px;margin:6px 0 18px}
+  .loopline .step{border:1.8px solid var(--ink);border-radius:12px 9px 11px 10px/10px 11px 9px 12px;padding:5px 13px}
+  .loopline .arr{font-size:26px;color:var(--ink2)}
+</style>
+</head>
+<body>
+<p class="sr-only">A hand-drawn, black-and-white interactive field report on agent-loop design as of mid-2026: the canonical loop, twelve design principles, top labs, figures and GitHub repositories, the ADG scorecard, and the single-vs-multi-agent debate.</p>
+<div class="wrap">
+
+  <header class="hero">
+    <h1>Agent&nbsp;Loops</h1>
+    <p class="sub">a hand-drawn field report on how autonomous LLM agents iterate — the principles, the labs, the people, and the code · mid-2026</p>
+    <div class="meta">synthesised by the Agentic Development Platform · click anything · last drawn 2026-06-20</div>
+    <div class="stamp">research notebook</div>
+  </header>
+
+  <nav class="tabs" role="tablist" aria-label="Report sections">
+    <button class="tab" role="tab" data-p="overview" aria-selected="true">overview</button>
+    <button class="tab" role="tab" data-p="principles" aria-selected="false">the 12 principles</button>
+    <button class="tab" role="tab" data-p="labs" aria-selected="false">labs</button>
+    <button class="tab" role="tab" data-p="figures" aria-selected="false">figures</button>
+    <button class="tab" role="tab" data-p="repos" aria-selected="false">repositories</button>
+    <button class="tab" role="tab" data-p="scorecard" aria-selected="false">ADG scorecard</button>
+    <button class="tab" role="tab" data-p="debate" aria-selected="false">the debate</button>
+  </nav>
+
+  <section class="panel on" id="overview">
+    <h2 class="sec">What an agent loop is</h2>
+    <p class="lead">Strip away the frameworks and an agent is just <em>machinery wrapped around a stateless function</em>. The loop feeds the model's own outputs — and the world's responses — back into its next input. The loop is the agent. Remove it and you have a single completion.</p>
+    <div class="loopline" aria-hidden="true">
+      <span class="step">gather context</span><span class="arr">→</span>
+      <span class="step">take action</span><span class="arr">→</span>
+      <span class="step">verify work</span><span class="arr">↻</span>
+    </div>
+    <div class="grid g2">
+      <div class="card"><div class="ptitle">the four forced questions</div>
+        <ul class="scribble">
+          <li><b>Context</b> — what goes in the window this turn? (finite)</li>
+          <li><b>Action</b> — what can it do, and how is that expressed?</li>
+          <li><b>Observation</b> — how does the result re-enter the loop?</li>
+          <li><b>Termination</b> — when, and on whose authority, does it stop?</li>
+        </ul>
+      </div>
+      <div class="card"><div class="ptitle">the 2026 shift</div>
+        <ul class="scribble">
+          <li>harnesses &gt; algorithms — the field hardens loops, it doesn't invent new ones</li>
+          <li>context engineering became the umbrella discipline</li>
+          <li>durable state lives in the filesystem &amp; git, not the window</li>
+          <li>single-thread vs multi-agent is still <em>unsettled</em></li>
+          <li>evaluation is now the bottleneck, not capability</li>
+        </ul>
+      </div>
+    </div>
+    <p class="note" style="margin-top:18px">Three vocabularies, one cycle: classical <i>perceive→decide→act</i>, ReAct's <i>thought→action→observation</i>, and Anthropic's <i>gather→act→verify→repeat</i>. The shape isn't new — what's new is that one pretrained model fills the "reason" slot and the action space is open-ended.</p>
+  </section>
+
+  <section class="panel" id="principles">
+    <h2 class="sec">The 12 principles</h2>
+    <p class="lead">The design surface every real loop must answer. Tap a card to see the derivation and how ADG governs it deterministically — outside the model.</p>
+    <div class="grid g3" id="pgrid"></div>
+  </section>
+
+  <section class="panel" id="labs">
+    <h2 class="sec">Top labs</h2>
+    <p class="lead">Who's defining loop design — and their distinct philosophies. <span class="chip">verified</span> = checked against a primary source; <span class="chip fresh">fresh</span> = current single-pass search, not adversarially verified.</p>
+    <div class="controls">
+      <span class="note">show:</span>
+      <button id="labAll" aria-pressed="true">all</button>
+      <button id="labVer" aria-pressed="false">verified only</button>
+    </div>
+    <div class="grid g2" id="labgrid"></div>
+  </section>
+
+  <section class="panel" id="figures">
+    <h2 class="sec">Load-bearing figures</h2>
+    <p class="lead">The individuals whose ideas the field's loops are built on.</p>
+    <div class="grid g3" id="figgrid"></div>
+  </section>
+
+  <section class="panel" id="repos">
+    <h2 class="sec">Top repositories</h2>
+    <p class="lead">The highest-signal open-source loops &amp; harnesses. Star counts pulled live from the GitHub API on 2026-06-20. Search to filter, click a heading to sort.</p>
+    <div class="controls">
+      <input id="repoSearch" type="text" placeholder="filter repos / topology / memory…" aria-label="filter repositories" style="flex:1;min-width:200px" />
+    </div>
+    <table class="repos" id="repotbl">
+      <thead><tr>
+        <th data-k="name">repo <span class="ar"></span></th>
+        <th data-k="stars">stars (k) <span class="ar">▾</span></th>
+        <th data-k="topo">loop topology <span class="ar"></span></th>
+        <th data-k="term">termination <span class="ar"></span></th>
+        <th data-k="mem">memory <span class="ar"></span></th>
+      </tr></thead>
+      <tbody></tbody>
+    </table>
+  </section>
+
+  <section class="panel" id="scorecard">
+    <h2 class="sec">How ADG scores</h2>
+    <p class="lead">The Agentic Development Platform graded against its own 12 principles — an internal self-audit, not a benchmark. Toggle to see the jump from the pre-2.0 overlay to the 2.0 governed harness.</p>
+    <div class="controls">
+      <button id="scNow" aria-pressed="true">now (2.0)</button>
+      <button id="scPre" aria-pressed="false">pre-2.0</button>
+      <button id="scBoth" aria-pressed="false">before → after</button>
+    </div>
+    <table class="score" id="scoretbl"><tbody></tbody></table>
+    <p class="note" style="margin-top:14px">~9 of 12 measures now sit at A / A−. The biggest jumps (P1, P3, P8 — D→A class) are exactly the loop-mechanics a single PreToolUse guardrail structurally couldn't touch. P9 is enforced on the Claude surface only; Codex + SDK parity is planned.</p>
+  </section>
+
+  <section class="panel" id="debate">
+    <h2 class="sec">The live debate</h2>
+    <p class="lead">Single-threaded linear agents, or orchestrator-worker swarms? In 2026 this is genuinely unsettled — the two strongest positions landed within ~24 hours of each other.</p>
+    <div class="debate">
+      <div class="card lab">
+        <h3>Cognition <span class="chip">verified</span></h3>
+        <p class="phil">"Don't build multi-agents"</p>
+        <ul class="scribble">
+          <li>parallel subagents can't share full context</li>
+          <li>actions carry implicit decisions → conflicting decisions → bad results</li>
+          <li>share <em>full agent traces</em>, not just messages</li>
+          <li>prefer single-threaded linear agents</li>
+        </ul>
+      </div>
+      <div class="vs" aria-hidden="true">vs</div>
+      <div class="card lab">
+        <h3>Anthropic <span class="chip">verified</span></h3>
+        <p class="phil">orchestrator-worker research system</p>
+        <ul class="scribble">
+          <li>lead agent spawns 3–5 parallel subagents</li>
+          <li>lead synthesises &amp; decides if more work is needed</li>
+          <li>plan persisted to a Memory store past 200k tokens</li>
+          <li>+90.2% over single-agent Opus 4 — <em>self-reported, internal, unreproduced</em></li>
+        </ul>
+      </div>
+    </div>
+    <div class="verdict">
+      <div class="card">
+        <div class="ptitle">ADG takes no side</div>
+        <p class="pclaim">The subagent budget gate bounds the <b>cost / blast-radius</b> of fan-out (<code>maxConcurrent</code>, <code>maxTotal</code>) and leaves the topology choice to the operator — defaulting to <em>warn</em> so it advises before it blocks. It keeps the lab-specific 90.2% magnitude out of policy entirely.</p>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <p><b>Sources &amp; provenance.</b> Synthesised from <code>loops-research.md</code> (the P1–P12 framework) and <code>research/agentic-field-map-2026-06-20.md</code> (deep-research workflow → adversarial verification + live GitHub API star counts). Primary sources include Anthropic, OpenAI, Cognition, Google &amp; Microsoft engineering pages and the named researchers' essays. The 90.2% multi-agent figure is Anthropic's self-reported internal eval — not an objective benchmark. Star counts are point-in-time.</p>
+    <p>Black &amp; white, hand-drawn with <a href="https://roughjs.com">rough.js</a> · drawn for the Agentic Development Platform · © 2026 Otterblock Pty Ltd.</p>
+  </footer>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/roughjs@4.6.6/bundled/rough.min.js"></script>
+<script>
+(function(){
+  "use strict";
+  var HAS_ROUGH = typeof rough !== "undefined";
+  var INK = "#1b1a17";
+
+  var principles = [
+    ["P1","The loop is the product","Capability beyond a single completion comes from how outputs &amp; observations are fed back — not from a bigger model. An agentic loop around a weaker model beats zero-shot from a stronger one.","packages/{core,sdk,cli} — a real harness, not a checker"],
+    ["P2","Use the least autonomy","Each degree of freedom multiplies the state space you must bound &amp; inspect. Prefer a fixed workflow until a task genuinely needs the model to direct itself.","Proofline lanes L0–L4 + governor modes"],
+    ["P3","Hard stop + an authority for done","A loop with no termination is a non-terminating program; a model can't reliably judge its own completion. Cap cost, and gate success on an external verifier.","governor maxTurns cap + the release gate (evidence tiers)"],
+    ["P4","Context is an attention budget","Recall degrades as the window fills ('context rot'); more context isn't monotonically better. Curate the smallest high-signal set per turn.","context broker + profiles + in-loop context hooks"],
+    ["P5","Externalize durable state","Context is volatile &amp; bounded; anything that must survive a reset can't live only in the window. Let the filesystem &amp; git be the memory and the undo.","SQL backlog + append-only, hash-chained audit log"],
+    ["P6","Ground every iteration in observation","Reasoning unanchored from the environment hallucinates. Prefer real tool results &amp; measured outcomes; feed errors back as first-class observations.","evidence tiers (asserted&lt;config&lt;test&lt;live) + backpressure"],
+    ["P7","Make the loop transparent","An autonomous loop must be inspectable to be governed, and the interface must be shaped for the model that drives it.","tamper-evident audit chain + dashboard + adapter contract"],
+    ["P8","Error recovery is a loop edge","An unhandled error halts progress or compounds. Failed checks should create backpressure — block, return the error, let the next turn fix it. Bound retries.","backpressure hook + backlog:fail"],
+    ["P9","Multi-agent only when isolation pays","Sub-agents buy a fresh attention budget &amp; parallelism — but cost coordination &amp; tokens. Use them for read-heavy isolatable work; keep shared state in one coordinator.","subagent budget gate (maxConcurrent / maxTotal)"],
+    ["P10","Predictable failure &gt; clever success","A loop you can reproduce &amp; bound is governable; one that occasionally succeeds unrepeatably is not. Favour legible failure modes over peak performance.","deterministic policy outside the model; fail-closed security / fail-open quality"],
+    ["P11","Bound by blast radius; observations are untrusted","The feedback edge that creates agency is also the attack surface — a tool result can carry instructions. Risk-class the tools, don't trust the trajectory.","deny-by-default classes + pinned always-on controls + write-scope"],
+    ["P12","Design the criterion before the loop","Capability has outrun our ability to specify &amp; measure tasks — the eval is now the scarce work. Write it first; make it the same verifier that gates success.","elicitation → criteria → evidence tiers → release gate → evals"]
+  ];
+
+  var labs = [
+    ["Anthropic",1,"simplest composable pattern; context as an engineered resource","workflows-vs-agents taxonomy; long-running harness (initializer + coding agent, progress file + git); orchestrator-worker research system"],
+    ["OpenAI",1,"model-as-agent; minimal scaffolding","Agents SDK is the production successor to Swarm — built-in loop, max_turns / MaxTurnsExceeded termination"],
+    ["Cognition",1,"anti-multi-agent; single-threaded linear agents","'Don't Build Multi-Agents' — share full traces, not messages; conflicting implicit decisions break swarms"],
+    ["Google DeepMind",1,"extend one model (Gemini) into autonomous action","Deep Research &amp; Deep Research Max agents — autonomous Plan→Search→Read→Iterate→Output; agentic-vision Think-Act-Observe"],
+    ["Microsoft",1,"orchestrated multi-agent as structured conversation","AutoGen → Microsoft Agent Framework, 'the direct successor'; AutoGen now maintenance-mode"],
+    ["Meta FAIR",0,"evaluation infrastructure as the lever","ARE (Agents Research Environments) + the Gaia2 benchmark — ambiguity, dynamic environments, temporal constraints"]
+  ];
+
+  var figures = [
+    ["Shunyu Yao",1,"ReAct (reasoning as action); 'The Second Half' — one RL+reasoning recipe now generalises, so defining &amp; evaluating problems is the new bottleneck"],
+    ["Noah Shinn",1,"Reflexion — verbal reinforcement learning: reflect on failure in language, store it, retry. No weight updates"],
+    ["Lilian Weng",1,"test-time compute as a distinct scaling axis ('Why We Think'); CoT spends more FLOPs per answer token"],
+    ["Harrison Chase",1,"'run the LLM in a loop' + context engineering as the umbrella; framework vs harness layering"],
+    ["Andrej Karpathy",0,"'the decade of agents' (not the year); the autonomy slider — prefer partial-autonomy co-pilots, human in the loop"],
+    ["Andrew Ng",0,"four agentic design patterns — reflection, tool use, planning, multi-agent; the loop beats a bigger zero-shot model"]
+  ];
+
+  var repos = [
+    ["langchain",139.7,"06-20","framework (abstractions)","—","varies"],
+    ["claude-code",133.4,"06-19","gather→act→verify→repeat","per-iteration cap","compaction, subagents, CLAUDE.md"],
+    ["codex",92.2,"06-20","tool-call→append→re-query","non-tool message","full history + compaction, AGENTS.md"],
+    ["OpenHands",77.8,"06-19","event stream (action/observation)","finish / max-iter / budget","event stream is the state"],
+    ["AutoGen",59.1,"04-15","multi-agent conversation","termination conditions","shared history (now legacy)"],
+    ["crewAI",54.0,"06-20","role-based crews","tasks done / max_iter","4-layer memory"],
+    ["aider",46.5,"05-22","apply→lint→test→commit","turn-based","tree-sitter repo map; git"],
+    ["langgraph",35.2,"06-19","cyclic StateGraph","END / conditional edge","typed state + checkpointers"],
+    ["dspy",35.2,"06-18","compiled programs","finish / max_iters","per-run trajectory"],
+    ["smolagents",27.9,"06-16","minimal ReAct, code-as-action","final_answer / max_steps","editable step memory"],
+    ["openai-agents-python",27.3,"06-19","agent loop + handoffs","MaxTurnsExceeded","Sessions"],
+    ["SWE-agent",19.6,"06-17","ReAct via custom ACI","submit / cost cap","ACI-managed; sandbox"],
+    ["pydantic-ai",17.9,"06-18","typed FSM per run","validated typed output","typed graph state"]
+  ];
+
+  var scores = [
+    ["P1","C","A"],["P2","B","A−"],["P3","D","A"],["P4","B","A"],["P5","A","A"],["P6","B−","A−"],
+    ["P7","A−","A"],["P8","D","A−"],["P9","C+","A−"],["P10","A","A"],["P11","A","A"],["P12","A−","A"]
+  ];
+
+  function el(t,c,h){var e=document.createElement(t);if(c)e.className=c;if(h!=null)e.innerHTML=h;return e;}
+
+  function drawBox(card,seed){
+    if(!HAS_ROUGH){card.classList.add("fallback");return;}
+    var old=card.querySelector(".sketch-svg");if(old)old.remove();
+    var w=card.offsetWidth+12, h=card.offsetHeight+12;
+    if(w<=12||h<=12)return;
+    var svg=document.createElementNS("http://www.w3.org/2000/svg","svg");
+    svg.setAttribute("class","sketch-svg");
+    svg.setAttribute("width",w);svg.setAttribute("height",h);
+    var rc=rough.svg(svg);
+    svg.appendChild(rc.rectangle(6,6,w-12,h-12,{stroke:INK,strokeWidth:1.6,roughness:1.6,bowing:1.4,seed:seed||1}));
+    card.appendChild(svg);
+  }
+  function decorateAll(){
+    var cards=document.querySelectorAll(".panel.on .card");
+    cards.forEach(function(c,i){drawBox(c,(i*7+3)%97+1);});
+  }
+  function drawBars(){
+    var max=Math.max.apply(null,repos.map(function(r){return r[1];}));
+    document.querySelectorAll(".bar").forEach(function(b){
+      var v=parseFloat(b.getAttribute("data-v"));
+      var fill=b.querySelector(".barfill");if(!fill)return;
+      fill.style.width=Math.max(6,(v/max)*150)+"px";
+    });
+  }
+
+  // ---- principles ----
+  var pg=document.getElementById("pgrid");
+  principles.forEach(function(p,i){
+    var c=el("div","card pcard");
+    c.innerHTML='<span class="taghint">tap →</span>'+
+      '<div class="ptitle"><span class="pnum">'+p[0]+'</span>'+p[1]+'</div>'+
+      '<div class="pmore">'+p[2]+'<span class="adg">ADG: '+p[3]+'</span></div>';
+    c.addEventListener("click",function(){c.classList.toggle("open");setTimeout(function(){drawBox(c,(i*7+3)%97+1);},310);});
+    pg.appendChild(c);
+  });
+
+  // ---- labs ----
+  function renderLabs(verOnly){
+    var g=document.getElementById("labgrid");g.innerHTML="";
+    labs.forEach(function(l){
+      if(verOnly&&!l[1])return;
+      var c=el("div","card lab");
+      c.innerHTML='<h3>'+l[0]+' <span class="chip'+(l[1]?'':' fresh')+'">'+(l[1]?'verified':'fresh')+'</span></h3>'+
+        '<p class="phil">'+l[2]+'</p><p class="rec">'+l[3]+'</p>';
+      g.appendChild(c);
+    });
+    decorateAll();
+  }
+
+  // ---- figures ----
+  var fg=document.getElementById("figgrid");
+  figures.forEach(function(f){
+    var c=el("div","card fig");
+    c.innerHTML='<h3>'+f[0]+' <span class="chip'+(f[1]?'':' fresh')+'">'+(f[1]?'verified':'fresh')+'</span></h3>'+
+      '<p class="idea">'+f[2]+'</p>';
+    fg.appendChild(c);
+  });
+
+  // ---- repos ----
+  var repoSort={k:"stars",dir:-1};
+  function renderRepos(){
+    var q=document.getElementById("repoSearch").value.toLowerCase();
+    var rows=repos.filter(function(r){
+      return !q || (r[0]+" "+r[3]+" "+r[4]+" "+r[5]).toLowerCase().indexOf(q)>=0;
+    });
+    var ki={name:0,stars:1,topo:3,term:4,mem:5}[repoSort.k];
+    rows.sort(function(a,b){
+      var x=a[ki],y=b[ki];
+      if(typeof x==="number")return (x-y)*repoSort.dir;
+      return x.localeCompare(y)*repoSort.dir;
+    });
+    var tb=document.querySelector("#repotbl tbody");tb.innerHTML="";
+    rows.forEach(function(r){
+      var tr=el("tr");
+      tr.innerHTML='<td class="repo-name">'+r[0]+'<div class="tiny">pushed '+r[2]+'</div></td>'+
+        '<td><div class="bar" data-v="'+r[1]+'"><span class="barfill"></span><span class="val">'+r[1].toFixed(1)+'</span></div></td>'+
+        '<td>'+r[3]+'</td><td>'+r[4]+'</td><td>'+r[5]+'</td>';
+      tb.appendChild(tr);
+    });
+    document.querySelectorAll("#repotbl th").forEach(function(th){
+      var a=th.querySelector(".ar");if(!a)return;
+      a.textContent = th.getAttribute("data-k")===repoSort.k ? (repoSort.dir<0?"▾":"▴") : "";
+    });
+    drawBars();
+  }
+  document.getElementById("repoSearch").addEventListener("input",renderRepos);
+  document.querySelectorAll("#repotbl th").forEach(function(th){
+    th.addEventListener("click",function(){
+      var k=th.getAttribute("data-k");
+      if(repoSort.k===k)repoSort.dir*=-1;else{repoSort.k=k;repoSort.dir=(k==="stars")?-1:1;}
+      renderRepos();
+    });
+  });
+
+  // ---- scorecard ----
+  var scMode="now";
+  function gradeCell(g){return '<span class="grade">'+g+'</span>';}
+  function renderScore(){
+    var tb=document.querySelector("#scoretbl tbody");tb.innerHTML="";
+    scores.forEach(function(s){
+      var tr=el("tr");
+      var mid;
+      if(scMode==="now")mid=gradeCell(s[2]);
+      else if(scMode==="pre")mid='<span class="pre">'+s[1]+'</span>';
+      else mid='<span class="pre">'+s[1]+'</span><span class="arrowto">→</span>'+gradeCell(s[2]);
+      tr.innerHTML='<td class="pl">'+s[0]+'</td><td>'+principles[scores.indexOf(s)][1]+'</td><td style="text-align:right">'+mid+'</td>';
+      tb.appendChild(tr);
+    });
+  }
+  function scBtn(id,mode){
+    document.getElementById(id).addEventListener("click",function(){
+      scMode=mode;
+      ["scNow","scPre","scBoth"].forEach(function(b){document.getElementById(b).setAttribute("aria-pressed",b===id);});
+      renderScore();
+    });
+  }
+  scBtn("scNow","now");scBtn("scPre","pre");scBtn("scBoth","both");
+
+  // ---- lab filter ----
+  document.getElementById("labAll").addEventListener("click",function(){
+    document.getElementById("labAll").setAttribute("aria-pressed","true");
+    document.getElementById("labVer").setAttribute("aria-pressed","false");renderLabs(false);
+  });
+  document.getElementById("labVer").addEventListener("click",function(){
+    document.getElementById("labVer").setAttribute("aria-pressed","true");
+    document.getElementById("labAll").setAttribute("aria-pressed","false");renderLabs(true);
+  });
+
+  // ---- tabs ----
+  document.querySelectorAll(".tab").forEach(function(t){
+    t.addEventListener("click",function(){
+      document.querySelectorAll(".tab").forEach(function(x){x.setAttribute("aria-selected","false");});
+      t.setAttribute("aria-selected","true");
+      var id=t.getAttribute("data-p");
+      document.querySelectorAll(".panel").forEach(function(p){p.classList.toggle("on",p.id===id);});
+      window.scrollTo({top:0,behavior:"smooth"});
+      requestAnimationFrame(function(){decorateAll();if(id==="repos")drawBars();});
+    });
+  });
+
+  // ---- init ----
+  renderLabs(false);
+  renderScore();
+  renderRepos();
+  window.addEventListener("load",function(){decorateAll();drawBars();});
+  var rt;
+  window.addEventListener("resize",function(){clearTimeout(rt);rt=setTimeout(function(){decorateAll();drawBars();},180);});
+  setTimeout(function(){decorateAll();drawBars();},400);
+})();
+</script>
+</body>
+</html>
