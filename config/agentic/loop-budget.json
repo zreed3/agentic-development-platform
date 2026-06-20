@@ -8,5 +8,14 @@
   "releaseGate": {
     "mode": "block",
     "_modes": "block = refuse turn-end on a release-gate violation; warn = allow but print advisory; off = disabled"
+  },
+  "subagents": {
+    "_comment": "P9 subagent budget gate. A PreToolUse/Task hook bounds the COST/blast-radius of multi-agent fan-out (it does not decide WHETHER a task should be a subagent). maxConcurrent caps simultaneously-active subagents; maxTotal caps spawns per session. QUALITY gate: fails OPEN on any error. Default mode is warn (advise before blocking) because a fan-out cap has cross-adapter blast radius. Set a single cap to 0 to disable that specific limit; set mode to off to disable the whole gate.",
+    "mode": "warn",
+    "_modes": "block = deny a spawn that breaches a cap; warn = allow but print advisory; off = disabled",
+    "caps": {
+      "maxConcurrent": 8,
+      "maxTotal": 50
+    }
   }
 }
