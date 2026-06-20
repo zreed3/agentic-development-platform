@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "modelVersion": "adg-artifact-types-2026-06-15",
+  "description": "Deliverable-quality control packs. A deliverable that declares a type inherits the type's required check set, so completeness is a property of this versioned library, not the authoring agent's memory. Every defect found once becomes a new line here (the ratchet). A typed deliverable that does not carry its type's enforcing evidence fails deliverable:audit.",
+  "types": {
+    "web-image-asset": {
+      "summary": "A raster or vector image shipped to a web UI (logo, tile, illustration, social card).",
+      "checks": ["dimensions", "format", "blank-guard", "edge-clip", "contrast", "positive-on-light"],
+      "enforcedBy": ["npm run asset:lint"],
+      "requiredEvidence": ["npm run asset:lint", "rendered screenshot or montage"],
+      "control": "ADG-CTRL-008",
+      "releaseClass": "visual",
+      "originDefect": "A lender logo clipped at the canvas edge passed proxy metrics but violated the 'recognisable logo' intent (2026-06-15). The edge-clip check now catches this class deterministically."
+    }
+  }
+}

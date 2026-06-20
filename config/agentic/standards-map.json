@@ -1,9 +1,9 @@
 {
   "schemaVersion": 1,
-  "modelVersion": "adg-standards-2026-06-06",
+  "modelVersion": "adg-standards-2026-06-15",
   "policy": {
     "baseline": ["iso-27001", "iso-27002", "nist-ssdf", "nist-ai-rmf", "owasp-genai-llm"],
-    "advisory": ["iso-27701", "iso-42001"],
+    "advisory": ["iso-27701", "iso-42001", "iso-31000", "three-lines"],
     "copyrightRule": "Reference standard identifiers and local control intent only; do not copy paid-standard control text."
   },
   "standards": [
@@ -48,6 +48,18 @@
       "name": "ISO/IEC 42001 AI management system",
       "sourceUrl": "https://www.iso.org/standard/42001",
       "kind": "ai-management"
+    },
+    {
+      "id": "iso-31000",
+      "name": "ISO 31000 risk management",
+      "sourceUrl": "https://www.iso.org/standard/65694.html",
+      "kind": "risk-management"
+    },
+    {
+      "id": "three-lines",
+      "name": "IIA Three Lines Model (2020)",
+      "sourceUrl": "https://www.theiia.org/en/content/position-papers/2020/the-iias-three-lines-model-an-update-of-the-three-lines-of-defense/",
+      "kind": "governance-accountability"
     }
   ],
   "controls": [
@@ -78,9 +90,12 @@
     {
       "id": "ADG-CTRL-004",
       "domain": "cybersecurity_as_code",
-      "standardRefs": ["nist-ssdf", "nist-ai-rmf", "owasp-genai-llm"],
-      "localControl": "Agent tool and prompt-risk behaviors must be checked with local eval scenarios and deny-by-default guardrail policy.",
-      "evidence": ["config/agentic/guardrails.json", "tooling/agent-evals/scenarios", "npm run agent:evals"],
+      "standardRefs": ["nist-ssdf", "nist-ai-rmf", "owasp-genai-llm", "iso-42001", "iso-31000", "three-lines"],
+      "localControl": "Agent tool and prompt-risk behaviors must be checked with local eval scenarios (including indirect injection and multi-agent propagation) and a deny-by-default guardrail policy enforced by a deterministic PreToolUse hook.",
+      "owaspLlmRefs": ["LLM01-prompt-injection", "LLM06-excessive-agency"],
+      "threeLinesRole": "first-line preventive control (the hook blocks at the tool gate); the eval gate is second-line independent assurance.",
+      "iso42001Refs": ["operational controls", "AI system testing and impact"],
+      "evidence": ["config/agentic/guardrails.json", "tooling/agent-evals/scenarios", "npm run agent:evals", "npm run test:adg-hook"],
       "maturityDomain": "cybersecurity_as_code"
     },
     {
@@ -96,7 +111,33 @@
       "domain": "deliverable_auditability",
       "standardRefs": ["iso-27001", "nist-ssdf", "nist-ai-rmf", "iso-42001"],
       "localControl": "Material agent deliverables must record source inputs, graph slice, files touched, tests, failures, decisions, and evidence for bug triage and rework reduction.",
+      "owaspLlmRefs": ["LLM01-prompt-injection-traceability"],
+      "threeLinesRole": "third-line: append-only, event-sourced record supports independent review and non-repudiation.",
+      "iso42001Refs": ["record-keeping and traceability"],
       "evidence": ["config/agentic/deliverables.json", "scripts/adg-deliverable.mjs", "npm run deliverable:audit"],
+      "maturityDomain": "deliverable_auditability"
+    },
+    {
+      "id": "ADG-CTRL-007",
+      "domain": "toggleable_controls_as_code",
+      "standardRefs": ["owasp-genai-llm", "iso-42001", "iso-31000", "three-lines", "nist-ai-rmf"],
+      "localControl": "Every guardrail control is policy-as-code with an explicit enable/disable surface scoped by risk and context. Safe defaults are deny-by-default; always-on controls (destructive deny, audit append-only, forbidden-bulk read) cannot be disabled and are pinned in code. Toggling a control is a governed, audited action that writes an append-only audit decision event with reason, risk, and rollback; a hand-edit that relaxes an always-on control is rejected by guardrail-check and ignored by the hook.",
+      "owaspLlmRefs": ["LLM01-prompt-injection", "LLM06-excessive-agency"],
+      "threeLinesRole": "first-line preventive control with a second-line assurance gate (guardrail-check) and a third-line audit trail of every toggle.",
+      "iso42001Refs": ["operational controls", "AI policy and roles", "change management"],
+      "iso31000Refs": ["risk treatment", "monitoring and review"],
+      "evidence": ["config/agentic/guardrails.json", "scripts/adg-toggle-control.mjs", "plugins/adg-governance/hooks/adg-guardrail-hook.mjs", "npm run test:adg-toggles", "docs/governance-alignment.md"],
+      "maturityDomain": "cybersecurity_as_code"
+    },
+    {
+      "id": "ADG-CTRL-008",
+      "domain": "deliverable_artifact_quality",
+      "standardRefs": ["nist-ssdf", "iso-42001", "three-lines"],
+      "localControl": "Deliverables that render to a user are typed, and a type inherits a versioned, deterministic check set (config/agentic/artifact-types.json). A typed deliverable cannot be audited without carrying its type's enforcing evidence. The web-image-asset type encodes dimensions, format, blank guard, edge-clip, contrast, and positive-on-light, enforced by the assetLint control (npm run asset:lint); its pixel reading is a small Rust helper. Completeness is a property of the control library, not the authoring agent's memory: every defect found once becomes a new line in the pack.",
+      "owaspLlmRefs": [],
+      "threeLinesRole": "first-line deterministic quality gate (asset-lint) with second-line typed-deliverable assurance (deliverable:audit) and a third-line audit/evidence trail.",
+      "iso42001Refs": ["AI system testing and impact", "operational controls"],
+      "evidence": ["config/agentic/artifact-types.json", "scripts/asset-lint.mjs", "tools/adg-asset-lint", "npm run asset:lint", "npm run test:adg-asset-lint", "scripts/adg-deliverable.mjs"],
       "maturityDomain": "deliverable_auditability"
     }
   ]

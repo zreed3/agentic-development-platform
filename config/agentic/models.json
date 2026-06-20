@@ -1,0 +1,61 @@
+{
+  "version": 1,
+  "_comment": "ADG model-selection policy. Editable policy-as-code (like context-profiles.yaml / guardrails.json), NOT generated provenance. The orchestrator selects an ABSTRACT capability TIER from effort (lane) + risk + role; the tier->model rows below are the only place provider model IDs live, so the policy stays provider-neutral and the rest of ADG never hardcodes a model name. Update these rows as providers ship models; nothing else changes.",
+  "provider": "anthropic",
+  "tierOrder": ["economy", "fast-reasoning", "balanced", "frontier-reasoning"],
+  "tiers": {
+    "economy": {
+      "_use": "L0/L1 mechanical work: rename, format, mirror edits, mechanical workers.",
+      "anthropic": "claude-haiku-4-5",
+      "openai": "5.3-spark"
+    },
+    "fast-reasoning": {
+      "_use": "L1 quick-fix with light reasoning.",
+      "anthropic": "claude-haiku-4-5",
+      "openai": "5.4-mini"
+    },
+    "balanced": {
+      "_use": "L2 normal feature work; most workers.",
+      "anthropic": "claude-sonnet-4-6",
+      "openai": "5.5"
+    },
+    "frontier-reasoning": {
+      "_use": "L3/L4, planning, judge panels, ambiguous design, sensitive risk classes.",
+      "anthropic": "claude-opus-4-8",
+      "openai": "5.5-pro"
+    }
+  },
+  "selection": {
+    "_comment": "Floors only RAISE the tier; nothing here can pull an item below its lane tier. Mechanical -> economy is expressed by classifying the work as L0/L1, not by a downgrade key, so a risk floor can never be undercut.",
+    "byLane": {
+      "L0": "economy",
+      "L1": "fast-reasoning",
+      "L2": "balanced",
+      "L3": "frontier-reasoning",
+      "L4": "frontier-reasoning"
+    },
+    "riskFloor": {
+      "secrets": "frontier-reasoning",
+      "billing": "frontier-reasoning",
+      "production": "frontier-reasoning",
+      "destructive": "frontier-reasoning",
+      "migration": "balanced"
+    },
+    "roleFloor": {
+      "planner": "frontier-reasoning",
+      "judge": "frontier-reasoning",
+      "synthesizer": "frontier-reasoning",
+      "signoff-reviewer": "frontier-reasoning"
+    }
+  },
+  "effort": {
+    "_comment": "reasoning effort per lane, mapped onto the Claude Agent SDK AgentDefinition.effort scale (low|medium|high|xhigh|max) and OpenAI model_settings reasoning effort.",
+    "byLane": {
+      "L0": "low",
+      "L1": "low",
+      "L2": "medium",
+      "L3": "high",
+      "L4": "high"
+    }
+  }
+}

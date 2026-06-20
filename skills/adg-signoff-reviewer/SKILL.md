@@ -21,3 +21,4 @@ Use for `L4 release signoff`.
 - Failed checks stay visible.
 - Deferrals need reason, risk, and rollback.
 - Do not use L0/L1 evidence for signoff claims.
+- A deliverable that renders to a user cannot sign off on metric or test evidence alone. A feature with a visual surface carries `release-class:visual`, so `npm run backlog:validate` stays red until a `live` event records a rendered-artifact observation. Run `/adg-completeness-critic` over a UI or asset deliverable first, and confirm `npm run asset:lint` passes on any image assets.

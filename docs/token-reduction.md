@@ -114,6 +114,25 @@ done
 wc -c data/backlog-source.sql data/backlog.sqlite
 ```
 
+## 1.0 measured wins
+
+All numbers below are measured with `node scripts/adg-tokens.mjs` (a deterministic,
+reproducible estimate applied identically before and after, so the delta is a
+measurement, not an assertion). See `docs/agent-guides/adg-1.0-baseline-tokens.json`.
+
+- MCP `context_packet` now defaults to TOON instead of JSON: 5048 to 1386 estimated
+  tokens for the same S07 packet, a 73% reduction per call. JSON stays available via
+  `format:'json'`.
+- `agent:evals` stdout is now a compact summary (counts plus failures only) with the
+  full per-scenario report kept in `data/agent-evals.json`: 1337 to 94 estimated
+  tokens, a 93% reduction, while the scenario set grew from 5 to 8 (three of which now
+  drive the real deterministic hook).
+- The context packet is prefix-stable: `generatedAt` moved from the top of every
+  format to a trailing `_meta` block, so the leading content is identical across
+  repeated same-feature calls. This is the precondition for prompt caching, where
+  cache reads cost about 0.1x base input price (Anthropic prompt-caching docs). The
+  per-call token count is unchanged; the saving is the cache hit on repeat calls.
+
 ## Non-goals
 
 - No production RAG / vector database for the dev pipeline. SQL selection is enough

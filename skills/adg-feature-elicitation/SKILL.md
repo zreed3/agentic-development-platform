@@ -19,7 +19,7 @@ Use this before implementation when a feature needs to become buildable by agent
 ## Outputs
 
 - Update `config/agentic/elicitation.json`.
-- Run `npm run elicitation:validate`.
+- Run `npm run elicitation:validate` and check for "uncovered intent" advisory gaps: a requirement covered by no acceptance criterion is flagged, so a stated intent cannot pass on proxy metrics alone. Add a covering criterion (and a perceptual or visual check for UI intent).
 - Emit the agent build packet with `npm run elicitation:packet -- --feature <id> --format toon`.
 
 ## Rules

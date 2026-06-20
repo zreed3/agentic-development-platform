@@ -2,7 +2,12 @@
   "schemaVersion": 1,
   "manifestVersion": "adg-skills-2026-06-06",
   "maxSkillBytes": 5000,
-  "forbiddenTerms": ["bord.room", "bordroom", "V4.1", "pnpm"],
+  "forbiddenTerms": [
+    "bord.room",
+    "bordroom",
+    "V4.1",
+    "pnpm"
+  ],
   "skills": [
     {
       "name": "agentic-traceability",
@@ -83,6 +88,21 @@
       "name": "adg-doc-alignment-checker",
       "path": "skills/adg-doc-alignment-checker/SKILL.md",
       "category": "delivery-lanes"
+    },
+    {
+      "name": "adg-backlog-decompose",
+      "path": "skills/adg-backlog-decompose/SKILL.md",
+      "category": "orchestration"
+    },
+    {
+      "name": "adg-item-worker",
+      "path": "skills/adg-item-worker/SKILL.md",
+      "category": "orchestration"
+    },
+    {
+      "name": "adg-backlog-swarm",
+      "path": "skills/adg-backlog-swarm/SKILL.md",
+      "category": "orchestration"
     }
   ],
   "retiredSkills": [

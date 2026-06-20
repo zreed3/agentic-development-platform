@@ -22,6 +22,8 @@ assert.equal(classify('--intent "quick css spacing fix" --file docs/setup.html')
 assert.equal(classify('--intent "add normal feature behavior" --file scripts/agent-context.mjs').laneId, "L2");
 assert.equal(classify('--intent "change auth tenant permission" --file src/auth.ts').laneId, "L3");
 assert.equal(classify('--intent "release signoff for RC"').laneId, "L4");
+assert.equal(classify('--intent "the logos look approved, ship it"').laneId, "L4");
+assert.equal(classify('--intent "lgtm"').laneId, "L4");
 assert.equal(classify('--event github-push --intent "small docs update"').laneId, "L4");
 assert.equal(guard('--event github-push --intent "GitHub update"').laneId, "L4");
 

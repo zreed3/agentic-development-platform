@@ -1,0 +1,22 @@
+{
+  "name": "@adg/sdk",
+  "version": "2.0.0",
+  "description": "ADG governance layer for agent SDKs. Builds ON the Anthropic Claude Agent SDK and the OpenAI Agents SDK — it does not replace their loops. Zero runtime dependencies; the vendor SDKs are optional peers.",
+  "type": "module",
+  "license": "PolyForm-Noncommercial-1.0.0",
+  "exports": {
+    ".": "./index.mjs",
+    "./claude": "./claude.mjs",
+    "./openai": "./openai.mjs"
+  },
+  "files": ["*.mjs", "README.md"],
+  "engines": { "node": ">=20" },
+  "peerDependencies": {
+    "@anthropic-ai/claude-agent-sdk": "*",
+    "@openai/agents": "*"
+  },
+  "peerDependenciesMeta": {
+    "@anthropic-ai/claude-agent-sdk": { "optional": true },
+    "@openai/agents": { "optional": true }
+  }
+}

@@ -8,6 +8,7 @@ const root = process.cwd();
 const defaultConfig = "config/agentic/deliverables.json";
 const defaultLog = "data/deliverables.jsonl";
 const elicitationPath = "config/agentic/elicitation.json";
+const artifactTypesPath = "config/agentic/artifact-types.json";
 
 function abs(file) {
   return path.isAbsolute(file) ? file : path.join(root, file);
@@ -67,7 +68,15 @@ function knownIds() {
   };
 }
 
-function validateRecord(record, ids) {
+function loadArtifactTypes() {
+  try {
+    return readJson(artifactTypesPath).types ?? {};
+  } catch {
+    return {};
+  }
+}
+
+function validateRecord(record, ids, artifactTypes = {}) {
   const failures = [];
   for (const field of ["id", "featureId", "summary", "graphSlice"]) {
     if (!record[field]) failures.push(`${record.id ?? "UNKNOWN"}: missing ${field}`);
@@ -81,13 +90,29 @@ function validateRecord(record, ids) {
   for (const contractId of asArray(record.contracts)) {
     if (!ids.contracts.has(contractId)) failures.push(`${record.id}: unknown contract ${contractId}`);
   }
+  // Artifact-typed control pack: a deliverable that declares a type inherits the type's
+  // enforcing check set. The type's enforcedBy commands must appear in the record's
+  // testsRun or evidence, so a typed deliverable cannot be audited without running the
+  // pack (e.g. a web-image-asset without asset-lint evidence fails).
+  if (record.type) {
+    const typeDef = artifactTypes[record.type];
+    if (!typeDef) {
+      failures.push(`${record.id}: unknown deliverable type "${record.type}" (not in config/agentic/artifact-types.json)`);
+    } else {
+      const haystack = [...asArray(record.testsRun), ...asArray(record.evidence)].join("  ");
+      for (const required of asArray(typeDef.enforcedBy)) {
+        if (!haystack.includes(required)) failures.push(`${record.id}: type "${record.type}" requires evidence of \`${required}\` in testsRun/evidence (its check set: ${asArray(typeDef.checks).join(", ")})`);
+      }
+    }
+  }
   return failures;
 }
 
 function audit(args) {
   const records = loadRecords(value(args, "config", defaultConfig), value(args, "log", ""));
   const ids = knownIds();
-  const failures = records.flatMap((record) => validateRecord(record, ids));
+  const artifactTypes = loadArtifactTypes();
+  const failures = records.flatMap((record) => validateRecord(record, ids, artifactTypes));
   return {
     kind: "deliverable-audit",
     generatedAt: new Date().toISOString(),
@@ -102,6 +127,7 @@ function record(args) {
   const entry = {
     id,
     featureId: value(args, "feature"),
+    ...(value(args, "type") ? { type: value(args, "type") } : {}),
     summary: value(args, "summary"),
     graphSlice: {
       featureId: value(args, "feature"),
@@ -119,7 +145,7 @@ function record(args) {
     evidence: multi(args, "evidence"),
     recordedAt: new Date().toISOString(),
   };
-  const failures = validateRecord(entry, knownIds());
+  const failures = validateRecord(entry, knownIds(), loadArtifactTypes());
   if (failures.length) return { kind: "deliverable-record", valid: false, entry, failures };
   const logPath = value(args, "log", defaultLog);
   fs.mkdirSync(path.dirname(abs(logPath)), { recursive: true });

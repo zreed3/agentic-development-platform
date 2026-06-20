@@ -86,6 +86,53 @@ Before performing a sensitive action, resolve it against the policy
 Do not weaken the policy to make work proceed; if a gate must be waived, record a
 `decision` audit event with reason, risk, and rollback.
 
+### Toggleable Controls
+
+Guardrail controls are policy-as-code in `config/agentic/guardrails.json` under
+`controls`. Each control can be enabled or disabled per risk and context, except the
+controls pinned `alwaysOn`. Three controls are always-on and can never be disabled:
+`destructiveDeny`, `auditAppendOnly`, and `forbiddenBulkRead`. They are pinned in code
+in both `scripts/guardrail-check.mjs` and the deterministic hook, so a hand-edit that
+relaxes one is ignored at runtime (fail-closed) and rejected by the gate.
+
+Toggling a control is itself a governed, audited action. The only supported path is
+`npm run guardrails:toggle -- --control <name> --set off --reason "..." --risk "..."
+--rollback "..."`, which refuses always-on controls, requires reason, risk, and
+rollback, and writes an append-only audit `decision` event. `npm run adg:doctor` fails
+when an always-on control is relaxed or a toggleable control is disabled without a
+matching audit decision. Never disable a control by editing the policy file directly.
+
+The deterministic PreToolUse hook (`plugins/adg-governance/hooks/adg-guardrail-hook.mjs`)
+reads the controls block as the single policy source and enforces it outside the model.
+The same policy is installed into host repos and enforced by both the Claude Code and the
+Codex adapters (`npm run adg:install -- --client claude|codex|both`); a routine
+`adg:update` preserves a host's governed toggle state and never carries a relaxed
+always-on control forward.
+
+### Deliverable-Quality Controls
+
+Security controls are not the only deterministic gate. The `assetLint` control (toggleable,
+not always-on) is a quality gate for committed image assets: `npm run asset:lint` rejects an
+edge-clipped, blank, or wrong-format export. The encodable checks (every canvas-edge strip
+must match the background, mean luminance inside a band) are run by a small Rust helper
+(`tools/adg-asset-lint`, built with `npm run asset:lint:build`); pixel reading is the only
+non-Node piece. When the helper is not built the gate skips green by default
+(`config.onToolMissing`), so ADG still runs on a host without the Rust toolchain; set
+`onToolMissing` to `block` for hard enforcement.
+
+Deliverables that render to a user are typed. `config/agentic/artifact-types.json` maps a
+type (e.g. `web-image-asset`) to a versioned check set, and a typed deliverable cannot pass
+`deliverable:audit` without carrying its type's enforcing evidence (`npm run asset:lint`).
+Completeness is a property of the control library, not the authoring agent's memory: every
+defect found once becomes a new line in the pack. Run `/adg-completeness-critic` before
+signing off a UI or asset deliverable to add any new encodable failure mode to the set.
+
+A feature with a visual surface carries the `release-class:visual` label, so the release gate
+(`npm run backlog:validate`) keeps it out of `verified` until a `live` event records a
+rendered-artifact observation: a UI deliverable cannot be signed off on metric evidence
+alone. Requirements lineage also flags uncovered intent: a requirement covered by no
+acceptance criterion is reported by `npm run elicitation:validate` as an advisory gap.
+
 ## Proofline v0.9 Delivery Lanes
 
 Use Proofline lanes to keep exploration cheap while preserving evidence for real
@@ -153,6 +200,18 @@ append a corrective `comment` or `decision`. Never put secrets, tokens, or custo
 data in audit events (`audit:validate` will flag likely secrets). Record an audit
 event before finishing material work. Use `$agentic-traceability` for the full
 discipline.
+
+The append-only log carries a rolling hash chain (`scripts/audit-chain.mjs`): each
+recorded event stores a `prevHash` and a `hash` over a canonical projection of the
+event, and `npm run audit:validate` hard-fails on any edit, deletion, reorder, or
+insertion in the chained region. A git-tracked high-water-mark sidecar
+(`data/audit/audit-log.chain-state.json`) additionally catches a strip-all-hashes
+rewrite, a truncated chain tip, and a pre-chain edit. The write stays a single append;
+no earlier line is ever rewritten. Always record events through `npm run audit:record`
+(or the MCP `record_audit` tool); never write to the log with a shell redirect or an
+editor, which the hook blocks. Features that implement or change an always-on control
+carry the `release-class:governance-controls` label and cannot be signed off without
+`live` evidence. See [`docs/audit-chain.md`](docs/audit-chain.md).
 
 ## Evidence Tiers And The Release Gate
 

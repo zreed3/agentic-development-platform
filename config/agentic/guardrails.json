@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "policyVersion": "adp-agentic-guardrails-2026-06-02",
+  "policyVersion": "adp-agentic-guardrails-2026-06-15",
   "defaultDecision": "deny",
   "riskClasses": {
     "read-only": {
@@ -139,8 +139,84 @@
       "test": "An automated check passed (unit / integration / gate).",
       "live": "Observed true in the running or deployed system (probe, response header, measured metric, restore drill)."
     },
-    "sensitiveReleaseClasses": ["deploy", "infra", "performance", "runtime-security", "data-residency"],
+    "sensitiveReleaseClasses": ["deploy", "infra", "performance", "runtime-security", "data-residency", "governance-controls", "visual"],
     "releaseClassLabelPrefix": "release-class:",
     "releaseGateRule": "A backlog item whose feature carries a release-class:<class> label cannot be signed off (status 'verified') on asserted/config/test evidence alone; it requires a backlog event whose evidence_tier is 'live'. Enforced by the release_gate_violations view and npm run backlog:validate."
+  },
+  "controls": {
+    "version": "adp-controls-2026-06-15-02",
+    "description": "Toggleable policy-as-code guardrail controls. Each control may be enabled or disabled per risk and context, EXCEPT controls pinned alwaysOn:true. Toggling is a governed action: the only supported path is scripts/adg-toggle-control.mjs, which refuses always-on controls, requires reason/risk/rollback, and writes an append-only audit decision event. The deterministic hook and guardrail-check both pin the always-on set in code, so a hand-edit that relaxes an always-on control is ignored at runtime (fail-closed) and rejected by the gate.",
+    "mandatoryAlwaysOn": ["destructiveDeny", "auditAppendOnly", "forbiddenBulkRead"],
+    "definitions": {
+      "destructiveDeny": {
+        "enabled": true,
+        "alwaysOn": true,
+        "effect": "deny",
+        "description": "Deny destructive commands (rm -rf, force-push, DROP, TRUNCATE, mkfs, dd) by default. Cannot be disabled."
+      },
+      "auditAppendOnly": {
+        "enabled": true,
+        "alwaysOn": true,
+        "effect": "block",
+        "description": "The append-only audit log may not be truncated, overwritten, redirected over, or edited in place. Cannot be disabled."
+      },
+      "forbiddenBulkRead": {
+        "enabled": true,
+        "alwaysOn": true,
+        "effect": "block",
+        "description": "Block raw reads of generated bulk artifacts (SQLite, mirrors, dumps); use the context broker. Cannot be disabled."
+      },
+      "secretsConfirm": {
+        "enabled": true,
+        "alwaysOn": false,
+        "effect": "ask",
+        "appliesTo": "secrets",
+        "description": "Require confirmation before referencing secret material."
+      },
+      "productionConfirm": {
+        "enabled": true,
+        "alwaysOn": false,
+        "effect": "ask",
+        "appliesTo": "production",
+        "description": "Require confirmation before production or deploy commands."
+      },
+      "migrationConfirm": {
+        "enabled": true,
+        "alwaysOn": false,
+        "effect": "ask",
+        "appliesTo": "migration",
+        "description": "Require confirmation before migration or schema changes."
+      },
+      "billingConfirm": {
+        "enabled": true,
+        "alwaysOn": false,
+        "effect": "ask",
+        "appliesTo": "billing",
+        "description": "Require confirmation before billing or payment state changes."
+      },
+      "controlFileGuard": {
+        "enabled": true,
+        "alwaysOn": false,
+        "effect": "ask",
+        "description": "Require confirmation before editing governance control files."
+      },
+      "assetLint": {
+        "enabled": true,
+        "alwaysOn": false,
+        "effect": "block",
+        "description": "Deterministic quality gate for committed image assets: rejects edge-clipped, blank, or wrong-format exports. Enforced by scripts/asset-lint.mjs (pixel reading by the tools/adg-asset-lint Rust helper); skips green when the helper is not built unless config.onToolMissing is 'block'.",
+        "config": {
+          "dir": "public/images",
+          "allowedFormats": ["WEBP", "PNG", "SVG"],
+          "background": "white",
+          "edgeStripPx": 2,
+          "edgeBackgroundMin": 0.999,
+          "edgeAlphaMax": 0.002,
+          "meanLuminanceMin": 0.02,
+          "meanLuminanceMax": 0.985,
+          "onToolMissing": "skip"
+        }
+      }
+    }
   }
 }

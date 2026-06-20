@@ -24,6 +24,7 @@
 import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 
 // ---------------------------------------------------------------------------
 // args + helpers
@@ -266,6 +267,82 @@ function checkClaudeSync(targetRoot) {
   );
 }
 
+// Controls drift: the host's guardrail policy must not have an always-on control
+// relaxed, and a disabled toggleable control must have a matching governed audit
+// decision. Read-only. Mirrors the canonical always-on floor pinned in
+// scripts/guardrail-check.mjs and the hook.
+const MANDATORY_ALWAYS_ON = { destructiveDeny: "deny", auditAppendOnly: "block", forbiddenBulkRead: "block" };
+
+function checkControlsDrift(targetRoot) {
+  const policyPath = path.join(targetRoot, "config/agentic/guardrails.json");
+  const hookInstalled =
+    fs.existsSync(path.join(targetRoot, "scripts/adg-guardrail-hook.mjs")) ||
+    fs.existsSync(path.join(targetRoot, "plugins/adg-governance/hooks/adg-guardrail-hook.mjs"));
+
+  if (!fs.existsSync(policyPath)) {
+    if (hookInstalled) {
+      return result("controls-drift", "critical", "fail", "The guardrail hook is installed but config/agentic/guardrails.json is missing, so toggleable controls cannot be governed. Ship the single policy source.");
+    }
+    return result("controls-drift", "critical", "skip", "No guardrail policy in this repo.");
+  }
+
+  let policy;
+  try {
+    policy = JSON.parse(fs.readFileSync(policyPath, "utf8"));
+  } catch (error) {
+    return result("controls-drift", "critical", "fail", `config/agentic/guardrails.json is not valid JSON (${error instanceof Error ? error.message : "parse error"}).`);
+  }
+  const defs = policy.controls?.definitions;
+  if (!defs) {
+    return result("controls-drift", "critical", hookInstalled ? "fail" : "skip", hookInstalled ? "guardrails.json has no controls block but the hook is installed." : "Policy has no controls block (pre-1.0 policy).");
+  }
+
+  const offenders = [];
+  // 1. Always-on floor must not be relaxed.
+  for (const [name, requiredEffect] of Object.entries(MANDATORY_ALWAYS_ON)) {
+    const def = defs[name];
+    if (!def) { offenders.push(`always-on control ${name} is missing`); continue; }
+    if (def.alwaysOn !== true || def.enabled !== true || def.effect !== requiredEffect) {
+      offenders.push(`always-on control ${name} was relaxed (enabled=${def.enabled}, alwaysOn=${def.alwaysOn}, effect=${def.effect})`);
+    }
+  }
+
+  // 2. A disabled toggleable control needs a matching governed audit decision.
+  const disabled = Object.entries(defs).filter(([name, def]) => def.enabled === false && !(name in MANDATORY_ALWAYS_ON)).map(([name]) => name);
+  let auditUnavailable = false;
+  let auditText = "";
+  if (disabled.length > 0) {
+    const auditLog = path.join(targetRoot, "data/audit/audit-log.jsonl");
+    try {
+      auditText = fs.existsSync(auditLog) ? fs.readFileSync(auditLog, "utf8") : "";
+      if (!auditText) auditUnavailable = true;
+    } catch {
+      auditUnavailable = true;
+    }
+    if (!auditUnavailable) {
+      for (const name of disabled) {
+        // A governed toggle writes a `decision` event naming the control. Match the
+        // control name on a line that is a decision event.
+        const matched = auditText.split(/\r?\n/u).some((line) => {
+          if (!line.includes(name)) return false;
+          try { return JSON.parse(line).eventType === "decision"; } catch { return false; }
+        });
+        if (!matched) offenders.push(`toggleable control ${name} is disabled without a matching governed audit decision`);
+      }
+    }
+  }
+
+  if (offenders.length > 0) {
+    return result("controls-drift", "critical", "fail", "Guardrail controls drifted: an always-on control was relaxed or a control was disabled without a governed audit decision.", offenders);
+  }
+  // Missing/corrupt audit log is caught by audit:validate; here it is a warning, not a
+  // fail, so a fresh repo without an audit log is not blocked.
+  if (auditUnavailable) {
+    return result("controls-drift", "critical", "warn", `Could not read the audit log to confirm ${disabled.length} disabled control(s) were governed; run audit:validate.`, disabled);
+  }
+  return result("controls-drift", "critical", "pass", "Guardrail controls conform: always-on floor intact and every disabled toggle is governed.");
+}
+
 // ---------------------------------------------------------------------------
 // run
 // ---------------------------------------------------------------------------
@@ -286,6 +363,7 @@ export function doctor({ targetRoot = process.cwd() } = {}) {
     checkCommittedArtifactGate(absTarget),
     checkEmbeddedProvenance(absTarget),
     checkClaudeSync(absTarget),
+    checkControlsDrift(absTarget),
   ];
   const ok = checks.every((c) => c.status !== "fail");
   return { target: absTarget, ok, gitRepo: true, checks };
@@ -304,12 +382,17 @@ function render(report) {
 }
 
 // CLI entry (only when run directly, not when imported by adg-install.mjs).
-const isMain = process.argv[1] && path.resolve(process.argv[1]) === path.resolve(new URL(import.meta.url).pathname);
+const isMain = process.argv[1] && path.resolve(process.argv[1]) === path.resolve(fileURLToPath(import.meta.url));
 if (isMain) {
   const args = parseArgs(process.argv.slice(2));
   const targetRoot = typeof args.values.target === "string" ? args.values.target : process.cwd();
   const report = doctor({ targetRoot });
-  if (args.values.format === "json") {
+  // --quiet emits one machine-readable line; exit code is byte-identical to verbose.
+  if (args.flags.has("quiet")) {
+    const fails = report.checks.filter((c) => c.status === "fail");
+    const passes = report.checks.filter((c) => c.status === "pass").length;
+    console.log(`doctor: ${report.ok ? "ok" : "DRIFT"} (${passes}/${report.checks.length} checks${fails.length ? `, FAIL: ${fails.map((c) => c.id).join(",")}` : ""})`);
+  } else if (args.values.format === "json") {
     console.log(JSON.stringify(report, null, 2));
   } else {
     console.log(render(report));

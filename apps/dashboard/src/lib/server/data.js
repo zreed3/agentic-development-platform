@@ -77,6 +77,33 @@ export function guardrails() {
   return readJson('config/agentic/guardrails.json', {});
 }
 
+// Read-only view of the toggleable-controls state from the single policy source.
+// The dashboard never mutates a control; toggling is the governed CLI's job.
+export function controlState() {
+  const policy = readJson('config/agentic/guardrails.json', {});
+  const defs = policy.controls?.definitions ?? {};
+  return {
+    version: policy.controls?.version ?? null,
+    mandatoryAlwaysOn: policy.controls?.mandatoryAlwaysOn ?? [],
+    controls: Object.entries(defs).map(([name, d]) => ({
+      name,
+      enabled: d.enabled !== false,
+      alwaysOn: d.alwaysOn === true,
+      effect: d.effect ?? '',
+      appliesTo: d.appliesTo ?? null,
+      description: d.description ?? ''
+    }))
+  };
+}
+
+// Toggle history: the append-only audit decision events the governed toggle writes
+// (summary 'Toggled control ...'), newest first. Read-only.
+export function controlToggleHistory() {
+  return readJsonl('data/audit/audit-log.jsonl')
+    .filter((e) => e.eventType === 'decision' && /Toggled control/i.test(e.summary || ''))
+    .reverse();
+}
+
 export function evals() {
   return readJson('data/agent-evals.json', null);
 }

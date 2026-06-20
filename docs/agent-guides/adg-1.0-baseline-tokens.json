@@ -1,0 +1,41 @@
+{
+  "capturedAt": "2026-06-15",
+  "method": "scripts/adg-tokens.mjs estimateTokens (deterministic BPE-ish atom count); same method both sides so deltas are measured, not asserted",
+  "baselineVersion": "0.9.1",
+  "measurements": [
+    { "label": "full ci:governance stdout", "estTokens": 27876, "bytes": 73516, "lines": 2358 },
+    { "label": "context packet feature S07 (json)", "estTokens": 5048, "bytes": 13145, "lines": 393 },
+    { "label": "context packet feature S07 (toon)", "estTokens": 1382, "bytes": 3921, "lines": 59 },
+    { "label": "guardrails:check (whole policy)", "estTokens": 65, "bytes": 141, "lines": 7 },
+    { "label": "guardrails:check --tool code.edit", "estTokens": 126, "bytes": 292, "lines": 13 },
+    { "label": "agent:evals stdout", "estTokens": 1337, "bytes": 3714, "lines": 105 }
+  ],
+  "loopDeltas": {
+    "loop1": [
+      {
+        "change": "MCP context_packet default json -> toon",
+        "before": { "label": "context packet (json default)", "estTokens": 5048 },
+        "after": { "label": "context packet (toon default)", "estTokens": 1386 },
+        "deltaTokens": -3662,
+        "deltaPct": -73,
+        "note": "Same packet, default format only. JSON still available via format:'json'. Measured per MCP context_packet call."
+      },
+      {
+        "change": "agent:evals compact stdout (summary + failures only; full report kept in data/agent-evals.json)",
+        "before": { "estTokens": 1337, "note": "5 scenarios, full JSON dump" },
+        "after": { "estTokens": 94, "note": "8 scenarios (3 driving the real hook), summary only" },
+        "deltaTokens": -1243,
+        "deltaPct": -93,
+        "note": "Token reduction AND more security coverage in the same change."
+      },
+      {
+        "change": "context packet prefix-stable (generatedAt moved to a trailing _meta block)",
+        "before": { "note": "generatedAt at line 2 (toon) / second key (json) broke the cacheable prefix" },
+        "after": { "note": "only the trailing line varies between same-feature calls; verified by diff" },
+        "deltaTokens": 0,
+        "cacheEffect": "enables prompt-cache reuse of the stable prefix; cache reads cost ~0.1x base input price per Anthropic prompt-caching docs",
+        "note": "No per-call token change; unlocks up to ~90% input-cost reduction on repeated same-feature calls."
+      }
+    ]
+  }
+}

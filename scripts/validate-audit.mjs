@@ -10,10 +10,17 @@
 
 import fs from "node:fs";
 import path from "node:path";
+import { deriveChainState, readChainState, verifyChain, verifyChainState } from "./audit-chain.mjs";
 
 const root = process.cwd();
-const auditLogPath = "data/audit/audit-log.jsonl";
-const policyPath = "config/agentic/guardrails.json";
+// ADG_AUDIT_LOG_PATH overrides the log path for hermetic tests only; defaults canonical.
+const auditLogPath = process.env.ADG_AUDIT_LOG_PATH || "data/audit/audit-log.jsonl";
+const policyPath = process.env.ADG_GUARDRAILS_PATH || "config/agentic/guardrails.json";
+// --quiet emits one machine-readable line; exit codes are byte-identical to verbose.
+const quiet = process.argv.includes("--quiet");
+function emit(payload, line) {
+  console.log(quiet ? line : JSON.stringify(payload, null, 2));
+}
 
 function abs(file) {
   return path.isAbsolute(file) ? file : path.join(root, file);
@@ -69,7 +76,7 @@ function looksLikeSecret(text, redactKeys) {
 
 function main() {
   if (!fs.existsSync(abs(auditLogPath))) {
-    console.log(JSON.stringify({ auditLogPath, valid: true, events: 0, warnings: ["Audit log does not exist yet."], failures: [] }, null, 2));
+    emit({ auditLogPath, valid: true, events: 0, warnings: ["Audit log does not exist yet."], failures: [] }, "audit: ok (0 events, log not created yet)");
     return;
   }
   const redactKeys = loadRedactKeys();
@@ -78,6 +85,7 @@ function main() {
   const failures = [];
   const warnings = [];
   const ids = new Set();
+  const entries = [];
   let count = 0;
   let previousAt = null;
 
@@ -91,6 +99,7 @@ function main() {
       failures.push(`Line ${lineNo}: not valid JSON (${error instanceof Error ? error.message : "parse error"})`);
       return;
     }
+    entries.push({ lineNo, event });
     count += 1;
     if (!event.id || typeof event.id !== "string") failures.push(`Line ${lineNo}: missing id`);
     else if (ids.has(event.id)) failures.push(`Line ${lineNo}: duplicate id ${event.id}`);
@@ -117,8 +126,37 @@ function main() {
     if (secretHit) failures.push(`Line ${lineNo}: possible secret material in event (${secretHit}). Audit events must not contain secrets.`);
   });
 
-  const result = { auditLogPath, valid: failures.length === 0, events: count, failures, warnings };
-  console.log(JSON.stringify(result, null, 2));
+  // Rolling hash-chain verification (tamper-evidence). A break inside the chained
+  // region that KEEPS the event's hash (edit, delete, reorder, insert) is a HARD FAIL.
+  // Events written before the chain existed carry no hash and are tolerated (not
+  // retroactively chained: that would be a rewrite). A rewrite that also STRIPS the
+  // hash field would be reclassified as legacy and slip past this check -- that, plus
+  // tip truncation and legacy edits, is caught by the chain-state high-water mark
+  // below, not here. Timestamp ordering stays a warning above, because the chain is the
+  // authoritative reorder detector within the chained region.
+  const chain = verifyChain(entries);
+  failures.push(...chain.failures);
+
+  // Chain-state high-water mark (tamper-evidence the chain alone cannot give). The
+  // chain TOLERATES hashless events as legacy, so a rewrite that strips a chained
+  // event's hash, or truncates the chained tip, would otherwise pass verifyChain. The
+  // sidecar HARD-FAILS when the chained region has SHRUNK below, or the frozen legacy
+  // prefix differs from, what the trusted writer last recorded. Read-only: the verifier
+  // never advances the mark. No sidecar yet -> bootstrap tolerance (enforced=false).
+  const recordedState = readChainState(abs(auditLogPath));
+  const stateCheck = verifyChainState(deriveChainState(entries), recordedState);
+  failures.push(...stateCheck.failures);
+
+  const result = {
+    auditLogPath,
+    valid: failures.length === 0,
+    events: count,
+    chained: chain.chainedCount,
+    chainStateEnforced: stateCheck.enforced,
+    failures,
+    warnings,
+  };
+  emit(result, `audit: ${result.valid ? "ok" : "FAIL"} (${count} events, ${chain.chainedCount} chained${failures.length ? `, ${failures.length} failure(s): ${failures[0]}` : ""})`);
   if (!result.valid) process.exit(1);
 }
 

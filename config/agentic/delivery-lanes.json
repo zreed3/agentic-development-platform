@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "name": "Proofline",
-  "version": "0.9.0",
+  "version": "1.1.0",
   "summary": "Risk-based ADG delivery lanes for cheap exploration, bounded fixes, and hard release evidence.",
   "defaultMode": "caveman",
   "modes": {
@@ -80,7 +80,7 @@
   ],
   "classification": {
     "githubEvents": ["github-push", "github-ci", "pull-request", "pr"],
-    "releaseIntentTerms": ["release", "signoff", "sign-off", "signed off", "verified", "release-ready", "rc", "ga", "prepush", "pre-push", "push", "pull request", "pr", "ship", "launch"],
+    "releaseIntentTerms": ["release", "signoff", "sign-off", "signed off", "verified", "release-ready", "rc", "ga", "prepush", "pre-push", "push", "pull request", "pr", "ship", "launch", "approved", "approve", "lgtm", "ship it", "good to go"],
     "sensitiveIntentTerms": ["auth", "rbac", "permission", "tenant", "business scope", "entitlement", "migration", "schema", "secret", "billing", "production", "guardrail", "policy", "audit", "governance", "ci", "github", "workflow", "destructive"],
     "spikeIntentTerms": ["spike", "explore", "investigate", "triage", "read-only", "read only", "no code", "no edits", "options", "research"],
     "quickIntentTerms": ["quick", "small", "tiny", "copy", "typo", "css", "style", "spacing", "ui polish", "docs-only", "docs only"],

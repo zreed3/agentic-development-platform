@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "name": "adg-governance",
-  "version": "0.4.0",
+  "version": "1.1.0",
   "intent": "Expose deterministic governance workflows to Codex and Claude Code (and future agent clients) through the same commands, schemas, and risk classes.",
   "runtimePolicy": "This plugin does not implement an autonomous runtime. It constrains whichever runtime invokes it through bounded context, validation, evidence, and stop conditions.",
   "commands": [

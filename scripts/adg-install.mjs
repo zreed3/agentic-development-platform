@@ -37,35 +37,94 @@ const packageScripts = {
   "adg:prepush": "node scripts/adg-work-classify.mjs guard --event github-push --intent \"GitHub update pre-push\"",
 };
 
+// The shared deterministic enforcement layer. Any client that installs the hook also
+// installs the SINGLE policy source (config/agentic/guardrails.json) plus the validator,
+// the governed toggle, the audit recorder + chain, so the policy is enforceable and
+// tamper-evident in the host, not a tamper surface. guardrails.json is merge-managed on
+// update (mergeControls) so a routine adg:update never clobbers a host's governed toggle.
+const sharedEnforcementFiles = [
+  { source: "plugins/adg-governance/hooks/adg-guardrail-hook.mjs", target: "scripts/adg-guardrail-hook.mjs" },
+  { source: "config/agentic/guardrails.json", target: "config/agentic/guardrails.json", mergeControls: true },
+  { source: "scripts/guardrail-check.mjs", target: "scripts/guardrail-check.mjs" },
+  { source: "scripts/adg-toggle-control.mjs", target: "scripts/adg-toggle-control.mjs" },
+  { source: "scripts/audit-chain.mjs", target: "scripts/audit-chain.mjs" },
+  { source: "scripts/record-audit.mjs", target: "scripts/record-audit.mjs" },
+  { source: "scripts/validate-audit.mjs", target: "scripts/validate-audit.mjs" },
+  { source: "scripts/adg-doctor.mjs", target: "scripts/adg-doctor.mjs" },
+  // assetLint quality gate: the Node orchestrator + the Rust pixel-reader source. The
+  // host builds the binary on demand (npm run asset:lint:build); without it the gate
+  // skips green (control config.onToolMissing defaults to "skip").
+  { source: "scripts/asset-lint.mjs", target: "scripts/asset-lint.mjs" },
+  { source: "tools/adg-asset-lint/Cargo.toml", target: "tools/adg-asset-lint/Cargo.toml" },
+  { source: "tools/adg-asset-lint/Cargo.lock", target: "tools/adg-asset-lint/Cargo.lock" },
+  { source: "tools/adg-asset-lint/src/main.rs", target: "tools/adg-asset-lint/src/main.rs" },
+];
+
 // Per-client additions. `--client claude` installs the deterministic Claude Code
-// enforcement layer on top of the base lane guard: the PreToolUse guardrail hook, a
-// .claude/settings.json (hook registration + deny-by-default permissions), the slash
-// commands, the conformance doctor, and the CLAUDE.md generator. CLAUDE.md itself is
-// generated from the host's AGENTS.md during install (see generateClaudeMd).
+// enforcement layer on top of the base lane guard: the shared enforcement files above
+// plus a .claude/settings.json (hook registration + deny-by-default permissions), the
+// slash commands, and the CLAUDE.md generator. `--client codex` installs the same shared
+// enforcement plus the harness-neutral Codex pre-tool adapter, so both harnesses enforce
+// the SAME deny-by-default policy from one source. `--client both` installs both adapters.
 const clientManagedFiles = {
   claude: [
-    { source: "plugins/adg-governance/hooks/adg-guardrail-hook.mjs", target: "scripts/adg-guardrail-hook.mjs" },
+    ...sharedEnforcementFiles,
     { source: "plugins/adg-governance/assets/templates/claude-settings.template.json", target: ".claude/settings.json" },
     { source: "plugins/adg-governance/commands/adg-classify.md", target: ".claude/commands/adg-classify.md" },
     { source: "plugins/adg-governance/commands/adg-context.md", target: ".claude/commands/adg-context.md" },
     { source: "plugins/adg-governance/commands/adg-verify.md", target: ".claude/commands/adg-verify.md" },
+    { source: "plugins/adg-governance/commands/adg-completeness-critic.md", target: ".claude/commands/adg-completeness-critic.md" },
     { source: "scripts/adg-claude-md.mjs", target: "scripts/adg-claude-md.mjs" },
-    { source: "scripts/adg-doctor.mjs", target: "scripts/adg-doctor.mjs" },
   ],
+  codex: [
+    ...sharedEnforcementFiles,
+    { source: "plugins/adg-governance/.codex-plugin/hooks/adg-codex-pretool.mjs", target: "scripts/adg-codex-pretool.mjs" },
+  ],
+};
+
+const sharedEnforcementScripts = {
+  "adg:guardrails": "node scripts/guardrail-check.mjs",
+  "adg:toggle": "node scripts/adg-toggle-control.mjs",
+  "adg:audit:validate": "node scripts/validate-audit.mjs",
+  "adg:doctor": "node scripts/adg-doctor.mjs",
+  "asset:lint": "node scripts/asset-lint.mjs",
+  "asset:lint:build": "cargo build --release --manifest-path tools/adg-asset-lint/Cargo.toml",
 };
 
 const clientPackageScripts = {
   claude: {
+    ...sharedEnforcementScripts,
     "claude:generate": "node scripts/adg-claude-md.mjs",
     "claude:check": "node scripts/adg-claude-md.mjs --check",
-    "adg:doctor": "node scripts/adg-doctor.mjs",
+  },
+  codex: {
+    ...sharedEnforcementScripts,
   },
 };
 
-// "base" is the lane-guard-only install; "claude" adds the deterministic Claude Code
-// layer. `--client base` is a first-class downgrade: `adg:update --client base` prunes
-// the claude files (the unmodified ones) and records the host back as base.
-const SUPPORTED_CLIENTS = new Set(["base", "claude"]);
+// "base" is the lane-guard-only install; "claude"/"codex" add the deterministic
+// enforcement layer for that harness; "both" installs both adapters over one shared
+// policy. `--client base` is a first-class downgrade: `adg:update --client base` prunes
+// the client files (the unmodified ones) and records the host back as base.
+const SUPPORTED_CLIENTS = new Set(["base", "claude", "codex", "both"]);
+
+// Resolve a client's managed files, de-duplicating the shared enforcement set for "both".
+function clientManagedFor(client) {
+  if (client === "both") {
+    const seen = new Set();
+    return [...clientManagedFiles.claude, ...clientManagedFiles.codex].filter((file) => {
+      if (seen.has(file.target)) return false;
+      seen.add(file.target);
+      return true;
+    });
+  }
+  return clientManagedFiles[client] ?? [];
+}
+
+function clientScriptsFor(client) {
+  if (client === "both") return { ...clientPackageScripts.claude, ...clientPackageScripts.codex };
+  return clientPackageScripts[client] ?? {};
+}
 
 // Optional read-only governance dashboard (`--dashboard on`). Installed into the host
 // at apps/adg-dashboard/ so operators can watch what the agent is doing: backlog,
@@ -96,6 +155,8 @@ const dashboardManagedFiles = [
   "src/routes/guardrails/+page.svelte",
   "src/routes/evals/+page.server.js",
   "src/routes/evals/+page.svelte",
+  "src/routes/controls/+page.server.js",
+  "src/routes/controls/+page.svelte",
 ].map((file) => ({
   source: `${dashboardSourceDir}/${file}`,
   target: `${dashboardTargetDir}/${file}`,
@@ -108,13 +169,42 @@ const dashboardPackageScripts = {
 };
 
 function activeManagedFiles(client, dashboard) {
-  const files = client && clientManagedFiles[client] ? [...managedFiles, ...clientManagedFiles[client]] : [...managedFiles];
+  const clientFiles = client ? clientManagedFor(client) : [];
+  const files = [...managedFiles, ...clientFiles];
   return dashboard ? [...files, ...dashboardManagedFiles] : files;
 }
 
 function activePackageScripts(client, dashboard) {
-  const scripts = client && clientPackageScripts[client] ? { ...packageScripts, ...clientPackageScripts[client] } : { ...packageScripts };
+  const scripts = client ? { ...packageScripts, ...clientScriptsFor(client) } : { ...packageScripts };
   return dashboard ? { ...scripts, ...dashboardPackageScripts } : scripts;
+}
+
+// Merge-aware policy refresh. On update, preserve the host's governed toggle state
+// (controls.definitions[*].enabled and toggleHistory) while refreshing the policy
+// STRUCTURE from source. An always-on control is forced enabled regardless of the host
+// file, so a merge can never carry a relaxed always-on control forward. Returns the
+// merged JSON string, or the source verbatim if either side has no controls block.
+function mergePolicyControls(sourceContent, targetContent) {
+  let source;
+  let host;
+  try {
+    source = JSON.parse(sourceContent);
+    host = JSON.parse(targetContent);
+  } catch {
+    return sourceContent;
+  }
+  const sourceDefs = source.controls?.definitions;
+  const hostDefs = host.controls?.definitions;
+  if (!sourceDefs || !hostDefs) return sourceContent;
+  const alwaysOn = new Set(source.controls.mandatoryAlwaysOn ?? []);
+  for (const [name, def] of Object.entries(sourceDefs)) {
+    const hostDef = hostDefs[name];
+    if (hostDef && typeof hostDef.enabled === "boolean") def.enabled = hostDef.enabled;
+    if (alwaysOn.has(name) || def.alwaysOn === true) def.enabled = true; // never carry a relaxed always-on forward
+  }
+  if (Array.isArray(host.controls.toggleHistory)) source.controls.toggleHistory = host.controls.toggleHistory;
+  if (typeof host.controls.version === "string" && host.controls.version) source.controls.version = host.controls.version;
+  return `${JSON.stringify(source, null, 2)}\n`;
 }
 
 function parseArgs(argv) {
@@ -184,7 +274,7 @@ function loadState(targetRoot) {
   return readJson(file);
 }
 
-function installFiles({ targetRoot, command, force, dryRun, files }) {
+function installFiles({ targetRoot, command, force, forcePolicy, dryRun, files }) {
   const installed = [];
   const backups = [];
   const existingState = loadState(targetRoot);
@@ -194,23 +284,31 @@ function installFiles({ targetRoot, command, force, dryRun, files }) {
     const sourceFile = abs(sourceRoot, entry.source);
     const targetFile = abs(targetRoot, entry.target);
     const sourceContent = fs.readFileSync(sourceFile, "utf8");
-    const sourceHash = sha256(sourceContent);
     const targetExists = fs.existsSync(targetFile);
     const targetContent = targetExists ? fs.readFileSync(targetFile, "utf8") : "";
-    const changed = targetContent !== sourceContent;
+    // Merge-managed policy: when the host already has a policy, preserve its governed
+    // toggle state instead of clobbering it. --force-policy re-baselines to source.
+    // An always-on control can never be carried forward relaxed (mergePolicyControls
+    // pins it enabled), so the merge cannot weaken the floor.
+    const merged = Boolean(entry.mergeControls) && targetExists && !forcePolicy;
+    const contentToWrite = merged ? mergePolicyControls(sourceContent, targetContent) : sourceContent;
+    const writeHash = sha256(contentToWrite);
+    const changed = targetContent !== contentToWrite;
     const knownManaged = managedTargets.has(entry.target) || entry.target === statePath;
 
-    if (targetExists && changed && command === "install" && !force && !knownManaged) {
+    // Merge-managed files never trip the refuse-overwrite guard: the merge preserves
+    // the host's state by construction, so there is nothing to lose.
+    if (targetExists && changed && command === "install" && !force && !knownManaged && !entry.mergeControls) {
       throw new Error(`Refusing to overwrite existing unmanaged file ${entry.target}. Re-run with --force or use update after reviewing.`);
     }
 
     if (changed) {
       const backup = targetExists ? backupFile(targetFile, dryRun) : "";
       if (backup) backups.push({ target: entry.target, backup: path.relative(targetRoot, backup) });
-      writeFile(targetFile, sourceContent, dryRun);
+      writeFile(targetFile, contentToWrite, dryRun);
     }
 
-    installed.push({ ...entry, sha256: sourceHash, changed });
+    installed.push({ source: entry.source, target: entry.target, sha256: writeHash, changed, ...(entry.mergeControls ? { mergeControls: true } : {}), ...(merged ? { merged: true } : {}) });
   }
 
   return { installed, backups };
@@ -320,10 +418,11 @@ function status({ targetRoot, files }) {
     const sourceExists = fs.existsSync(sourceFile);
     const sourceHash = sourceExists ? sha256(fs.readFileSync(sourceFile, "utf8")) : "";
     const targetHash = fs.existsSync(targetFile) ? sha256(fs.readFileSync(targetFile, "utf8")) : "";
-    return {
-      target: entry.target,
-      status: !targetHash ? "missing" : !sourceExists ? "present" : targetHash === sourceHash ? "current" : "outdated",
-    };
+    // Merge-managed files (the policy) are expected to diverge from source once the host
+    // applies a governed toggle, so present divergence as "managed", not "outdated".
+    let fileStatus = !targetHash ? "missing" : !sourceExists ? "present" : targetHash === sourceHash ? "current" : "outdated";
+    if (entry.mergeControls && targetHash) fileStatus = targetHash === sourceHash ? "current" : "managed";
+    return { target: entry.target, status: fileStatus };
   });
   return {
     system: "Proofline",
@@ -375,14 +474,21 @@ function printConformance(report) {
 
 function usage() {
   console.log(`Usage:
-node scripts/adg-install.mjs status [--target /repo] [--client claude] [--dashboard on|off] [--format json]
-node scripts/adg-install.mjs install --target /repo [--client claude] [--dashboard on|off] [--force] [--dry-run]
-node scripts/adg-install.mjs update --target /repo [--client claude] [--dashboard on|off] [--force] [--force-scripts] [--dry-run]
+node scripts/adg-install.mjs status [--target /repo] [--client claude|codex|both] [--dashboard on|off] [--format json]
+node scripts/adg-install.mjs install --target /repo [--client claude|codex|both] [--dashboard on|off] [--force] [--dry-run]
+node scripts/adg-install.mjs update --target /repo [--client claude|codex|both] [--dashboard on|off] [--force] [--force-scripts] [--force-policy] [--dry-run]
 
-Installs the portable ADG lane guard into any Node-backed repo. With --client claude
-it also installs the deterministic Claude Code layer: the PreToolUse guardrail hook,
-.claude/settings.json (hook + deny-by-default permissions), the slash commands, the
-conformance doctor, and a CLAUDE.md generated from the host's AGENTS.md.
+Installs the portable ADG lane guard into any Node-backed repo. With --client claude,
+codex, or both it also installs the deterministic enforcement layer for that harness:
+the shared PreToolUse hook, the SINGLE policy source (config/agentic/guardrails.json),
+the guardrail validator, the governed toggle, and the append-only audit recorder + hash
+chain, so both harnesses enforce the same deny-by-default policy from one source. claude
+also gets .claude/settings.json, the slash commands, and a CLAUDE.md generated from the
+host's AGENTS.md; codex gets the harness-neutral pre-tool adapter.
+
+The policy file is merge-managed: a routine adg:update preserves the host's governed
+toggle state (controls.enabled + toggleHistory) and never carries a relaxed always-on
+control forward. Use --force-policy to re-baseline the host policy to the ADG source.
 
 With --dashboard on it also installs the read-only governance dashboard (SvelteKit)
 at apps/adg-dashboard/ plus an "adg:dashboard" package script, so operators can watch
@@ -449,14 +555,15 @@ function main() {
 
   const force = args.flags.has("force") || args.command === "update";
   const forceScripts = args.flags.has("force-scripts");
+  const forcePolicy = args.flags.has("force-policy");
   const pruned = args.command === "update" ? pruneStaleManagedFiles({ targetRoot, dryRun, files }) : [];
-  const { installed, backups } = installFiles({ targetRoot, command: args.command, force, dryRun, files });
+  const { installed, backups } = installFiles({ targetRoot, command: args.command, force, forcePolicy, dryRun, files });
   const packageScriptsResult = updatePackageScripts({ targetRoot, dryRun, forceScripts, scripts });
 
   // For the Claude client, generate CLAUDE.md from the host AGENTS.md (single source
   // of truth) and track it in the install state so adg:update keeps it fresh.
   let claudeMd = null;
-  if (client === "claude") {
+  if (client === "claude" || client === "both") {
     claudeMd = generateClaudeMd({ targetRoot, dryRun });
     if (claudeMd.generated) installed.push({ source: "(generated from AGENTS.md)", target: claudeMd.target, sha256: claudeMd.sha256, changed: claudeMd.created });
   }

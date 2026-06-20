@@ -13,7 +13,8 @@ Use for `L1 quick-fix` work.
 2. Use `workflow=quick-ui` when a context packet is useful.
 3. Edit only directly related files.
 4. Verify with the nearest focused check, screenshot, or smoke test.
-5. Do not run full governance unless the lane upgrades.
+5. If the change produces or touches an image asset, run `npm run asset:lint` (a deterministic edge-clip, blank, and format check; a clipped or blank export fails). A screenshot existing is not the same as the asset being correct.
+6. Do not run full governance unless the lane upgrades.
 
 ## Upgrade Triggers
 

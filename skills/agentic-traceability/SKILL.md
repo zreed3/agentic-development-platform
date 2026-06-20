@@ -81,6 +81,9 @@ Suggested status values: `planned`, `in-progress`, `blocked`, `implemented`,
   tasks, tests, use cases, or success criteria.
 - Record failed test runs as `test-result` / `failed`; do not hide them in a
   passing verification summary.
+- For a deliverable that renders to a user, label the feature `release-class:visual`
+  and record a `live` event with a rendered artifact as evidence; metric-only evidence
+  cannot sign it off.
 
 ## Useful Queries
 

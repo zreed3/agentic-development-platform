@@ -188,6 +188,18 @@ function validateFeature(feature, config) {
       if (!requirementIds.has(reqId)) failures.push(`${criterion.id}: unknown requirement ${reqId}`);
     }
   }
+  // Uncovered-intent flag (reverse coverage): a requirement whose intent is covered by no
+  // acceptance check. The lineage already validates criteria -> requirements; this checks
+  // the other direction. A requirement referenced by no success criterion and no experience
+  // contract is an advisory gap, so a stated intent cannot pass only on proxy metrics.
+  const coveredRequirementIds = new Set();
+  for (const criterion of asArray(feature.successCriteria)) for (const reqId of asArray(criterion.requirementIds)) coveredRequirementIds.add(reqId);
+  for (const contract of asArray(feature.experienceContracts)) for (const reqId of asArray(contract.requirementIds)) coveredRequirementIds.add(reqId);
+  for (const requirement of requirements) {
+    if (requirement.id && !coveredRequirementIds.has(requirement.id)) {
+      addGap({ domain: "coverage", summary: `${requirement.id}: requirement has no covering acceptance criterion (uncovered intent)`, remediation: "Add a success criterion (and a perceptual or visual check for UI intent) that references this requirement." });
+    }
+  }
   for (const contract of asArray(feature.experienceContracts)) {
     if (contract.useCaseId && !useCaseIds.has(contract.useCaseId)) failures.push(`${contract.id}: unknown useCaseId ${contract.useCaseId}`);
     if (!asArray(contract.requirementIds).length) addGap({ domain: "ux_as_code", summary: `${contract.id}: no requirement links`, remediation: "Link the contract to high and low functional requirements." });

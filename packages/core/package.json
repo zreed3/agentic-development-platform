@@ -1,0 +1,12 @@
+{
+  "name": "@adg/core",
+  "version": "2.0.0",
+  "description": "ADG host-agnostic governance core: policy engine, evidence tiers, model selection, context broker. Zero runtime dependencies. Consumed by the deterministic hooks, the CLI, and the SDK adapters.",
+  "type": "module",
+  "license": "PolyForm-Noncommercial-1.0.0",
+  "exports": {
+    "./select-model": "./select-model.mjs"
+  },
+  "files": ["*.mjs"],
+  "engines": { "node": ">=20" }
+}

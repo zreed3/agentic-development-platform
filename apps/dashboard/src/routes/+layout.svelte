@@ -9,7 +9,8 @@
     { href: '/backlog', label: 'Backlog', code: '01' },
     { href: '/audit', label: 'Audit Log', code: '02' },
     { href: '/guardrails', label: 'Guardrails', code: '03' },
-    { href: '/evals', label: 'Evals', code: '04' }
+    { href: '/evals', label: 'Evals', code: '04' },
+    { href: '/controls', label: 'Controls', code: '05' }
   ];
 
   const isActive = (href, path) => (href === '/' ? path === '/' : path.startsWith(href));

@@ -73,6 +73,24 @@ const fixture = {
       tasks: ["Write the setup page"],
       testCases: ["Page renders"],
     },
+    {
+      id: "GOV",
+      epicId: "EPIC-TEST",
+      title: "Harden the always-on audit-append-only control (governance-controls)",
+      releaseBand: "P0",
+      labels: ["release-class:governance-controls"],
+      tasks: ["Enforce append-only at the hook and prove it blocks a mutation attempt"],
+      testCases: ["A probe attempting to truncate the audit log is observed blocked in the running system"],
+    },
+    {
+      id: "VIS",
+      epicId: "EPIC-TEST",
+      title: "Render the lender logo tiles (visual deliverable)",
+      releaseBand: "P1",
+      labels: ["release-class:visual"],
+      tasks: ["Produce the recognisable lender logos for the trust strip"],
+      testCases: ["A rendered montage is observed showing each logo complete and unclipped"],
+    },
   ],
 };
 
@@ -121,23 +139,33 @@ try {
   run(["verify", "--item", "SENS-TASK-01", "--summary", "Terraform declares syd1", "--evidence", "infra/main.tf", "--tier", "config"]);
   // A control item signed off on test evidence -- must NOT be gated (not sensitive).
   run(["verify", "--item", "CTRL-TASK-01", "--summary", "Setup page renders", "--evidence", "npm run docs:render", "--tier", "test"]);
+  // A governance-controls item signed off on TEST evidence -- must be gated (an always-on
+  // control claim needs a LIVE observation, not just a passing test).
+  run(["verify", "--item", "GOV-TASK-01", "--summary", "Hook unit test asserts the audit log is blocked", "--evidence", "npm run test:adg-hook", "--tier", "test"]);
+  // A visual deliverable signed off on TEST evidence -- must be gated. A green that is
+  // metrics-only on a UI deliverable needs a LIVE rendered-artifact observation.
+  run(["verify", "--item", "VIS-TASK-01", "--summary", "asset-lint passes on the logo tiles", "--evidence", "npm run asset:lint", "--tier", "test"]);
 
   const blocked = validate();
   assert.equal(blocked.status, 1, "backlog:validate must fail while a sensitive item is verified on config evidence");
   assert.equal(blocked.payload.valid, false, "validate payload must report valid:false");
   const blockedItems = violationItems(blocked.payload);
   assert.ok(blockedItems.includes("SENS-TASK-01"), `expected SENS-TASK-01 in violations, got ${JSON.stringify(blockedItems)}`);
+  assert.ok(blockedItems.includes("GOV-TASK-01"), `governance-controls item must be gated on test evidence, got ${JSON.stringify(blockedItems)}`);
+  assert.ok(blockedItems.includes("VIS-TASK-01"), `visual item must be gated on test evidence (needs a live rendered artifact), got ${JSON.stringify(blockedItems)}`);
   assert.ok(!blockedItems.includes("CTRL-TASK-01"), "the non-sensitive control item must never be a release-gate violation");
-  ok("config-tier sign-off on a sensitive class is blocked; control item is not flagged");
+  ok("config/test sign-off on a sensitive class (governance-controls + visual) is blocked; control item is not flagged");
 
-  // 2. Record a live-tier event for the sensitive item -> gate must clear.
+  // 2. Record a live-tier event for the sensitive items -> gate must clear.
   run(["verify", "--item", "SENS-TASK-01", "--summary", "Production HAR shows syd1 execution region", "--evidence", "har/prod-syd1.har", "--tier", "live"]);
+  run(["verify", "--item", "GOV-TASK-01", "--summary", "Live probe: a truncation attempt on the audit log was observed blocked", "--evidence", "probe/audit-tamper-blocked.log", "--tier", "live"]);
+  run(["verify", "--item", "VIS-TASK-01", "--summary", "Rendered montage observed: every lender logo complete and unclipped", "--evidence", "artifacts/logo-montage.png", "--tier", "live"]);
 
   const cleared = validate();
   assert.equal(cleared.status, 0, "backlog:validate must pass once a live evidence event exists for the sensitive item");
   assert.equal(cleared.payload.valid, true, "validate payload must report valid:true after live evidence");
   assert.deepEqual(violationItems(cleared.payload), [], "there must be no release-gate violations after live evidence");
-  ok("a live-tier event clears the release gate");
+  ok("a live-tier event clears the release gate (governance-controls + visual included)");
 
   // 3. An invalid tier is rejected outright (enum guard).
   const badTier = run(["verify", "--item", "SENS-TASK-01", "--summary", "bogus", "--tier", "guess"], { expectOk: false });

@@ -25,3 +25,10 @@ output/
 
 # Education site build output (assembled from site/ by npm run site:build)
 dist-site/
+
+# Rust asset-lint compiled binary (generated, never tracked)
+tools/adg-asset-lint/target/
+tools/adg-asset-lint/dist/
+
+# ADG loop governor local session state (turn counter; machine-specific)
+.adg/
