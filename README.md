@@ -1,205 +1,315 @@
 # Agentic Development Governance (ADG)
 
-**Governance, traceability, elicitation, maturity scoring, and bounded context for
-agent-assisted software development — in a handful of Node scripts and SQLite
-files.**
+**A deny-by-default governance layer that has grown into a *tiered governed harness +
+SDK* over the vendor agent loops — keeping AI coding agents bounded, auditable, and
+context-disciplined, in a handful of Node scripts and SQLite files.**
 
-Hand an AI agent your codebase and two failure modes dominate: it does too much
-(unbounded, unaudited, occasionally destructive actions), or it drowns in context
-(you paste the whole tracker into the prompt and burn six figures of tokens before
-it writes a line). This platform is a small, local control plane that fixes both. It
-gives an AI collaborator the apparatus of a regulated engineering org — deny-by-default
-guardrails, an append-only audit trail, AI-security evals, delivery metrics, a
-SQL-first backlog, **feature elicitation as code**, and **maturity as code** — plus
-a **context broker** that keeps token usage bounded by *refusing* to load the
-artifacts that blow up a context window.
+> **🚀 ADG v2.0.0 is released.** The deny-by-default overlay is now a *tiered governed
+> harness + SDK* over the Claude and Codex agent loops: a loop governor, backpressure,
+> context-lifecycle hooks, a subagent fan-out cap, and a model orchestrator, all enforced
+> outside the model. See the [**v2.0 release notes**](docs/release-notes-2.0.md).
 
-It runs on nothing but **Node (≥ 20) and the `sqlite3` CLI.** No SaaS, no agent
-framework, no vector database, no API keys. Everything is grep-able, diffable,
-offline, and the full gate runs in seconds.
+Hand an AI agent your codebase and two failure modes dominate:
 
-## The idea in one line
+1. **It does too much** — unbounded, unaudited, occasionally destructive or
+   injection-hijacked actions, with no hard stop.
+2. **It drowns in context** — you paste the whole tracker into the prompt and burn six
+   figures of tokens before it writes a line, and recall degrades as the window fills.
 
-> **SQLite *selects* the context.** Your richest generated artifacts are treated as
-> hazards, not assets — and a relational backlog database hands the agent a few-KB
-> packet of pointers instead.
+ADG is a small, local control plane that fixes both. It started as one deny-by-default
+PreToolUse guardrail. It is now a **governance layer that wraps the agent loop itself** —
+bounding termination, feeding failures back, injecting only the context that matters, and
+selecting the model tier — while never replacing the vendor runtime. It runs on nothing
+but **Node (≥ 20) and the `sqlite3` CLI.** No SaaS, no agent framework, no vector
+database, no API keys. Everything is grep-able, diffable, offline, and the full gate runs
+in seconds.
+
+> **The core inversion:** SQLite *selects* the context. Your richest generated artifacts
+> are treated as hazards, not assets — a relational backlog hands the agent a few-KB
+> packet of pointers instead of the firehose.
 
 ```text
-task -> classify -> SQL lookup -> capped context packet -> anchored files -> targeted checks
+task → classify lane → SQL lookup → capped context packet → anchored files → targeted checks
+        │                                                                          │
+        └──────────────── governed loop: action-gate · termination · backpressure ─┘
 ```
 
-For delivery speed, the default operating unit is a **feature slice**:
-`plan -> design -> build -> test`. The slice profile keeps context tighter, runs
-targeted checks during implementation, records failures explicitly, and reserves the
-full governance gate for feature/release checkpoints.
+---
 
-The lightweight operating name for this discipline is **Proofline** (1.0): exploration
-and quick fixes stay cheap, while release/signoff claims still need evidence. Use
-`npm run work:classify -- --intent "..." --file path` to choose a lane before
-burning tokens on context or gates.
+## 1. What ADG is
 
-The 1.0 release adds toggleable guardrail controls as policy-as-code (with always-on
-pins for destructive-deny, audit-append-only, and forbidden-bulk-read that no toggle can
-reach), a rolling hash chain over the append-only audit log, a single install that ships
-one policy source to both the Claude Code and Codex adapters, and a read-only governance
-dashboard. Deny-by-default and the append-only audit log are never weakened; toggling a
-control is itself a governed, audited action. See
-[`docs/release-notes-1.0.md`](docs/release-notes-1.0.md).
+ADG is a **governance overlay** *and* a **governed harness**:
 
-## What makes it different
+- **The overlay** (portable, the original product): deny-by-default risk-class guardrails,
+  an append-only + hash-chained audit log, AI-security evals, DORA-style delivery metrics,
+  a SQL-first backlog, elicitation-as-code, maturity-as-code, and a context broker that
+  keeps tokens bounded by *refusing* to load context-blowing artifacts.
+- **The harness** (ADG 2.0): a governance *layer over each vendor agent loop* — the Claude
+  Agent SDK and the OpenAI Agents SDK — that enforces specific loop edges deterministically
+  (action gate, loop governor/termination, backpressure, context injection, model
+  orchestration), delivered through four interchangeable surfaces (Claude Code hooks, Codex
+  adapters, a CLI, and `@adg/sdk`). **It is a layer, never a replacement runtime.**
 
-Most of the ingredients here exist somewhere. The combination, and one specific
-inversion, are uncommon:
+The honest framing: most ingredients exist somewhere. The combination — governance whose
+audience is *an agent, not an auditor*, plus the context inversion, plus enforcing
+loop-design principles outside the model — is uncommon.
 
-- **Generated artifacts are context *hazards*.** The mainstream context tools
-  (Repomix, code2prompt, files-to-prompt) maximize what they pack in. This does the
-  opposite: the full SQL dump, JSON mirrors, and generated HTML sit on a
-  `forbiddenBulkFiles` denylist, and the database returns the same information in
-  bounded form. Aider's repo map is the closest cousin — but it ranks *code symbols*;
-  this selects by *project intent and traceability* (feature → items → routes →
-  anchors → audit).
-- **Governance whose audience is an agent, not an auditor.** The audit log, DORA
-  metrics, and `decision` events with reason/risk/rollback are enterprise-SDLC
-  machinery — applied so that a *non-human collaborator's* work is non-repudiable,
-  even for a team of one. "If no reviewer is available, enforce strict solo-dev gates."
-- **Security as a pre-merge gate, for your own agent.** Tools are deny-by-default,
-  and prompt-injection / excessive-agency / resilience scenarios (mapped to OWASP LLM
-  and NIST AI-RMF) run *before* work is "done" — the agent is treated as an untrusted
-  insider, not a trusted teammate.
-- **Append-only by construction.** The audit log is event-sourced; current state
-  (a feature's status, an item's lifecycle) is always *derived* via SQL views, never
-  edited in place. Neither the agent nor a future you can quietly launder history.
-- **Deliberately small.** `node` + `sqlite3` + JSONL. The richest part of the system
-  is a stance, not a dependency tree.
+## 2. Best use cases — where ADG actually helps
 
-This is an honest "uncommon," not "unprecedented": it's an assembly of known
-patterns executed with unusual discipline, plus the context inversion, which is the
-genuinely fresh part.
+**Strong fit:**
+- A **fleet of agents** (or a solo dev + agents) making real changes to a real repo, where
+  unaudited or destructive actions are unacceptable.
+- Long or autonomous runs that need a **hard stop** and a **release gate** so "done" is
+  decided by evidence, not the model's self-report.
+- Token-sensitive work where **context discipline** is the difference between cents and
+  six figures.
+- Regulated / solo contexts needing **non-repudiable** history (append-only, hash-chained)
+  even with no human reviewer.
+- Running **Claude Code and Codex in one repo** under one shared policy.
 
-## Why bounded context pays off
+**Weak / non-fit (stated honestly):**
+- A single throwaway prompt with no repo and no stakes — the governance overhead won't pay.
+- A team that wants ADG to *execute and sandbox* code-as-action — ADG governs the loop; it
+  is not a runtime or a sandbox.
+- Retrieval-heavy RAG products needing a vector store — ADG is deliberately
+  SQL/filesystem-first.
 
-Measured on the seeded demo backlog, a context packet is **~2.0 KB (TOON) / ~2.8 KB
-(markdown)** versus the **~26 KB SQL dump and ~164 KB database** it stands in for. At
-real-project scale the gap is the decisive one: the source project's generated
-mirrors ran to **multiple megabytes** each — *hundreds of thousands of tokens* — while
-the bounded instruction set stayed around **4–7k tokens**. The full method and how to
-reproduce it: [`docs/token-reduction.md`](docs/token-reduction.md).
+## 3. Introduction to loops
 
-## Quickstart
+ADG is built on a first-principles study of **agent loops** — the iterate cycle an agent
+runs: gather context → act → observe → repeat. That study (the **P1–P12 framework**) lives
+in [`loops-research.md`](loops-research.md), and the current state of the field — top labs,
+figures, and repos — in
+[`research/agentic-field-map-2026-06-20.md`](research/agentic-field-map-2026-06-20.md).
+
+The load-bearing insight: **the loop is the product; the model is a component.** Capability
+gain comes from how outputs and observations are fed back, not from a bigger model alone.
+And the moment a loop acts autonomously, three things become structurally true — it must be
+*bounded*, *inspectable*, and treat *every observation as untrusted input*.
+
+ADG's distinctive move is that it **enforces specific loop edges deterministically, outside
+the model**, rather than advising the model to behave:
+
+| Loop edge | ADG mechanism (deterministic) |
+|---|---|
+| **Action** is gated by blast radius | PreToolUse guardrail (deny-by-default risk classes) |
+| **Termination** is bounded + evidence-gated | loop governor (`maxTurns` ceiling + release gate) |
+| **Observation** failures re-enter the loop | backpressure hook (failed check → next-iteration observation) |
+| **Context** is curated, not dumped | context-inject / pin / rehydrate hooks + the broker |
+| **Fan-out** is cost-bounded | subagent budget gate (`maxConcurrent` / `maxTotal`) |
+| **Model tier** matches the work | model orchestrator (effort-first, abstract tiers) |
+
+The full P1–P12 self-audit of how well ADG scores on each principle is in
+[`docs/adg-scorecard.md`](docs/adg-scorecard.md); the gap analysis and improvement plan in
+[`research/gap-analysis.md`](research/gap-analysis.md) and
+[`research/improvement-plan.md`](research/improvement-plan.md).
+
+## 4. The 12 areas we govern
+
+The design surface every real agent loop must answer — and where ADG governs it:
+
+| # | Principle (one line) | How ADG governs it |
+|---|---|---|
+| **P1** | The loop is the product; the model is a component | `packages/{core,sdk,cli}` — a harness, not a checker |
+| **P2** | Use the least autonomy that solves the problem | Proofline lanes L0–L4 + governor modes |
+| **P3** | Every loop needs a hard stop *and* an authority for "done" | governor caps + release gate (evidence tiers) |
+| **P4** | Context is a finite attention budget, not storage | context broker, profiles, in-loop context hooks |
+| **P5** | Externalize durable state to filesystem + git | SQL backlog + append-only audit log |
+| **P6** | Ground every iteration in real observation | evidence tiers + backpressure |
+| **P7** | Make the loop transparent and agent-shaped | audit chain, dashboard, adapter contract, surfaces |
+| **P8** | Add error recovery as a loop edge (backpressure) | backpressure hook + `backlog:fail` |
+| **P9** | Reach for multi-agent only when isolation pays | subagent budget gate (fan-out cost cap) |
+| **P10** | Prefer predictable failure to unpredictable success | deterministic policy; fail-closed security / fail-open quality |
+| **P11** | Bound action by blast radius; observations are untrusted | deny-by-default classes, always-on controls, write-scope |
+| **P12** | Design the success criterion before the loop | elicitation → criteria → evidence tiers → release gate → evals |
+
+## 5. Setup and configuration
 
 ```sh
 # Requirements: Node >= 20 and the sqlite3 CLI on PATH.
-# ADG is not currently published on npm; copy or clone it into your development folder.
-npm run setup            # build an empty data/backlog.sqlite from schema + empty seed
-npm run setup:demo       # optional: load the self-referential ADG worked example
-npm run work:classify -- --intent "quick css spacing fix" --file docs/setup.html
-npm run adg:install -- --target /path/to/host-repo
-npm run adg:update -- --target /path/to/host-repo
-npm run ci:governance    # the full gate; loads the demo fixture for governance checks
-npm run elicitation:packet -- --feature S07 --format toon
-npm run elicitation:graph -- --feature S07 --format toon
-npm run context:slice -- --feature S07 --workflow agentic-tooling
-npm run ux:validate
-npm run standards:validate
-npm run deliverable:audit
-npm run plugin:validate
-npm run maturity:score -- --format toon
+# ADG is not currently published on npm; copy or clone it into your dev folder.
 
-# Ask the broker for a bounded packet instead of opening files blind:
-npm run context:feature -- --feature S07 --workflow route
-npm run context:item -- --item S07-TASK-01 --workflow route --format toon
-npm run context:feature -- --feature S07 --workflow delivery-slice
-npm run context:feature -- --feature S07 --workflow spike
+npm run setup                 # build an empty data/backlog.sqlite from schema + seed
+npm run setup:demo            # optional: load the self-referential ADG worked example
+
+# Classify a lane before burning tokens on context or gates:
+npm run work:classify -- --intent "quick css spacing fix" --file docs/setup.html
+
+# Onboard / install into a host repo:
+npm run adg:init                                   # zero-onboarding entry (detect + install + value-proof)
+npm run adg:install -- --target /path/to/repo --client claude   # claude | codex | both
+npm run adg:install -- --target /path/to/repo --client both --dashboard on
+npm run adg:update  -- --target /path/to/repo      # preserves governed toggle state
+
+# Day-to-day:
+npm run models:tiers                               # show the abstract capability ladder
+npm run context:slice -- --feature S07 --workflow agentic-tooling
+npm run ci:governance                              # the full gate
+npm run adg:doctor                                 # catch install/invariant drift
 ```
 
-## What's inside
+**Policy-as-code lives in `config/agentic/`** — edit these, not the scripts:
 
-| Component | Files | What it does |
+| File | Governs |
+|---|---|
+| `guardrails.json` | deny-by-default risk classes + toggleable controls (3 pinned always-on) |
+| `loop-budget.json` | governor caps (`maxTurns`/`maxToolCalls`), release-gate mode, subagent fan-out caps |
+| `models.json` | abstract tier → provider model (the *only* place model IDs live) |
+| `context-profiles.yaml` | per-workflow context budgets |
+| `delivery-lanes.json` | the L0–L4 Proofline lanes |
+
+Toggling a control is itself a governed, audited action — use
+`npm run guardrails:toggle -- --control <name> --set off --reason … --risk … --rollback …`;
+never hand-edit the policy to relax a control (the runtime ignores it and the gate rejects
+it).
+
+## 6. Which harnesses it works best with
+
+ADG is purpose-built for the two harnesses whose vendor SDKs expose the loop hooks it
+governs:
+
+- **Claude Code / Claude Agent SDK** — richest integration: all seven hook events plus
+  slash commands and `@adg/sdk`'s `withClaudeGovernance`.
+- **OpenAI Codex / OpenAI Agents SDK** — harness-neutral lifecycle adapters plus
+  `@adg/sdk`'s OpenAI functions.
+
+Anything that can shell out to the CLI or read the SQL backlog can use the overlay
+(audit, backlog, context broker, evals) even without loop-hook integration.
+
+## 7a. The Claude section — how ADG plugs into Claude Code
+
+ADG registers all seven Claude Code hook events (`plugins/adg-governance/hooks/hooks.json`):
+
+| Hook event | ADG enforcement | Direction |
 |---|---|---|
-| **Guardrail policy** | `config/agentic/guardrails.json`, `scripts/guardrail-check.mjs` | Deny-by-default risk classes; required evidence and confirmation per tool. |
-| **Append-only audit** | `data/audit/audit-log.jsonl`, `scripts/record-audit.mjs`, `scripts/validate-audit.mjs` | Event-sourced, never rewritten, secret-scanned. |
-| **AI-security evals** | `tooling/agent-evals/scenarios/`, `scripts/run-agent-evals.mjs` | Prompt-injection / excessive-agency / resilience scenarios mapped to OWASP LLM & NIST AI-RMF. |
-| **Delivery metrics** | `scripts/dora-metrics.mjs` | DORA-style proxies from local git + the audit log. |
-| **SQL backlog ("the SQL server")** | `scripts/backlog-db.mjs`, `data/schema.sql`, `data/seed/` | One SQLite DB; claim/start/complete/verify lifecycle; reviewable SQL mirrors. |
-| **Proofline lanes** | `config/agentic/delivery-lanes.json`, `scripts/adg-work-classify.mjs`, `scripts/adg-install.mjs` | Risk-based lanes plus install/update support so spikes and quick fixes avoid full governance while signoff remains evidence-backed. |
-| **Context broker** | `scripts/agent-context.mjs`, `config/agentic/context-profiles.yaml` | Bounded packets in markdown/json/toon; forbids bulk files. |
-| **Elicitation as code** | `config/agentic/elicitation.json`, `scripts/adg-elicitation.mjs` | Feature brief → RBAC stories → requirements → contracts → scenarios → gaps. |
-| **Requirements graph / UX as code** | `config/agentic/ux-as-code.json`, `scripts/adg-ux.mjs` | SQL graph lineage from feature intent to UX contracts, journeys, states, and test evidence. |
-| **Standards as code** | `config/agentic/standards-map.json`, `scripts/adg-standards.mjs` | Local control evidence mapped to global ISMS, secure SDLC, AI-risk, and GenAI security references. |
-| **Deliverable auditability** | `config/agentic/deliverables.json`, `scripts/adg-deliverable.mjs` | Records source inputs, graph slices, files, tests, decisions, and evidence for bug and rework triage. |
-| **Maturity as code** | `config/agentic/maturity.json`, `scripts/adg-maturity.mjs` | 1.0-5.0 scorecards for required ADG domains, with evidence and gaps. |
-| **Governance plugin** | `plugins/adg-governance/` | Codex plugin package plus neutral manifest for future agent clients; deterministic controls, not a runtime. |
-| **Agent skills** | `skills/agentic-*`, `skills/adg-*`, `config/agentic/skill-manifest.json` | Portable disciplines plus generic as-code skills validated by manifest. |
-| **Rulebook** | `AGENTS.md` | What every agent reads first; also a per-repo template. |
+| `PreToolUse` (Bash/Edit/Write/Read/…) | deny-by-default guardrail (security floor) | fails **closed** |
+| `PreToolUse` (Task) | subagent budget gate (P9 fan-out cap) | fails open |
+| `Stop` | loop governor — hard cap + release gate | fails open |
+| `SubagentStop` | governor + subagent-gate decrement | fails open |
+| `PostToolUse` (Bash) | backpressure — failed check → observation | fails open |
+| `UserPromptSubmit` | context injection (bounded steering) | fails open |
+| `PreCompact` | pin durable state before window reset | fails open |
+| `SessionStart` | rehydrate state from disk | fails open |
 
-## Documentation
+Slash commands: `/adg-init`, `/adg-classify`, `/adg-context`, `/adg-models`, `/adg-verify`,
+`/adg-completeness-critic`. Programmatic: `@adg/sdk`'s `withClaudeGovernance(options)`
+patches the Claude Agent SDK `query()` — an action gate via `canUseTool` (delegating to the
+hardened hook), the lifecycle hooks, and `governAgentModel` → `AgentDefinition.model`/
+`effort`.
 
-- **📖 Start here:** [`docs/adg-introduction.md`](docs/adg-introduction.md) — *Most teams are governing their AI coding agents wrong* — the introduction to ADG: why a fleet of agents is a governance problem, the context inversion, and the five design principles.
-- **🚀 1.1 release notes:** [`docs/release-notes-1.1.md`](docs/release-notes-1.1.md) — deterministic asset-lint quality gate (Rust pixel reader), artifact-typed control packs, the visual-evidence release gate, and the uncovered-intent flag.
-- **🚀 1.0 release notes:** [`docs/release-notes-1.0.md`](docs/release-notes-1.0.md) — toggleable controls, the audit hash chain, one-install consolidation, and the governance alignment assessment.
-- [`docs/governance-alignment.md`](docs/governance-alignment.md) — ADG controls mapped to OWASP LLM Top 10, ISO/IEC 42001, the Three Lines model, and ISO 31000.
-- [`AGENTS.md`](AGENTS.md) — the agent rulebook / per-repo template.
-- [`docs/architecture/governance-model.md`](docs/architecture/governance-model.md) — the five design principles.
-- [`docs/architecture/agentic-application-development-pipeline.md`](docs/architecture/agentic-application-development-pipeline.md) — the end-to-end pipeline and benchmark sources.
-- [`docs/roadmap-review-overview.md`](docs/roadmap-review-overview.md) — the external review summary and ADG roadmap.
-- [`docs/field-report-and-hardening-plan.md`](docs/field-report-and-hardening-plan.md) — field report from first-party use, with the v0.9.1 hardening plan (evidence tiers + adopter-conformance doctor).
-- [`docs/v0.9.2-plan.md`](docs/v0.9.2-plan.md) — v0.9.2 plan: evidence hardening + Claude Code integration (plugin, generated CLAUDE.md, marketplace packaging, education site).
-- [`docs/dual-harness.md`](docs/dual-harness.md) — running Codex and Claude Code in one repo under one shared policy and rulebook.
-- [`docs/setup.html`](docs/setup.html) — static setup page with manual install and Otterblock contact details.
-- [`docs/sql-engine-view.html`](docs/sql-engine-view.html) — static HTML view of the plugin SQL engine, derived SQLite views, and read-only command map.
-- [`docs/sql-data-layer.md`](docs/sql-data-layer.md) — the SQL "server": schema, views, and the item lifecycle.
-- [`docs/proofline-delivery-lanes.md`](docs/proofline-delivery-lanes.md) — risk lanes, ultra caveman mode, and when full governance is actually required.
-- [`docs/token-reduction.md`](docs/token-reduction.md) — how context stays cheap, with measured numbers.
-- [`docs/reference/`](docs/reference/) — the context-tooling design record and extraction/provenance notes.
-- [`skills/README.md`](skills/README.md) — installing the skills.
+## 7b. The Codex section — how ADG plugs into Codex
+
+ADG ships **harness-neutral lifecycle adapters** in
+`plugins/adg-governance/.codex-plugin/hooks/` that delegate to the *same* hook binaries via
+the uniform adapter contract (`docs/adg-adapter-contract.md`):
+
+| Adapter | Delegates to | Role |
+|---|---|---|
+| `adg-codex-pretool.mjs` | the guardrail hook | action gate (normalizes Codex field names) |
+| `adg-codex-stop.mjs` | the governor | termination / release gate |
+| `adg-codex-posttool.mjs` | backpressure | failed-check feedback |
+
+Programmatic: `@adg/sdk`'s OpenAI functions wrap the OpenAI Agents SDK — `governTool`
+(per-tool action gate), `adgOutputGuardrail` / `adgRunHooks` (guardrail + lifecycle),
+`modelSettingsFor` (reasoning effort → `model_settings`), and `loopCaps` (`max_turns`).
+`npm run adg:install -- --client codex|both` installs and keeps both adapters on one policy
+source.
+
+## 8. Coming soon (planned, not shipped)
+
+Drawn from the deferred follow-ups in `docs/adg-2.0-overhaul-plan.md` and
+[`research/improvement-plan.md`](research/improvement-plan.md). **Planned — not yet built:**
+
+- **P9 cross-adapter parity** — port the subagent fan-out cap from the Claude hook surface
+  to the Codex adapter and `@adg/sdk` (needs the Phase-6 host-bundling of the new lifecycle
+  hooks).
+- **In-process PolicyEngine** — replace the action-gate subprocess hop with a pure
+  in-process engine (perf only; delegation already works).
+- **Enforce `maxToolCalls`** — the tool-call ceiling is declared in `loop-budget.json` but
+  the governor currently honors only `maxTurns`.
+- **Backpressure beyond Bash**, **per-lane context budgets**, **advisory→enforced lanes**,
+  and a **held-out loop eval** — see the improvement plan.
+- **npm / marketplace distribution** — today install is via `npm run adg:install` from a
+  cloned copy.
+
+## 9. How this benefits context discipline and agentic governance
+
+- **P4 (attention budget):** the broker returns a **~2.0 KB (TOON) / ~2.8 KB (markdown)**
+  packet in place of the **~26 KB SQL dump / ~164 KB database** it stands for; at real
+  scale, ~4–7k tokens instead of hundreds of thousands. Generated mirrors sit on a
+  `forbiddenBulkFiles` denylist. Method + numbers: [`docs/token-reduction.md`](docs/token-reduction.md).
+- **P5 (externalized state):** the SQL backlog and append-only audit log *are* the durable
+  memory; current state is always derived via SQL views, never edited in place.
+- **P11 (blast radius):** tools are deny-by-default; three controls (`destructiveDeny`,
+  `auditAppendOnly`, `forbiddenBulkRead`) are pinned always-on in code, so a hand-edit that
+  relaxes one is ignored at runtime. Every observation is treated as untrusted input.
+- **P12 (eval is the bottleneck):** the success criterion is authored before the loop
+  (elicitation → criteria), carried as an evidence tier (`asserted < config < test <
+  live`), and enforced by the same release gate the governor consults at turn-end.
+
+---
 
 ## Repository layout
 
 ```
 agentic-development-governance/
 ├── AGENTS.md                      # agent rulebook + per-repo template
+├── loops-research.md              # the P1–P12 agent-loop principles
 ├── package.json                   # governance gate + lifecycle commands (npm run ...)
-├── config/agentic/
-│   ├── guardrails.json            # deny-by-default risk-class policy
-│   └── context-profiles.yaml      # per-workflow context budgets
+├── packages/
+│   ├── core/                      # pure loop decisions (governor, backpressure, subagent-gate, select-model …)
+│   ├── sdk/                       # @adg/sdk — Claude + OpenAI governance adapters
+│   └── cli/                       # @adg/cli — terminal dispatcher
+├── plugins/adg-governance/
+│   ├── hooks/                     # Claude Code hooks + hooks.json (7 events)
+│   └── .codex-plugin/hooks/       # Codex lifecycle adapters
+├── config/agentic/                # policy-as-code (guardrails, models, loop-budget, …)
 ├── scripts/                       # backlog engine, context broker, gates
-├── tooling/
-│   ├── agent-context/             # broker manifests + smoke test
-│   └── agent-evals/scenarios/     # AI-security fixtures
-├── skills/                        # portable Codex skills
-├── data/
-│   ├── schema.sql                 # generated, reviewable DDL
-│   ├── seed/backlog.seed.json     # editable backlog seed
-│   └── audit/audit-log.jsonl      # append-only audit source
-└── docs/                          # architecture, governance model, token reduction
+├── tooling/                       # broker manifests + as-code tests + eval scenarios
+├── research/                      # field map, gap analysis, improvement plan, dispositions
+├── data/                          # schema.sql, seed/, audit/audit-log.jsonl (sqlite gitignored)
+└── docs/                          # architecture, governance model, harness plan, token reduction
 ```
 
-The generated `data/*.sqlite` databases are gitignored. A clean install starts
-empty with `npm run setup`; the self-referential worked example is opt-in with
-`npm run setup:demo`. This mirrors the platform's own rule: SQLite is queried,
-never treated as canonical.
+The generated `data/*.sqlite` databases are gitignored. A clean install starts empty with
+`npm run setup`; the worked example is opt-in with `npm run setup:demo`.
+
+## Documentation
+
+- **📖 Start here:** [`docs/adg-introduction.md`](docs/adg-introduction.md) — why a fleet of agents is a governance problem.
+- **🤖 Set it up with an agent:** [`docs/agent-setup-guide.md`](docs/agent-setup-guide.md) — a paste-into-an-agent runbook that installs/configures ADG and verifies it.
+- **🔁 Agent loops:** [`loops-research.md`](loops-research.md) + [`research/agentic-field-map-2026-06-20.md`](research/agentic-field-map-2026-06-20.md) — the P1–P12 framework and the 2026 field map.
+- **📊 Scorecard:** [`docs/adg-scorecard.md`](docs/adg-scorecard.md) — how ADG scores on each principle.
+- **🧭 Harness plan:** [`docs/adg-2.0-overhaul-plan.md`](docs/adg-2.0-overhaul-plan.md) — Phases 0–7, vendor-SDK mapping, deferred follow-ups.
+- **🔌 Surfaces & dual-harness:** [`docs/adg-surfaces.md`](docs/adg-surfaces.md) · [`docs/dual-harness.md`](docs/dual-harness.md) · [`docs/adg-adapter-contract.md`](docs/adg-adapter-contract.md) · [`docs/adg-distribution.md`](docs/adg-distribution.md).
+- **🚀 Release notes:** [`docs/release-notes-2.0.md`](docs/release-notes-2.0.md) · [`docs/release-notes-1.1.md`](docs/release-notes-1.1.md) · [`docs/release-notes-1.0.md`](docs/release-notes-1.0.md).
+- **🛡 Governance:** [`docs/governance-alignment.md`](docs/governance-alignment.md) — mapped to OWASP LLM Top 10, ISO/IEC 42001, the Three Lines model, ISO 31000.
+- **🗃 SQL layer:** [`docs/sql-data-layer.md`](docs/sql-data-layer.md) · [`docs/audit-chain.md`](docs/audit-chain.md).
+- **⚡ Lanes & tokens:** [`docs/proofline-delivery-lanes.md`](docs/proofline-delivery-lanes.md) · [`docs/token-reduction.md`](docs/token-reduction.md).
+- [`AGENTS.md`](AGENTS.md) — the agent rulebook / per-repo template.
 
 ## Adopting it in another repo
 
-Copy `config/`, `scripts/`, `tooling/`, `data/schema.sql`, and `AGENTS.md`; replace
-`data/seed/backlog.seed.json` with your project's backlog; fill in the *Project
-Profile* in `AGENTS.md`; install the skills; then `npm run setup` to start from
-an empty SQL database, or `npm run ci:governance` to run the bundled
-worked-example checks. Full steps in
+Use `npm run adg:install -- --target /path/to/repo --client claude|codex|both` (add
+`--dashboard on` for the read-only dashboard), then `npm run adg:doctor -- --target …` to
+check for drift. The installer writes `config/agentic/adg-install-state.json` so updates
+are versioned. **Or hand it to an agent:** paste
+[`docs/agent-setup-guide.md`](docs/agent-setup-guide.md) into a fresh agent session and it
+will install, configure, and verify ADG for you. Manual route and full steps:
 [`docs/reference/extraction-notes.md`](docs/reference/extraction-notes.md).
 
 ## License
 
 **Source-available, non-commercial.** Licensed under the
-[PolyForm Noncommercial License 1.0.0](LICENSE) — free to use, modify, and share for
-any **non-commercial** purpose.
+[PolyForm Noncommercial License 1.0.0](LICENSE) — free to use, modify, and share for any
+**non-commercial** purpose.
 
-**All commercial rights are reserved by Otterblock Pty Ltd** (ABN 91 614 672 794),
-which retains full ownership of and all rights in this software. Commercial use
-requires a separate commercial license — contact **zach+github@otterblock.com**.
+**All commercial rights are reserved by Otterblock Pty Ltd** (ABN 91 614 672 794), which
+retains full ownership of and all rights in this software. Commercial use requires a
+separate commercial license — contact **zach+github@otterblock.com**.
 
-(Note: a non-commercial restriction makes this *source-available* rather than OSI
-"open source." The label is deliberate.)
+(A non-commercial restriction makes this *source-available* rather than OSI "open source."
+The label is deliberate.)
 
 ---
 
