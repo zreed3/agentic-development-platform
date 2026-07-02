@@ -108,16 +108,37 @@ const DESTRUCTIVE = [
   /\brm\s+-[a-z]*r[a-z]*f|\brm\s+-[a-z]*f[a-z]*r/i,
   /\bgit\s+reset\s+--hard\b/i,
   /\bgit\s+clean\s+-[a-z]*f/i,
-  /\bDROP\s+(TABLE|DATABASE|SCHEMA)\b/i,
-  /\bTRUNCATE\b/i,
   /\b(mkfs|shred)\b/i,
   /\bdd\s+if=/i,
   />\s*\/dev\/sd/i,
   /\bfind\b[^\n]*\s-delete\b/i, // mass delete via find
   /\b(curl|wget)\b[^\n]*\|\s*(sudo\s+)?(ba|z|k|da)?sh\b/i, // pipe-to-shell (RCE)
 ];
+// SQL-destructive statements are blocked only when the command can actually EXECUTE
+// them -- destructive SQL in the SAME shell segment as an SQL client, piped into one,
+// or fed to one via heredoc. A bare keyword match blocked prose: `git commit -m "drop
+// schema ... cascade"` messages and `grep -rn "TRUNCATE" sql/` searches (2026-07-02
+// tune; the swarm loop lost builder runs to reworded commits). Segment-scoping matters:
+// a commit message that mentions an executor name on one line and TRUNCATE on another
+// is still prose, not execution (this very tune's own commit message was the proof).
+// The destructive control stays always-on; only the false-positive surface shrank.
+const SQL_CLIENT = "(?:psql|sqlite3|mysql|mariadb|pgcli|mycli|pg_restore|duckdb|clickhouse-client)";
+const SQL_DROPWORD = "(?:DROP\\s+(?:TABLE|DATABASE|SCHEMA)|TRUNCATE)";
+const SQL_DESTRUCTIVE_EXEC = [
+  // inline: executor and destructive SQL in the same segment (psql -c "DROP TABLE x")
+  new RegExp(`\\b${SQL_CLIENT}\\b[^\\n;|&]*\\b${SQL_DROPWORD}\\b`, "i"),
+  // piped in: echo "DROP TABLE x" | psql
+  new RegExp(`\\b${SQL_DROPWORD}\\b[^\\n]*\\|\\s*${SQL_CLIENT}\\b`, "i"),
+  // heredoc in: psql <<SQL ... DROP TABLE ... SQL
+  new RegExp(`\\b${SQL_CLIENT}\\b[^\\n]*<<[\\s\\S]*\\b${SQL_DROPWORD}\\b`, "i"),
+  // db runner scripts: npm run db:migrate -- --sql "DROP ..."
+  new RegExp(`\\bdb:(?:push|execute|run|migrate)\\b[^\\n;|&]*\\b${SQL_DROPWORD}\\b`, "i"),
+];
 // "secrets" / "production" / "migration" / "billing" risk classes -> confirmation.
-const SECRETS = [/\.env\b/i, /\bsecrets?\//i, /\.pem\b/i, /\bid_rsa\b/i, /\bcredentials?\b/i];
+// `.env.example` / `.env.template` / `.env.sample` are committed templates (no secret
+// material) that backlog tasks author and edit constantly (SPINE-DATA-01, OPS-04, EMAIL-05);
+// the lookahead exempts them while every real `.env*` still confirms (2026-07-02 tune).
+const SECRETS = [/\.env\b(?!\.example\b|\.template\b|\.sample\b)/i, /\bsecrets?\//i, /\.pem\b/i, /\bid_rsa\b/i, /\bcredentials?\b/i];
 const PRODUCTION = [
   /\b(vercel|fly|flyctl|railway)\s+(deploy|apply|scale|secrets)\b/i,
   /\bterraform\s+(apply|destroy)\b/i,
@@ -564,7 +585,12 @@ function bashWriteTargets(cmd) {
 // -- decide ------------------------------------------------------------------
 try {
   if (["Read", "Grep", "Glob"].includes(tool)) {
-    const target = String(input.file_path || input.path || input.pattern || "");
+    // Grep's `pattern` is the search REGEX, not a file target -- checking it blocked
+    // legitimate searches for the string ".sqlite" in source (2026-07-02 tune). Only
+    // path-shaped inputs (Read file_path, Grep/Glob path, Glob pattern) are hazards.
+    const target = tool === "Grep"
+      ? String(input.path || "")
+      : String(input.file_path || input.path || input.pattern || "");
     if (anyMatch(target, FORBIDDEN_BULK)) {
       block(
         `'${target}' is a generated context hazard. Use the ADG context broker ` +
@@ -584,6 +610,12 @@ try {
       block(
         `destructive command (deny-by-default). If this is genuinely intended, ` +
           `re-issue it as an explicit, narrowed request: ${cmd}`,
+      );
+    }
+    if (anyMatch(cmd, SQL_DESTRUCTIVE_EXEC)) {
+      block(
+        `destructive SQL against a database client (deny-by-default). If this is genuinely ` +
+          `intended, re-issue it as an explicit, narrowed request: ${cmd}`,
       );
     }
     if (gitPushKind(cmd) === "force") {
@@ -608,8 +640,15 @@ try {
         }
       }
     }
-    if (/\b(cat|head|tail|less|more|bat)\b/.test(cmd) && anyMatch(cmd, FORBIDDEN_BULK)) {
-      block(`reading a generated context hazard via the shell -- use the ADG context broker.`);
+    // Block DUMPING a hazard file (a raw-bytes reader whose argument is the hazard, or a
+    // whole-DB `.dump`), not mere co-occurrence in a pipeline. The old form blocked any
+    // compound command where `head` and a `.sqlite` path appeared anywhere -- including
+    // read-only structured queries like `sqlite3 db ".tables" | head`, which is exactly
+    // the query-not-dump behaviour the control wants (2026-07-02 tune; control stays on).
+    const DUMPER_SEG = "\\b(?:cat|head|tail|less|more|bat|strings|xxd|hexdump|od)\\b[^\\n;|&]*";
+    const HAZARD_TOKEN = "(?:\\.sqlite(?:-(?:wal|shm))?\\b|data\\/backlog\\.sql\\b|development-tracker\\.(?:json|sql|sqlite)\\b|-mirror\\.(?:json|sql)\\b)";
+    if (new RegExp(`${DUMPER_SEG}${HAZARD_TOKEN}`, "i").test(cmd) || /\bsqlite3\b[^\n;|&]*\s\.?dump\b/i.test(cmd)) {
+      block(`dumping a generated context hazard via the shell -- query it (sqlite3 SELECT / npm run backlog:list) or use the ADG context broker instead of dumping raw contents.`);
     }
     // Toggleable confirmation controls:
     if (gitPushKind(cmd) === "push" && controlActive("productionConfirm")) ask(`git push -- confirm before pushing: ${cmd}`);

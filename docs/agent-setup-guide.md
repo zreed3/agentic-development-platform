@@ -212,14 +212,19 @@ This refuses the always-on controls (`destructiveDeny`, `auditAppendOnly`,
 Once ADG is installed, you (and any agent in this repo) are bound by its contract.
 Read `AGENTS.md` for the authoritative version; the essentials:
 
-1. **Classify the lane first.** `npm run work:classify -- --intent "..." --file path`.
-   Proofline lanes: **L0 spike** (read-only exploration — no audit/gate), **L1
-   quick-fix** (docs/CSS/small bugs — nearest focused check), **L2 bounded slice**
-   (normal feature work — context slice + targeted tests), **L3 sensitive** (auth,
-   RBAC, schema, migrations, secrets, billing, production, guardrails, audit,
-   governance tooling — policy gate + negative tests), **L4 release signoff** (full
-   governance/traceability gate). If new evidence raises risk, upgrade the lane
-   immediately; never silently downgrade on sensitive behavior.
+1. **Lane the work first — your call, recorded.** (v2.1) Judge the lane from the
+   actual scope of the change and state it when you start;
+   `npm run work:classify -- --intent "..." --file path` is a recorder / second
+   opinion, not the decider — its keyword matcher is advisory, and a capable
+   model's scope judgment wins on conflict. Proofline lanes: **L0 spike**
+   (read-only exploration — no audit/gate), **L1 quick-fix** (docs/CSS/small bugs —
+   nearest focused check), **L2 bounded slice** (normal feature work — context
+   slice + targeted tests), **L3 sensitive** (auth, RBAC, schema, migrations,
+   secrets, billing, production, guardrails, audit, governance tooling — policy
+   gate + negative tests), **L4 release signoff** (full governance/traceability
+   gate). If new evidence raises risk, upgrade the lane immediately; never
+   silently downgrade on sensitive behavior, and record a reason if you disagree
+   downward from the classifier's call.
 2. **Guardrails are deny-by-default.** `read-only`/`generated-artifact`/`code-change`
    run freely; `migration`/`secrets`/`billing`/`production` need confirmation;
    `destructive` is denied unless explicitly requested. Resolve a sensitive action
@@ -228,13 +233,22 @@ Read `AGENTS.md` for the authoritative version; the essentials:
    via `npm run audit:record -- --feature <ID> --type status --status <state>
    --summary "..."` — never via a shell redirect or editor (the hook blocks it),
    never with secrets in it. Validate the hash chain with `npm run audit:validate`.
-4. **The backlog is SQL-first.** Canonical state lives in `data/backlog.sqlite`,
-   rebuilt from a seed; current state is *derived* from events
-   (`backlog:next → claim → start → complete → verify`), never hand-edited. No
-   parallel Markdown/spreadsheet backlog.
-5. **Context discipline.** Generate a bounded packet before opening source files
-   (`npm run context:slice` / `context:feature`) and read only what it names. Never
-   bulk-load the generated mirrors — they are on the `forbiddenBulkFiles` denylist.
+4. **One backlog source of truth — pick the shape that fits the decomposer.** (v2.1)
+   For fine-grained agent-driven decomposition (per-task tier/lane/deps/
+   first-failing-test/files/evidence — the shape Fable-class models produce
+   natively), the canonical backlog is **markdown epics + a deterministic parser
+   manifest**, and the SQLite store is a ledger/mirror, not the driver. For
+   coarser human-curated backlogs, `data/backlog.sqlite` rebuilt from a seed with
+   event-derived state (`backlog:next → claim → start → complete → verify`)
+   remains canonical. Either way: exactly one canonical source, state never
+   hand-edited, and the other representation explicitly labelled a mirror. (Field
+   evidence 2026-07-02: a 474-task model-decomposed backlog outgrew the SQLite
+   schema within hours of real use; markdown + manifest is what shipped.)
+5. **Context discipline.** A bounded packet (`npm run context:slice` /
+   `context:feature`) is available when it helps and is no longer a required first
+   step (v2.1); read what the task needs. Never bulk-load the generated mirrors —
+   they are on the `forbiddenBulkFiles` denylist (read-only structured queries are
+   fine; dumping raw contents is not).
 6. **Evidence tiers + the release gate.** Every verify carries an ordered tier:
    `asserted < config < test < live`. An item under a `release-class:*` feature
    cannot reach `verified` on `asserted`/`config`/`test` alone — it needs a `live`

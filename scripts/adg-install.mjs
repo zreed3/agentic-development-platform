@@ -44,6 +44,10 @@ const packageScripts = {
 // update (mergeControls) so a routine adg:update never clobbers a host's governed toggle.
 const sharedEnforcementFiles = [
   { source: "plugins/adg-governance/hooks/adg-guardrail-hook.mjs", target: "scripts/adg-guardrail-hook.mjs" },
+  // The hook's synthetic-event regression suite ships WITH the hook (v2.1): any host that
+  // tunes a pattern must keep `npm run adg:hook:test` ALL PASS -- false-positive fixes and
+  // must-still-block cases are both pinned, so a tune cannot silently weaken the floor.
+  { source: "plugins/adg-governance/hooks/adg-guardrail-hook.selftest.mjs", target: "scripts/adg-guardrail-hook.selftest.mjs" },
   { source: "config/agentic/guardrails.json", target: "config/agentic/guardrails.json", mergeControls: true },
   { source: "scripts/guardrail-check.mjs", target: "scripts/guardrail-check.mjs" },
   { source: "scripts/adg-toggle-control.mjs", target: "scripts/adg-toggle-control.mjs" },
@@ -84,6 +88,7 @@ const clientManagedFiles = {
 
 const sharedEnforcementScripts = {
   "adg:guardrails": "node scripts/guardrail-check.mjs",
+  "adg:hook:test": "node scripts/adg-guardrail-hook.selftest.mjs scripts/adg-guardrail-hook.mjs",
   "adg:toggle": "node scripts/adg-toggle-control.mjs",
   "adg:audit:validate": "node scripts/validate-audit.mjs",
   "adg:doctor": "node scripts/adg-doctor.mjs",

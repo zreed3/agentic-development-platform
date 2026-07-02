@@ -96,7 +96,7 @@ function main() {
   // 3. Next steps.
   process.stdout.write(
     "\n✓ ADG installed. Next:\n" +
-      "  • npm run adg:classify -- --intent \"<what you're about to do>\"   (pick a lane)\n" +
+      "  • npm run adg:classify -- --intent \"<what you're about to do>\"   (record your lane call; advisory second opinion)\n" +
       "  • the deterministic guard now gates destructive/sensitive tool calls\n" +
       "  • npm run adg:doctor   (verify the install hasn't drifted)\n",
   );

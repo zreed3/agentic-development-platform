@@ -4,10 +4,14 @@
 SDK* over the vendor agent loops — keeping AI coding agents bounded, auditable, and
 context-disciplined, in a handful of Node scripts and SQLite files.**
 
-> **🚀 ADG v2.0.0 is released.** The deny-by-default overlay is now a *tiered governed
-> harness + SDK* over the Claude and Codex agent loops: a loop governor, backpressure,
-> context-lifecycle hooks, a subagent fan-out cap, and a model orchestrator, all enforced
-> outside the model. See the [**v2.0 release notes**](docs/release-notes-2.0.md).
+> **🚀 ADG v2.1 is released.** A field-driven precision pass, made in response to
+> Fable 5's better ability to break down tasks into smaller activities: the guardrail
+> hook loses five false-positive classes (and gains a shipped regression suite,
+> `adg:hook:test`), the lane classifier becomes a recorded second opinion instead of the
+> decider, context packets become optional, and the backlog doctrine becomes
+> shape-per-decomposer (markdown + deterministic manifest for model-driven
+> decomposition; SQLite as ledger/mirror). The enforcement floor is unchanged. See the
+> [**v2.1 release notes**](docs/release-notes-2.1.md) · [v2.0](docs/release-notes-2.0.md).
 
 Hand an AI agent your codebase and two failure modes dominate:
 
@@ -42,7 +46,9 @@ ADG is a **governance overlay** *and* a **governed harness**:
 
 - **The overlay** (portable, the original product): deny-by-default risk-class guardrails,
   an append-only + hash-chained audit log, AI-security evals, DORA-style delivery metrics,
-  a SQL-first backlog, elicitation-as-code, maturity-as-code, and a context broker that
+  a backlog ledger (SQL-first for human-curated backlogs; markdown + deterministic
+  manifest as the canonical shape for model-driven decomposition, v2.1),
+  elicitation-as-code, maturity-as-code, and a context broker that
   keeps tokens bounded by *refusing* to load context-blowing artifacts.
 - **The harness** (ADG 2.0): a governance *layer over each vendor agent loop* — the Claude
   Agent SDK and the OpenAI Agents SDK — that enforces specific loop edges deterministically

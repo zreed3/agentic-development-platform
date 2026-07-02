@@ -136,11 +136,16 @@ acceptance criterion is reported by `npm run elicitation:validate` as an advisor
 ## Proofline v0.9 Delivery Lanes
 
 Use Proofline lanes to keep exploration cheap while preserving evidence for real
-claims. Start material work by classifying it:
+claims. Lane material work yourself from the actual scope of the change and state the
+lane when you start — capable models judge scope better than a keyword match does
+(v2.1). The classifier remains available as a recorder / second opinion:
 
 ```sh
 npm run work:classify -- --intent "small UI spacing fix" --file docs/setup.html
 ```
+
+Its output is advisory: your scope judgment wins on conflict, upgrade freely, and
+record a reason if you ever disagree downward from its call.
 
 - `L0 spike` — read-only exploration, options, triage, and debugging. No audit or
   full gate unless a decision or implementation claim is made.
