@@ -14,8 +14,10 @@ plan](docs/astra-fable-modernisation.md).
 This is an adoption recommendation, not an automatic policy change. Existing ADG
 installations retain their configured controls, audit history, and release gates
 until an explicit migration preserves context and replaces any required enforcement.
-The current installer installs the governed profile; it does not implement a
-separate lightweight installer mode.
+Fresh projects use `npm run adg:init -- --target /path/to/repo` to create only
+missing native Markdown instructions. Choose `--profile governed` explicitly for
+governed adoption. Existing governed installs keep their controls on reinitialization.
+Claude instructions use a thin `@AGENTS.md` adapter rather than a duplicated rulebook.
 
 ## 1. What ADG provides
 
@@ -28,8 +30,8 @@ separate lightweight installer mode.
   context packets, and derived reports.
 - Hook, CLI, and SDK integrations over vendor runtimes. ADG is not a sandbox.
 
-The Node scripts require Node >= 20 and the `sqlite3` CLI. Optional integrations
-have their own dependencies. Historical release notes describe changes, not proof
+Native setup requires Node >= 20. SQL governance and context preservation also
+require the `sqlite3` CLI. Optional integrations have their own dependencies. Historical release notes describe changes, not proof
 that ADG improves a current model's end-to-end performance.
 
 ## 2. Choosing a workflow
@@ -108,7 +110,8 @@ npm run setup:demo            # optional: load the self-referential ADG worked e
 npm run work:classify -- --intent "quick css spacing fix" --file docs/setup.html
 
 # Onboard / install into a host repo:
-npm run adg:init                                   # zero-onboarding entry (detect + install + value-proof)
+npm run adg:init -- --target /path/to/repo         # native Git/Markdown setup
+npm run adg:init -- --target /path/to/repo --profile governed  # explicit governed adoption
 npm run adg:install -- --target /path/to/repo --client claude   # claude | codex | both
 npm run adg:install -- --target /path/to/repo --client both --dashboard on
 npm run adg:update  -- --target /path/to/repo      # preserves governed toggle state
@@ -261,7 +264,7 @@ The generated `data/*.sqlite` databases are gitignored. A clean install starts e
 
 ## Adopting it in another repo
 
-For a new repository, start with the lightweight baseline above. If its requirements
+For a new repository, run `npm run adg:init -- --target /path/to/repo` for the native baseline. If its requirements
 justify the advanced governed profile, use `npm run adg:install -- --target /path/to/repo --client claude|codex|both` (add
 `--dashboard on` for the read-only dashboard), then `npm run adg:doctor -- --target …` to
 check for drift. The installer writes `config/agentic/adg-install-state.json` so updates
@@ -269,6 +272,16 @@ are versioned. **Or hand it to an agent:** paste
 [`docs/agent-setup-guide.md`](docs/agent-setup-guide.md) into a fresh agent session and it
 will install, configure, and verify ADG for you. Manual route and full steps:
 [`docs/reference/extraction-notes.md`](docs/reference/extraction-notes.md).
+
+## Preserve context and evaluate the harness
+
+`npm run adg:preserve-context -- --target /path/to/repo` exports known ADG context
+to reviewable Markdown with immutable originals and provenance. `adg:retire`
+preserves available context before applying an explicit removal.
+
+Use the [evaluation scaffold](docs/harness-evaluation.md) to freeze a task matrix,
+validate actual run records and report paired outcomes. An empty results set
+reports **not run**; no model advantage or retirement decision is inferred.
 
 ## License
 

@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // Reversible retirement of an install-state-managed ADG installation.
 import fs from 'node:fs';
+import { preserveContext } from './adg-preserve-context.mjs';
 import path from 'node:path';
 import { createHash, randomUUID } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
@@ -154,6 +155,8 @@ export function retire({ target, apply = false }) {
   if (!apply || blockers.length) return report;
   // Preflight every source before making any directories or writes.
   for (const [rel, change] of changes) if (!read(root, rel)?.equals(change.before)) throw new Error(`Changed during preflight: ${rel}`);
+  const preservation = preserveContext({ target: root });
+  for (const [rel, change] of changes) if (!read(root, rel)?.equals(change.before)) throw new Error(`Changed during preservation: ${rel}`);
   const archiveRel = `docs/adg-preserved/retirement-${new Date().toISOString().replace(/[:.]/g, '-')}-${randomUUID()}`;
   const archive = safe(root, archiveRel);
   fs.mkdirSync(archive, { recursive: true });
@@ -162,11 +165,12 @@ export function retire({ target, apply = false }) {
     const dest = path.join(archive, rel); fs.mkdirSync(path.dirname(dest), { recursive: true }); fs.writeFileSync(dest, change.before, { flag: 'wx', mode: fs.statSync(safe(root, rel)).mode });
   }
   fs.writeFileSync(path.join(archive, 'README.md'), '# Retired ADG installation\n\nThese files are historical context, not active instructions. Original bytes and install provenance are preserved. Native project CI and security requirements remain active. Audit logs and SQL data remain at their original paths. Existing audit logs remain append-only: never rewrite or delete prior events. No model capability makes security controls inherently obsolete.\n\n' + report.changes.map(x => `- ${x.file}: ${x.reason}`).join('\n') + '\n', { flag: 'wx' });
+  for (const [rel, change] of changes) if (!read(root, rel)?.equals(change.before)) throw new Error(`Changed during archival: ${rel}`);
   for (const [rel, change] of changes) {
     const dest = safe(root, rel);
     if (change.after === null) fs.unlinkSync(dest); else fs.writeFileSync(dest, change.after);
   }
-  return { ...report, status: 'retired', applied: true, archive: archiveRel };
+  return { ...report, status: 'retired', applied: true, archive: archiveRel, preservation };
 }
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   try {

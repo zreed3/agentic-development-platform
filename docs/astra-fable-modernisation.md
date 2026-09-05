@@ -1,8 +1,9 @@
 # Astra and Fable 5.1: modernisation and retirement decision
 
-Status: proposed evaluation and migration policy; no comparative model trial has
-been completed. This document does not declare ADG obsolete or change an installed
-repository's enforced controls.
+Status: native initialization, thin Claude adapters, context-preserving retirement
+and evaluation validation/reporting are implemented. No comparative model trial
+has been completed; ADG is not declared obsolete. Existing installations retain
+their controls unless explicitly migrated.
 
 ## Recommendation
 
@@ -156,3 +157,13 @@ by the simpler Astra/Fable setup, cite measured results and their limits, and av
 claiming the models replace security boundaries. Model names alone are not evidence
 of obsolescence. Archive only after that conditional decision is supported and the
 requested migrations have been verified.
+
+## Implemented entry points
+
+- `adg:init` defaults to native Markdown setup for fresh projects; use
+  `--profile governed` for explicit advanced adoption.
+- `claude:generate` writes a thin `@AGENTS.md` adapter and preserves unique notes.
+- `adg:preserve-context` exports known ADG context; retirement preserves context
+  before applying file removals.
+- The [evaluation scaffold](harness-evaluation.md) supplies committed tasks,
+  validation and reporting. Actual model runs and blind grading are still required.

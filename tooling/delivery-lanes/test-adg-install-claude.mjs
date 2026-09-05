@@ -4,7 +4,7 @@
 // Verifies the installer lays down the deterministic Claude Code enforcement layer
 // into a host repo: the PreToolUse guardrail hook, a valid .claude/settings.json
 // (hook registration + deny-by-default permissions), the slash commands, the
-// conformance doctor, the CLAUDE.md generator, and a CLAUDE.md generated from the
+// conformance doctor, the CLAUDE.md generator, and a thin CLAUDE.md importing the
 // host's AGENTS.md -- all tracked in adg-install-state.json, idempotent, with
 // backups on overwrite.
 //
@@ -83,10 +83,15 @@ try {
   assert.ok(settings.permissions.ask.some((r) => /git push/.test(r)), "ask must cover git push");
   ok(".claude/settings.json registers the hook and deny-by-default permissions");
 
-  // 3. CLAUDE.md is a generated mirror of the host AGENTS.md (the sync check passes).
+  // 3. CLAUDE.md imports the shared rules without duplicating their contents.
   const check = spawnSync(process.execPath, [path.join(host, "scripts/adg-claude-md.mjs"), "--check"], { cwd: host, encoding: "utf8" });
-  assert.equal(check.status, 0, `generated CLAUDE.md must be in sync with AGENTS.md (${check.stderr || check.stdout})`);
-  ok("CLAUDE.md is a generated, in-sync mirror of the host AGENTS.md");
+  assert.equal(check.status, 0, `generated CLAUDE.md must import AGENTS.md (${check.stderr || check.stdout})`);
+  assert.match(fs.readFileSync(path.join(host, "CLAUDE.md"), "utf8"), /^@AGENTS\.md$/m);
+  assert.ok(!fs.readFileSync(path.join(host, "CLAUDE.md"), "utf8").includes("# Host rulebook"));
+  fs.appendFileSync(path.join(host, "AGENTS.md"), "\nA new shared instruction.\n");
+  const changedRules = spawnSync(process.execPath, [path.join(host, "scripts/adg-claude-md.mjs"), "--check"], { cwd: host, encoding: "utf8" });
+  assert.equal(changedRules.status, 0, changedRules.stderr);
+  ok("CLAUDE.md imports AGENTS.md and remains valid after shared instructions change");
 
   // 4. State records the client and tracks the installed files; package scripts added.
   const state = readJson(path.join(host, "config/agentic/adg-install-state.json"));

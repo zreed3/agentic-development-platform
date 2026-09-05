@@ -15,7 +15,7 @@ function fixture() {
   write('scripts/adg-work-classify.mjs', '// original classifier\n');
   write('.claude/settings.json', JSON.stringify({ hooks: { PreToolUse: [{ hooks: [{ type: 'command', command: 'node "${CLAUDE_PROJECT_DIR}/scripts/adg-guardrail-hook.mjs"' }, { type: 'command', command: 'native-security-check' }] }] }, permissions: { deny: ['Read(.env)', 'Bash(rm -rf *)'] }, model: 'native' }));
   write('AGENTS.md', '# Native\nRun pnpm test.\nADG: run adg:doctor.\n');
-  write('data/audit/audit-log.jsonl', 'original audit bytes\n');
+  write('data/audit/audit-log.jsonl', '{"summary":"original audit bytes"}\n');
   write('package.json', JSON.stringify({ scripts: { 'adg:doctor': 'node scripts/adg-doctor.mjs', 'adg:guard': 'custom-local-check', verify: 'pnpm typecheck && pnpm test && npm run adg:doctor -- --target .', test: 'native-test', setup: 'node _adg-v2/scripts/backlog-db.mjs setup', 'adg:audit:record': 'node scripts/record-audit.mjs', 'native:node': 'node scripts/native-security.mjs' } }));
   const state = { schemaVersion: 1, system: 'Proofline', files: [ { target: 'scripts/adg-doctor.mjs', sha256: digest('original') }, { target: 'scripts/adg-work-classify.mjs', sha256: digest('// original classifier\n') }, { target: '.claude/settings.json', sha256: digest('original settings') } ], packageScripts: { 'adg:doctor': 'node scripts/adg-doctor.mjs', 'adg:guard': 'node scripts/adg-work-classify.mjs guard' } };
   write('config/agentic/adg-install-state.json', JSON.stringify(state));
@@ -34,7 +34,7 @@ try {
   assert.equal(pkg.scripts.verify, 'pnpm typecheck && pnpm test'); assert.equal(pkg.scripts['adg:guard'], 'custom-local-check'); assert.equal(pkg.scripts.test, 'native-test'); assert.equal(pkg.scripts.setup, undefined); assert.equal(pkg.scripts['adg:audit:record'], undefined); assert.equal(pkg.scripts['native:node'], 'node scripts/native-security.mjs');
   const settings = JSON.parse(fs.readFileSync(path.join(a.root, '.claude/settings.json')));
   assert.equal(settings.hooks.PreToolUse[0].hooks.length, 1); assert.equal(settings.hooks.PreToolUse[0].hooks[0].command, 'native-security-check'); assert.deepEqual(settings.permissions.deny, ['Read(.env)', 'Bash(rm -rf *)']);
-  assert.equal(fs.readFileSync(path.join(a.root, 'data/audit/audit-log.jsonl'), 'utf8'), 'original audit bytes\n');
+  assert.equal(fs.readFileSync(path.join(a.root, 'data/audit/audit-log.jsonl'), 'utf8'), '{"summary":"original audit bytes"}\n');
   assert.match(fs.readFileSync(path.join(a.root, 'AGENTS.md'), 'utf8'), /Native\nRun pnpm test/);
   assert.equal(retire({ target: a.root, apply: true }).status, 'not-installed');
   for (const target of ['../escape', '.github/workflows/security.yml', 'scripts/../../escape']) {
@@ -55,5 +55,34 @@ try {
   }
   const h = fixture(); h.write('.github/workflows/check.yml', 'run: pnpm test');
   assert.equal(retire({ target: h.root }).status, 'ready');
+  const invalidContext = fixture(); invalidContext.write('data/audit/audit-log.jsonl', 'malformed audit input\n');
+  assert.equal(retire({ target: invalidContext.root }).status, 'ready');
+  assert.equal(fs.existsSync(path.join(invalidContext.root, 'docs')), false);
+  assert.throws(() => retire({ target: invalidContext.root, apply: true }), /Malformed JSON/);
+  assert.ok(fs.existsSync(path.join(invalidContext.root, 'scripts/adg-doctor.mjs')));
+  assert.ok(fs.existsSync(path.join(invalidContext.root, 'config/agentic/adg-install-state.json')));
+  assert.equal(fs.existsSync(path.join(invalidContext.root, 'docs')), false);
+  const unknownContext = fixture();
+  const unknownDb = spawnSync('sqlite3', [path.join(unknownContext.root, 'data/backlog.sqlite'), 'CREATE TABLE customer_notes(id TEXT);']);
+  assert.equal(unknownDb.status, 0);
+  assert.throws(() => retire({ target: unknownContext.root, apply: true }), /Unknown tables/);
+  assert.ok(fs.existsSync(path.join(unknownContext.root, 'scripts/adg-doctor.mjs')));
+  assert.equal(fs.existsSync(path.join(unknownContext.root, 'docs')), false);
+  const concurrent = fixture(), originalWrite = fs.writeFileSync;
+  let editedDuringPreservation = false;
+  try {
+    fs.writeFileSync = function (filename, ...args) {
+      const result = originalWrite.call(this, filename, ...args);
+      if (!editedDuringPreservation && path.basename(String(filename)).startsWith('manifest-')) {
+        editedDuringPreservation = true;
+        originalWrite(path.join(concurrent.root, 'scripts/adg-doctor.mjs'), '// concurrent user edit\n');
+      }
+      return result;
+    };
+    assert.throws(() => retire({ target: concurrent.root, apply: true }), /Changed during preservation/);
+  } finally { fs.writeFileSync = originalWrite; }
+  assert.equal(editedDuringPreservation, true);
+  assert.equal(fs.readFileSync(path.join(concurrent.root, 'scripts/adg-doctor.mjs'), 'utf8'), '// concurrent user edit\n');
+  assert.ok(fs.existsSync(path.join(concurrent.root, 'config/agentic/adg-install-state.json')));
   console.log('PASS retirement: dry-run, original snapshots, custom assets, native scripts/security, exact chain, ambiguity, traversal, symlinks, malformed state, idempotence');
 } finally { for (const root of roots) fs.rmSync(root, { recursive: true, force: true }); }
