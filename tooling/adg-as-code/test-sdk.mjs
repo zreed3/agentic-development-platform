@@ -71,7 +71,7 @@ await check("PostToolUse surfaces a failed verification command", async () => {
 // -- Claude: model orchestration fragment for AgentDefinition ----------------
 await check("governAgentModel returns {model, effort} for an AgentDefinition", async () => {
   const frag = governAgentModel({ lane: "L3", risk: "secrets" });
-  assert.equal(frag.model, "claude-opus-4-8");
+  assert.equal(frag.model, "claude-fable-5-1");
   assert.equal(frag.effort, "high");
 });
 
@@ -94,7 +94,7 @@ await check("adgOutputGuardrail returns a named guardrail with execute()", async
 });
 await check("modelSettingsFor maps lane/risk to {model, reasoning.effort}", async () => {
   const s = modelSettingsFor({ lane: "L4" });
-  assert.equal(s.model, "5.5-pro");
+  assert.equal(s.model, "gpt-6-astra");
   assert.equal(s.reasoning.effort, "high");
 });
 await check("loopCaps exposes the hard-stop ceiling", async () => {

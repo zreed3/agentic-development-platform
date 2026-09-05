@@ -26,11 +26,13 @@ check("L2 -> balanced / medium effort", () => {
   const r = selectModel({ lane: "L2" }, policy);
   assert.equal(r.tier, "balanced");
   assert.equal(r.effort, "medium");
+  assert.equal(r.model, "claude-sonnet-5");
 });
 check("L4 -> frontier / high effort", () => {
   const r = selectModel({ lane: "L4" }, policy);
   assert.equal(r.tier, "frontier-reasoning");
   assert.equal(r.effort, "high");
+  assert.equal(r.model, "claude-fable-5-1");
 });
 
 // -- risk floor can only RAISE ----------------------------------------------
@@ -68,7 +70,12 @@ check("explicit economy cannot undercut a secrets risk floor", () => {
 check("openai provider resolves the same tier to its own model id", () => {
   const r = selectModel({ lane: "L4", provider: "openai" }, policy);
   assert.equal(r.tier, "frontier-reasoning");
-  assert.equal(r.model, "5.5-pro");
+  assert.equal(r.model, "gpt-6-astra");
+});
+check("OpenAI lower lanes resolve callable Codex catalog IDs", () => {
+  assert.equal(selectModel({ lane: "L0", provider: "openai" }, policy).model, "gpt-5.3-codex-spark");
+  assert.equal(selectModel({ lane: "L1", provider: "openai" }, policy).model, "gpt-5.4-mini");
+  assert.equal(selectModel({ lane: "L2", provider: "openai" }, policy).model, "gpt-5.6-terra");
 });
 
 // -- determinism -------------------------------------------------------------

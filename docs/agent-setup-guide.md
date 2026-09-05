@@ -103,18 +103,21 @@ You run the installer **from an ADG checkout**, pointing it at your repo with
 `--target`. (Clone ADG somewhere first if you have not.) `--target` defaults to the
 current directory when omitted.
 
-### B1 — Fastest: zero-onboarding init
+### B1 — Native setup (default for fresh projects)
 
 ```sh
 npm run adg:init -- --target /path/to/your/repo --client claude --dry-run
 ```
 
-`adg:init` is non-interactive. It (1) auto-detects the host client (`claude` if
-`.claude/` or `CLAUDE.md` exists; `codex` if `.codex/` or `AGENTS.md` exists; both →
-`both`; otherwise defaults to `claude`), (2) delegates to the installer, then (3)
-runs **one real work-classification on your pending git diff** as a value proof, and
-(4) prints next steps. Accepted flags: `--target DIR`, `--client claude|codex|both`,
-`--dry-run`. Drop `--dry-run` to actually write.
+Drop `--dry-run` to create missing concise project instructions. The native profile
+uses Git, Markdown and the runtime's permissions; it installs no SQL database,
+hooks, package scripts or classification prerequisite. Existing instructions are
+preserved. Claude gets an `@AGENTS.md` adapter when no `CLAUDE.md` exists.
+
+`--profile governed` explicitly selects the installer and a classification smoke
+check. Existing governed installations retain their profile; use the retirement
+command to preserve context before converting them to native. Supported clients
+are `base`, `claude`, `codex` and `both`, with detection when omitted.
 
 ### B2 — Explicit install (full control)
 
@@ -137,7 +140,7 @@ out). Other flags: `--dashboard on|off`, `--dry-run`, `--force`, `--force-script
 |---|---|---|
 | **Base lane guard** | always | `config/agentic/delivery-lanes.json`, `scripts/adg-work-classify.mjs`, the Proofline docs, and the `adg:classify` / `adg:guard` / `adg:prepush` package scripts |
 | **Shared enforcement** | any `--client` | the deterministic PreToolUse guardrail hook (`scripts/adg-guardrail-hook.mjs`), the single policy source `config/agentic/guardrails.json` (merge-managed), `guardrail-check` / toggle / audit-chain / record-audit / validate-audit / doctor, and the `asset:lint` gate |
-| **Claude layer** (`claude`/`both`) | Claude hosts | `.claude/settings.json` (hook registration + deny-by-default permissions), ADG slash commands in `.claude/commands/` (e.g. `/adg-classify`, `/adg-context`, `/adg-verify`, `/adg-completeness-critic`), and a `CLAUDE.md` generated from your `AGENTS.md` (skipped if you have no `AGENTS.md`) |
+| **Claude layer** (`claude`/`both`) | Claude hosts | `.claude/settings.json` (hook registration + deny-by-default permissions), ADG slash commands in `.claude/commands/` (e.g. `/adg-classify`, `/adg-context`, `/adg-verify`, `/adg-completeness-critic`), and a thin `CLAUDE.md` importing `@AGENTS.md` (skipped if you have no `AGENTS.md`) |
 | **Codex layer** (`codex`/`both`) | Codex hosts | the harness-neutral Codex pre-tool adapter (`scripts/adg-codex-pretool.mjs`) delegating to the same hook |
 | **Dashboard** (`--dashboard on`) | optional | the read-only SvelteKit UI at `apps/adg-dashboard/` + an `adg:dashboard` script (its deps install under that folder; nothing is added to your root dependency tree) |
 

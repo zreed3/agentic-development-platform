@@ -7,22 +7,22 @@
     "economy": {
       "_use": "L0/L1 mechanical work: rename, format, mirror edits, mechanical workers.",
       "anthropic": "claude-haiku-4-5",
-      "openai": "5.3-spark"
+      "openai": "gpt-5.3-codex-spark"
     },
     "fast-reasoning": {
       "_use": "L1 quick-fix with light reasoning.",
       "anthropic": "claude-haiku-4-5",
-      "openai": "5.4-mini"
+      "openai": "gpt-5.4-mini"
     },
     "balanced": {
       "_use": "L2 normal feature work; most workers.",
-      "anthropic": "claude-sonnet-4-6",
-      "openai": "5.5"
+      "anthropic": "claude-sonnet-5",
+      "openai": "gpt-5.6-terra"
     },
     "frontier-reasoning": {
       "_use": "L3/L4, planning, judge panels, ambiguous design, sensitive risk classes.",
-      "anthropic": "claude-opus-4-8",
-      "openai": "5.5-pro"
+      "anthropic": "claude-fable-5-1",
+      "openai": "gpt-6-astra"
     }
   },
   "selection": {

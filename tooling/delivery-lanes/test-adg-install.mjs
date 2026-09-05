@@ -18,7 +18,7 @@ function run(args, cwd = root) {
 fs.writeFileSync(path.join(tempRoot, "package.json"), `${JSON.stringify({ name: "host", scripts: {} }, null, 2)}\n`);
 
 const install = JSON.parse(run(["install", "--target", tempRoot, "--format", "json"]));
-assert.equal(install.version, "1.1.0");
+assert.equal(install.version, JSON.parse(fs.readFileSync(path.join(root, "package.json"), "utf8")).version);
 assert.ok(fs.existsSync(path.join(tempRoot, "config/agentic/delivery-lanes.json")));
 assert.ok(fs.existsSync(path.join(tempRoot, "scripts/adg-work-classify.mjs")));
 assert.ok(fs.existsSync(path.join(tempRoot, "docs/adg/proofline-delivery-lanes.md")));
@@ -42,7 +42,7 @@ const classify = execFileSync(process.execPath, [
 assert.equal(JSON.parse(classify).laneId, "L1");
 
 fs.writeFileSync(path.join(tempRoot, "scripts/adg-work-classify.mjs"), "changed\n");
-const update = JSON.parse(run(["update", "--target", tempRoot, "--format", "json"]));
+const update = JSON.parse(run(["update", "--target", tempRoot, "--force", "--format", "json"]));
 assert.ok(update.backups.some((backup) => backup.target === "scripts/adg-work-classify.mjs"));
 
 const stalePath = path.join(tempRoot, "docs/adg/old-managed.md");

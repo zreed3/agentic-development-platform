@@ -1,6 +1,5 @@
 #!/usr/bin/env node
-// Tests for the @adg/cli dispatcher and `adg init` host detection. Exercises the CLI surface
-// without performing a real install (init is run with --dry-run against a temp host).
+// Tests for the dispatcher and native/governed init against isolated temporary hosts.
 // Run: node tooling/adg-as-code/test-adg-cli.mjs
 
 import assert from "node:assert/strict";
@@ -50,9 +49,7 @@ assert.ok(/frontier-reasoning/.test(r.out), "models dispatched + selected a tier
 ok("adg models --lane L3 --risk secrets selects frontier");
 
 // -- host detection (pure) ---------------------------------------------------
-const T = path.join(os.tmpdir(), "adg-cli-detect");
-fs.rmSync(T, { recursive: true, force: true });
-fs.mkdirSync(T, { recursive: true });
+const T = fs.mkdtempSync(path.join(os.tmpdir(), "adg-cli-detect-"));
 assert.equal(detectClient(T), "claude", "empty repo defaults to claude");
 fs.writeFileSync(path.join(T, "AGENTS.md"), "# agents");
 assert.equal(detectClient(T), "codex", "AGENTS.md -> codex");
@@ -60,5 +57,81 @@ fs.mkdirSync(path.join(T, ".claude"));
 assert.equal(detectClient(T), "both", ".claude + AGENTS.md -> both");
 fs.rmSync(T, { recursive: true, force: true });
 ok("detectClient resolves claude / codex / both from disk");
+
+const host = fs.mkdtempSync(path.join(os.tmpdir(), "adg-cli-init-"));
+try {
+  r = cli(["init", "--target", host, "--client", "both", "--dry-run"]);
+  assert.equal(r.status, 0, r.err);
+  assert.deepEqual(fs.readdirSync(host), [], "dry run creates nothing");
+  assert.doesNotMatch(r.out, /classifying/);
+  ok("native dry run has no filesystem or classification side effects");
+
+  r = cli(["init", "--target", host, "--client", "both"]);
+  assert.equal(r.status, 0, r.err);
+  assert.deepEqual(fs.readdirSync(host).sort(), ["AGENTS.md", "CLAUDE.md"]);
+  assert.match(fs.readFileSync(path.join(host, "CLAUDE.md"), "utf8"), /@AGENTS\.md/);
+  assert.doesNotMatch(r.out, /classifying|installing deterministic/);
+  ok("fresh native init creates only Markdown instructions and Claude adapter");
+
+  fs.writeFileSync(path.join(host, "AGENTS.md"), "# Host rules\nKeep tenant isolation.\n");
+  fs.writeFileSync(path.join(host, "CLAUDE.md"), "# Claude notes\nKeep existing instructions.\n");
+  r = cli(["init", "--target", host, "--client", "both"]);
+  assert.equal(r.status, 0, r.err);
+  assert.equal(fs.readFileSync(path.join(host, "AGENTS.md"), "utf8"), "# Host rules\nKeep tenant isolation.\n");
+  assert.equal(fs.readFileSync(path.join(host, "CLAUDE.md"), "utf8"), "# Claude notes\nKeep existing instructions.\n");
+  ok("native reinit preserves customized instruction files exactly");
+
+  fs.unlinkSync(path.join(host, "AGENTS.md"));
+  fs.unlinkSync(path.join(host, "CLAUDE.md"));
+  fs.symlinkSync(path.join(host, "missing"), path.join(host, "CLAUDE.md"));
+  r = cli(["init", "--target", host, "--client", "both"]);
+  assert.equal(r.status, 1);
+  assert.match(r.err, /symlink/);
+  assert.equal(fs.existsSync(path.join(host, "AGENTS.md")), false, "preflight before any writes");
+  fs.unlinkSync(path.join(host, "CLAUDE.md"));
+  ok("native rejects broken symlink destinations before writing any instructions");
+
+  for (const args of [["--profile", "unknown"], ["--client", "unknown"], ["--profile"]]) {
+    r = cli(["init", "--target", host, ...args]);
+    assert.equal(r.status, 1);
+    assert.deepEqual(fs.readdirSync(host), []);
+  }
+  ok("invalid native arguments fail without side effects");
+
+  r = cli(["init", "--target", host, "--profile", "governed", "--client", "base", "--dry-run"]);
+  assert.equal(r.status, 0, r.err);
+  assert.match(r.out, /installing deterministic guard/);
+  assert.deepEqual(fs.readdirSync(host), []);
+  ok("explicit governed dry run retains installer and does not classify or write");
+
+  r = cli(["init", "--target", host, "--profile", "governed", "--client", "base"]);
+  assert.equal(r.status, 0, r.err);
+  const stateFile = path.join(host, "config/agentic/adg-install-state.json");
+  assert.equal(JSON.parse(fs.readFileSync(stateFile, "utf8")).client, "base");
+  r = cli(["init", "--target", host, "--dry-run"]);
+  assert.equal(r.status, 0, r.err);
+  assert.match(r.out, /installing deterministic guard/);
+  assert.match(r.out, /client:  base/);
+  const originalState = fs.readFileSync(stateFile, "utf8");
+  r = cli(["init", "--target", host, "--profile", "native"]);
+  assert.equal(r.status, 1);
+  assert.match(r.err, /adg:retire/);
+  assert.equal(fs.readFileSync(stateFile, "utf8"), originalState);
+  ok("existing governed init retains recorded client and refuses native downgrade");
+
+  const retired = fs.mkdtempSync(path.join(os.tmpdir(), "adg-cli-retired-"));
+  try {
+    fs.mkdirSync(path.join(retired, "data"));
+    fs.writeFileSync(path.join(retired, "data/backlog.sqlite"), "preserved original database");
+    fs.writeFileSync(path.join(retired, "AGENTS.md"), "# Retired ADG\nSee preserved history.\n");
+    r = cli(["init", "--target", retired, "--client", "codex"]);
+    assert.equal(r.status, 0, r.err);
+    assert.equal(fs.readFileSync(path.join(retired, "data/backlog.sqlite"), "utf8"), "preserved original database");
+    assert.equal(fs.readFileSync(path.join(retired, "AGENTS.md"), "utf8"), "# Retired ADG\nSee preserved history.\n");
+    ok("native init permits preserved retired history without deleting it");
+  } finally { fs.rmSync(retired, { recursive: true, force: true }); }
+} finally {
+  fs.rmSync(host, { recursive: true, force: true });
+}
 
 console.log(`\nadg cli: ${passed} checks passed`);

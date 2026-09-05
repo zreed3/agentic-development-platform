@@ -73,7 +73,7 @@ const sharedEnforcementFiles = [
 const clientManagedFiles = {
   claude: [
     ...sharedEnforcementFiles,
-    { source: "plugins/adg-governance/assets/templates/claude-settings.template.json", target: ".claude/settings.json" },
+    { source: "plugins/adg-governance/assets/templates/claude-settings.template.json", target: ".claude/settings.json", mergeSettings: true },
     { source: "plugins/adg-governance/commands/adg-classify.md", target: ".claude/commands/adg-classify.md" },
     { source: "plugins/adg-governance/commands/adg-context.md", target: ".claude/commands/adg-context.md" },
     { source: "plugins/adg-governance/commands/adg-verify.md", target: ".claude/commands/adg-verify.md" },
@@ -196,20 +196,152 @@ function mergePolicyControls(sourceContent, targetContent) {
     source = JSON.parse(sourceContent);
     host = JSON.parse(targetContent);
   } catch {
-    return sourceContent;
+    throw new Error("Refusing to replace malformed host guardrails.json");
   }
+  // Preserve host extensions and configuration. Source defaults fill missing keys;
+  // mandatory controls below always take the complete source definition.
+  const mergedPolicy = mergeObjects(source, host);
+  // Refresh the safety floor while keeping host-only tools/risk classes and stricter
+  // denials. A host cannot override built-in risk classifications or evidence rules.
+  mergedPolicy.schemaVersion = source.schemaVersion;
+  mergedPolicy.policyVersion = source.policyVersion;
+  mergedPolicy.defaultDecision = source.defaultDecision;
+  mergedPolicy.riskClasses = { ...(host.riskClasses || {}) };
+  for (const [name, def] of Object.entries(source.riskClasses || {})) {
+    mergedPolicy.riskClasses[name] = { ...(host.riskClasses?.[name] || {}), ...def,
+      requiresConfirmation: def.requiresConfirmation === true || host.riskClasses?.[name]?.requiresConfirmation === true };
+  }
+  if (host.tools !== undefined && !Array.isArray(host.tools)) throw new Error("Invalid host policy tools");
+  const hostTools = new Map((host.tools || []).map(t => {
+    if (!t || typeof t.name !== "string") throw new Error("Invalid host policy tool");
+    return [t.name, t];
+  }));
+  mergedPolicy.tools = (source.tools || []).map(t => {
+    const old = hostTools.get(t.name) || {};
+    hostTools.delete(t.name);
+    return { ...old, ...t, allowed: t.allowed === false || old.allowed === false ? false : t.allowed,
+      requiredEvidence: [...new Set([...(t.requiredEvidence || []), ...(old.requiredEvidence || [])])] };
+  }).concat([...hostTools.values()]);
+  mergedPolicy.redactFields = [...new Set([...(source.redactFields || []), ...(host.redactFields || [])])];
+  mergedPolicy.evidence = { ...(host.evidence || {}), ...source.evidence,
+    sensitiveReleaseClasses: [...new Set([...(source.evidence?.sensitiveReleaseClasses || []), ...(host.evidence?.sensitiveReleaseClasses || [])])] };
   const sourceDefs = source.controls?.definitions;
   const hostDefs = host.controls?.definitions;
-  if (!sourceDefs || !hostDefs) return sourceContent;
+  if (!sourceDefs) return JSON.stringify(mergedPolicy, null, 2) + "\n";
   const alwaysOn = new Set(source.controls.mandatoryAlwaysOn ?? []);
   for (const [name, def] of Object.entries(sourceDefs)) {
-    const hostDef = hostDefs[name];
-    if (hostDef && typeof hostDef.enabled === "boolean") def.enabled = hostDef.enabled;
-    if (alwaysOn.has(name) || def.alwaysOn === true) def.enabled = true; // never carry a relaxed always-on forward
+    const hostDef = hostDefs?.[name];
+    if (alwaysOn.has(name) || def.alwaysOn === true) {
+      mergedPolicy.controls.definitions[name] = { ...def, enabled: true };
+    } else {
+      mergedPolicy.controls.definitions[name] = mergeObjects(def, hostDef || {});
+    }
   }
-  if (Array.isArray(host.controls.toggleHistory)) source.controls.toggleHistory = host.controls.toggleHistory;
-  if (typeof host.controls.version === "string" && host.controls.version) source.controls.version = host.controls.version;
-  return `${JSON.stringify(source, null, 2)}\n`;
+  mergedPolicy.controls.mandatoryAlwaysOn = [...new Set([
+    ...(source.controls.mandatoryAlwaysOn || []), ...(host.controls?.mandatoryAlwaysOn || []),
+  ])];
+  return `${JSON.stringify(mergedPolicy, null, 2)}\n`;
+}
+
+function mergeObjects(defaults, host) {
+  const result = { ...defaults };
+  for (const [key, value] of Object.entries(host)) {
+    if (["__proto__", "prototype", "constructor"].includes(key)) throw new Error(`Unsafe JSON key: ${key}`);
+    result[key] = value && typeof value === "object" && !Array.isArray(value)
+      && defaults[key] && typeof defaults[key] === "object" && !Array.isArray(defaults[key])
+      ? mergeObjects(defaults[key], value) : value;
+  }
+  return result;
+}
+
+function mergeClaudeSettings(sourceContent, targetContent) {
+  const source = JSON.parse(sourceContent);
+  const host = JSON.parse(targetContent);
+  if (!host || typeof host !== "object" || Array.isArray(host)) throw new Error("Claude settings must be a JSON object");
+  if (host.disableAllHooks === true) throw new Error("Claude disableAllHooks is true; resolve disabled enforcement before installing ADG");
+  const result = mergeObjects(source, host);
+  result.hooks = { ...(host.hooks || {}) };
+  for (const [event, registrations] of Object.entries(source.hooks || {})) {
+    const existing = host.hooks?.[event] || [];
+    if (!Array.isArray(existing)) throw new Error(`Invalid Claude hook registrations: ${event}`);
+    // Replace only our installed command, retaining unrelated hooks even when they
+    // share a registration. Do not remove commands merely mentioning ADG in text.
+    const managedCommands = new Set(registrations.flatMap(r => r.hooks.map(h => h.command)));
+    const retained = existing.map(r => ({ ...r, hooks: r.hooks.filter(h => !managedCommands.has(h.command)) }))
+      .filter(r => r.hooks.length);
+    result.hooks[event] = [...registrations, ...retained];
+  }
+  result.permissions = { ...(host.permissions || {}) };
+  for (const [key, rules] of Object.entries(source.permissions || {})) {
+    if (host.permissions?.[key] !== undefined && !Array.isArray(host.permissions[key])) throw new Error(`Invalid Claude permissions: ${key}`);
+    result.permissions[key] = [...new Set([...rules, ...(host.permissions?.[key] || [])])];
+  }
+  return JSON.stringify(result, null, 2) + "\n";
+}
+
+// Validate every destination, including recorded stale entries, before any writes.
+// Reject symlink ancestors: a lexical prefix alone does not contain filesystem writes.
+function checkedTarget(root, relative) {
+  if (typeof relative !== "string" || !relative || path.isAbsolute(relative)
+      || relative.split(/[\\/]/u).includes("..")) throw new Error(`Unsafe managed path: ${relative}`);
+  const target = path.resolve(root, relative);
+  if (!target.startsWith(path.resolve(root) + path.sep)) throw new Error(`Unsafe managed path: ${relative}`);
+  let current = target;
+  while (current !== path.resolve(root)) {
+    if (fs.existsSync(current) || (() => { try { fs.lstatSync(current); return true; } catch { return false; } })()) {
+      if (fs.lstatSync(current).isSymbolicLink()) throw new Error(`Refusing symlink destination: ${relative}`);
+    }
+    current = path.dirname(current);
+  }
+  return target;
+}
+
+function preflight({ targetRoot, files, force, forcePolicy }) {
+  checkedTarget(targetRoot, statePath);
+  const state = loadState(targetRoot);
+  if (state && (!Array.isArray(state.files) || !state.files.every(f => f && typeof f.target === "string"))) {
+    throw new Error("Malformed ADG install state");
+  }
+  const previous = new Map((state?.files || []).map(f => [f.target, f]));
+  for (const rel of ["package.json", "CLAUDE.md", "AGENTS.md", "docs/adg-preserved", ...(state?.files || []).map(f => f.target)]) checkedTarget(targetRoot, rel);
+  if (fs.existsSync(abs(targetRoot, "package.json"))) {
+    const pkg = readJson(abs(targetRoot, "package.json"));
+    if (!pkg || typeof pkg !== "object" || Array.isArray(pkg)
+        || (pkg.scripts !== undefined && (!pkg.scripts || typeof pkg.scripts !== "object" || Array.isArray(pkg.scripts)))) {
+      throw new Error("package.json must be an object with an object-valued scripts field");
+    }
+  }
+  if (previous.has(".claude/settings.json") && fs.existsSync(abs(targetRoot, ".claude/settings.json"))) {
+    mergeClaudeSettings(fs.readFileSync(abs(sourceRoot, "plugins/adg-governance/assets/templates/claude-settings.template.json"), "utf8"), fs.readFileSync(abs(targetRoot, ".claude/settings.json"), "utf8"));
+  }
+  const conflicts = [];
+  for (const entry of files) {
+    const destination = checkedTarget(targetRoot, entry.target);
+    const source = fs.readFileSync(abs(sourceRoot, entry.source), "utf8");
+    if (!fs.existsSync(destination)) continue;
+    const host = fs.readFileSync(destination, "utf8");
+    if (entry.mergeControls) { if (!forcePolicy) mergePolicyControls(source, host); continue; }
+    if (entry.mergeSettings) { mergeClaudeSettings(source, host); continue; }
+    if (host !== source && !force && (!previous.get(entry.target)?.sha256 || sha256(host) !== previous.get(entry.target).sha256)) conflicts.push(entry.target);
+  }
+  if (conflicts.length) throw new Error(`Customized or unmanaged files require review; no files changed: ${conflicts.join(", ")}. Preserve/merge them first, or explicitly use --force for backed-up replacement.`);
+}
+
+function preserveClaudeNotes({ targetRoot, dryRun }) {
+  const claude = abs(targetRoot, "CLAUDE.md");
+  if (!fs.existsSync(claude)) return null;
+  const text = fs.readFileSync(claude, "utf8");
+  const old = loadState(targetRoot)?.files?.find(f => f.target === "CLAUDE.md");
+  // Unchanged generated output needs no archival copy. Everything else is retained
+  // verbatim, including customized generated documents and unmanaged rulebooks.
+  if (old?.sha256 === sha256(text)) return null;
+  const rel = `docs/adg-preserved/CLAUDE-${sha256(text).slice(0, 16)}.md`;
+  const dest = checkedTarget(targetRoot, rel);
+  if (fs.existsSync(dest) && fs.readFileSync(dest, "utf8") !== text) throw new Error(`Preservation collision: ${rel}`);
+  if (!dryRun) {
+    writeFile(dest, text, false);
+  }
+  return rel;
 }
 
 function parseArgs(argv) {
@@ -263,13 +395,13 @@ function writeFile(file, content, dryRun) {
 
 function backupFile(file, dryRun) {
   if (!fs.existsSync(file) || dryRun) return "";
-  const backup = `${file}.adg-backup-${new Date().toISOString().replace(/[-:.TZ]/gu, "").slice(0, 14)}`;
-  fs.copyFileSync(file, backup);
+  const backup = `${file}.adg-backup-${Date.now()}-${process.pid}-${Math.random().toString(16).slice(2)}`;
+  fs.copyFileSync(file, backup, fs.constants.COPYFILE_EXCL);
   return backup;
 }
 
 function sourceVersion() {
-  const config = readJson(abs(sourceRoot, "config/agentic/delivery-lanes.json"));
+  const config = readJson(abs(sourceRoot, "package.json"));
   return String(config.version ?? "unknown");
 }
 
@@ -296,14 +428,14 @@ function installFiles({ targetRoot, command, force, forcePolicy, dryRun, files }
     // An always-on control can never be carried forward relaxed (mergePolicyControls
     // pins it enabled), so the merge cannot weaken the floor.
     const merged = Boolean(entry.mergeControls) && targetExists && !forcePolicy;
-    const contentToWrite = merged ? mergePolicyControls(sourceContent, targetContent) : sourceContent;
+    const contentToWrite = merged ? mergePolicyControls(sourceContent, targetContent) : entry.mergeSettings && targetExists ? mergeClaudeSettings(sourceContent, targetContent) : sourceContent;
     const writeHash = sha256(contentToWrite);
     const changed = targetContent !== contentToWrite;
     const knownManaged = managedTargets.has(entry.target) || entry.target === statePath;
 
     // Merge-managed files never trip the refuse-overwrite guard: the merge preserves
     // the host's state by construction, so there is nothing to lose.
-    if (targetExists && changed && command === "install" && !force && !knownManaged && !entry.mergeControls) {
+    if (targetExists && changed && command === "install" && !force && !knownManaged && !entry.mergeControls && !entry.mergeSettings) {
       throw new Error(`Refusing to overwrite existing unmanaged file ${entry.target}. Re-run with --force or use update after reviewing.`);
     }
 
@@ -333,8 +465,26 @@ function pruneStaleManagedFiles({ targetRoot, dryRun, files }) {
     if (!fs.existsSync(targetFile)) continue;
 
     const targetContent = fs.readFileSync(targetFile, "utf8");
+    if (entry.target === ".claude/settings.json") {
+      const settings = JSON.parse(targetContent);
+      const owned = 'node "${CLAUDE_PROJECT_DIR}/scripts/adg-guardrail-hook.mjs"';
+      const registrations = settings.hooks?.PreToolUse;
+      if (registrations) {
+        settings.hooks.PreToolUse = registrations.map(r => ({ ...r, hooks: r.hooks.filter(h => h.command !== owned) })).filter(r => r.hooks.length);
+        if (!settings.hooks.PreToolUse.length) delete settings.hooks.PreToolUse;
+      }
+      // Keep permissions conservatively: an identical host rule has no ownership
+      // marker. Removing the ADG command is enough to prevent a dangling hook.
+      writeJson(targetFile, settings, dryRun);
+      pruned.push({ target: entry.target, status: "host-settings-preserved" });
+      continue;
+    }
     const targetHash = sha256(targetContent);
-    if (entry.sha256 && targetHash !== entry.sha256) {
+    if (typeof entry.sha256 !== "string" || !/^[a-f0-9]{64}$/u.test(entry.sha256)) {
+      pruned.push({ target: entry.target, status: "stale-unverified" });
+      continue;
+    }
+    if (targetHash !== entry.sha256) {
       pruned.push({ target: entry.target, status: "stale-modified" });
       continue;
     }
@@ -387,6 +537,7 @@ function writeState({ targetRoot, installed, dryRun, client, dashboard, scripts 
     schemaVersion: 1,
     system: "Proofline",
     version: sourceVersion(),
+    sourceCommit: spawnSync("git", ["rev-parse", "HEAD"], { cwd: sourceRoot, encoding: "utf8" }).stdout?.trim() || null,
     client: client || "base",
     dashboard: Boolean(dashboard),
     installedAt: new Date().toISOString(),
@@ -426,7 +577,7 @@ function status({ targetRoot, files }) {
     // Merge-managed files (the policy) are expected to diverge from source once the host
     // applies a governed toggle, so present divergence as "managed", not "outdated".
     let fileStatus = !targetHash ? "missing" : !sourceExists ? "present" : targetHash === sourceHash ? "current" : "outdated";
-    if (entry.mergeControls && targetHash) fileStatus = targetHash === sourceHash ? "current" : "managed";
+    if ((entry.mergeControls || entry.mergeSettings) && targetHash) fileStatus = targetHash === sourceHash ? "current" : "managed";
     return { target: entry.target, status: fileStatus };
   });
   return {
@@ -491,9 +642,14 @@ chain, so both harnesses enforce the same deny-by-default policy from one source
 also gets .claude/settings.json, the slash commands, and a CLAUDE.md generated from the
 host's AGENTS.md; codex gets the harness-neutral pre-tool adapter.
 
-The policy file is merge-managed: a routine adg:update preserves the host's governed
-toggle state (controls.enabled + toggleHistory) and never carries a relaxed always-on
-control forward. Use --force-policy to re-baseline the host policy to the ADG source.
+Updates preflight all destinations and refuse customized managed code before writing.
+Review conflicts first; --force explicitly replaces customized code with unique backups.
+Claude settings merge with host hooks and permissions. Unique CLAUDE.md notes are
+preserved verbatim under docs/adg-preserved before regenerating the rulebook.
+The policy preserves host extensions, custom tools and governed toggle state while
+refreshing built-in deny/evidence rules and mandatory controls. --force-policy explicitly
+re-baselines the complete policy to source. Install versions follow package.json;
+sourceCommit records the Git revision when available.
 
 With --dashboard on it also installs the read-only governance dashboard (SvelteKit)
 at apps/adg-dashboard/ plus an "adg:dashboard" package script, so operators can watch
@@ -558,9 +714,12 @@ function main() {
     process.exit(1);
   }
 
-  const force = args.flags.has("force") || args.command === "update";
+  const force = args.flags.has("force");
   const forceScripts = args.flags.has("force-scripts");
   const forcePolicy = args.flags.has("force-policy");
+  preflight({ targetRoot, files, force, forcePolicy });
+  const preservedClaudeNotes = (client === "claude" || client === "both")
+    ? preserveClaudeNotes({ targetRoot, dryRun }) : null;
   const pruned = args.command === "update" ? pruneStaleManagedFiles({ targetRoot, dryRun, files }) : [];
   const { installed, backups } = installFiles({ targetRoot, command: args.command, force, forcePolicy, dryRun, files });
   const packageScriptsResult = updatePackageScripts({ targetRoot, dryRun, forceScripts, scripts });
@@ -589,6 +748,7 @@ function main() {
     backups,
     packageScripts: packageScriptsResult,
     claudeMd,
+    preservedClaudeNotes,
     conformance,
     dryRun,
   }, format);
