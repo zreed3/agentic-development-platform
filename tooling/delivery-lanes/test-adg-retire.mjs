@@ -1,4 +1,6 @@
 import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -43,5 +45,15 @@ try {
   assert.equal(retire({ target: c.root, apply: true }).status, 'blocked'); assert.equal(fs.existsSync(path.join(c.root, 'docs')), false);
   const d = fixture(); fs.symlinkSync(os.tmpdir(), path.join(d.root, 'docs')); assert.throws(() => retire({ target: d.root, apply: true }), /Symlink/);
   const e = fixture(); e.write('config/agentic/adg-install-state.json', '{broken'); assert.throws(() => retire({ target: e.root, apply: true })); assert.equal(fs.existsSync(path.join(e.root, 'docs')), false);
+  const f = fixture();
+  const cli = spawnSync(process.execPath, [fileURLToPath(new URL('../../scripts/adg-retire.mjs', import.meta.url)), '--target', f.root, '--apply', '--dry-run'], { encoding: 'utf8' });
+  assert.equal(cli.status, 1); assert.match(cli.stderr, /conflict/); assert.equal(fs.existsSync(path.join(f.root, 'docs')), false);
+  for (const [file, text] of [['.github/workflows/check.yml', 'run: node scripts/adg-doctor.mjs'], ['.husky/pre-push', 'npm run adg:doctor'], ['.codex/config.toml', 'command = "pnpm run adg:doctor"']]) {
+    const g = fixture(); g.write(file, text);
+    const result = retire({ target: g.root, apply: true });
+    assert.equal(result.status, 'blocked'); assert.ok(result.blockers.some(x => x.includes('Integration'))); assert.equal(fs.existsSync(path.join(g.root, 'docs')), false);
+  }
+  const h = fixture(); h.write('.github/workflows/check.yml', 'run: pnpm test');
+  assert.equal(retire({ target: h.root }).status, 'ready');
   console.log('PASS retirement: dry-run, original snapshots, custom assets, native scripts/security, exact chain, ambiguity, traversal, symlinks, malformed state, idempotence');
 } finally { for (const root of roots) fs.rmSync(root, { recursive: true, force: true }); }

@@ -41,7 +41,7 @@ export function retire({ target, apply = false }) {
   for (const [key, value] of Object.entries(state.packageScripts)) {
     if (!key || typeof value !== 'string' || !value) throw new Error('Invalid managed package scripts');
   }
-  const changes = new Map(), blockers = [], retained = [];
+  const changes = new Map(), blockers = [], retained = [], removedScripts = new Set();
   const put = (rel, after, reason) => { const before = read(root, rel); if (before && (after === null || !before.equals(Buffer.from(after)))) changes.set(rel, { before, after, reason }); };
   for (const entry of state.files) {
     if (['CLAUDE.md', '.claude/settings.json'].includes(entry.target)) continue;
@@ -71,7 +71,7 @@ export function retire({ target, apply = false }) {
   if (pkgRaw) {
     const pkg = JSON.parse(pkgRaw);
     if (!object(pkg) || (pkg.scripts !== undefined && !object(pkg.scripts))) throw new Error('Invalid package.json');
-    const removed = new Set();
+    const removed = removedScripts;
     for (const [key, expected] of Object.entries(state.packageScripts)) {
       if (pkg.scripts?.[key] === expected) { delete pkg.scripts[key]; removed.add(key); }
       else if (pkg.scripts?.[key] !== undefined) retained.push(`customized package script: ${key}`);
@@ -112,6 +112,42 @@ export function retire({ target, apply = false }) {
       put(rel, '<!-- adg-retired -->\n> ADG tooling is retired in this checkout. Instructions below that require ADG, Proofline, SQL backlog, or ADG audit/context commands are historical and no longer apply. Native project requirements, security boundaries, tests, and non-ADG instructions remain active. Existing audit logs remain append-only: never rewrite or delete prior events. Preserve decisions and working context in Markdown and Git. Original instructions are archived under docs/adg-preserved.\n\n' + before, 'supersede retired ADG directives; preserve native instructions');
     }
   }
+  // Bound the integration scan to executable CI and hook configuration. A caller
+  // must resolve shared consumers explicitly before retiring their entrypoints.
+  const integrationFiles = [];
+  function scanDirectory(rel, depth = 0) {
+    const directory = safe(root, rel);
+    if (!fs.existsSync(directory)) return;
+    if (depth > 5) throw new Error(`Integration directory too deep: ${rel}`);
+    for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
+      const child = `${rel}/${entry.name}`;
+      safe(root, child);
+      if (entry.isDirectory()) scanDirectory(child, depth + 1);
+      else if (entry.isFile()) {
+        integrationFiles.push(child);
+        if (integrationFiles.length > 200) throw new Error('Integration scan exceeds 200 files');
+      }
+    }
+  }
+  scanDirectory('.github/workflows');
+  scanDirectory('.husky');
+  for (const rel of ['.claude/settings.json', '.claude/settings.local.json', '.codex/config.toml', '.codex/hooks.json', '.mcp.json', 'lefthook.yml', 'lefthook.yaml', '.pre-commit-config.yaml']) {
+    if (read(root, rel)) integrationFiles.push(rel);
+  }
+  for (const rel of integrationFiles) {
+    const planned = changes.get(rel);
+    if (planned?.after === null) continue;
+    const content = planned ? Buffer.from(planned.after) : read(root, rel);
+    if (content.length > 1024 * 1024) throw new Error(`Integration file exceeds 1 MiB: ${rel}`);
+    const text = content.toString('utf8');
+    for (const [retired, change] of changes) {
+      if (change.after === null && text.includes(retired)) blockers.push(`Integration ${rel} references retired ${retired}`);
+    }
+    for (const key of removedScripts) {
+      const escaped = key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      if (new RegExp(`(?:npm run|pnpm(?: run)?|yarn(?: run)?) ${escaped}(?=\\s|[\"']|$)`).test(text)) blockers.push(`Integration ${rel} references retired script ${key}`);
+    }
+  }
   put(STATE, null, 'archive install provenance');
   safe(root, 'docs/adg-preserved');
   const report = { target: root, status: blockers.length ? 'blocked' : 'ready', applied: false, changes: [...changes].map(([file, x]) => ({ file, action: x.after === null ? 'archive' : 'update', reason: x.reason })), retained, blockers: [...new Set(blockers)] };
@@ -134,12 +170,14 @@ export function retire({ target, apply = false }) {
 }
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   try {
-    const args = process.argv.slice(2); let target, apply = false;
+    const args = process.argv.slice(2); let target, apply = false, dryRun = false;
     for (let i = 0; i < args.length; i++) {
       if (args[i] === '--target' && args[i + 1]) target = args[++i];
       else if (args[i] === '--apply') apply = true;
-      else if (args[i] !== '--dry-run') throw new Error(`Unknown argument: ${args[i]}`);
+      else if (args[i] === '--dry-run') dryRun = true;
+      else throw new Error(`Unknown argument: ${args[i]}`);
     }
+    if (apply && dryRun) throw new Error('--apply and --dry-run conflict');
     const result = retire({ target, apply }); console.log(JSON.stringify(result, null, 2)); if (result.blockers.length) process.exitCode = 1;
   } catch (error) { console.error(error.message); process.exitCode = 1; }
 }
