@@ -1,142 +1,74 @@
 ---
-title: Reducing Token Usage
+title: Context Selection and Measurement
 status: active
 classification: internal
 category: agentic-delivery
 ---
 
-# Reducing Token Usage
+# Context selection and measurement
 
-The most expensive mistake in agent-assisted development is **bulk-loading context**:
-pasting whole generated trackers, SQL dumps, or HTML dashboards into a prompt
-"so the agent has everything." Those artifacts are exactly the ones that explode a
-context window. This platform is built to make the *right* context cheap, bounded,
-and deterministic instead.
+The default recommendation is targeted repository search, concise Markdown context,
+and the vendor runtime's context management. The SQL context broker is an optional
+advanced facility for repositories that already maintain structured requirements
+and need queryable slices. Existing adopted policy still applies until explicitly
+migrated; this recommendation does not waive a repository's controls.
 
-```text
-task -> classify -> SQL lookup -> capped context packet -> anchored files -> targeted checks
-```
+## What the broker actually does
 
-## The core inversion: SQLite chooses the context
+`scripts/agent-context.mjs` queries feature and backlog data and chooses file
+pointers from configured feature anchors followed by route paths. It removes
+configured forbidden paths and truncates the list to the workflow's `maxFiles`.
+Profiles also cap selected row collections. A packet can include required checks
+and recent evidence. JSON supports machine consumers; Markdown and TOON are
+alternative renderings.
 
-The richest artifacts (the full SQL dump, the JSON mirror, generated HTML) are put
-on a **denylist** and the database is made the *selector*. Instead of handing an
-agent everything, the broker queries SQLite and returns a small packet: the feature,
-its items, its routes, the few recent audit events, and the specific files to read
-next — plus an explicit "do not bulk read" list.
+These are row and file-count limits, not token limits. A referenced file can be
+large, an anchor can be stale, and the ordering can omit a relevant file. The model
+must still follow source evidence beyond the initial pointers when necessary.
+The manifest validates pointer membership and count; it does not prove adequate
+context or successful task completion.
 
-See [`scripts/agent-context.mjs`](../scripts/agent-context.mjs) and
-[`config/agentic/context-profiles.yaml`](../config/agentic/context-profiles.yaml).
+Generated mirrors remain unsuitable for routine bulk loading in the advanced
+profile. That does not imply ordinary source files or maintained Markdown notes
+should be hidden from capable agents.
 
-## Four mechanisms
+## What previous measurements establish
 
-1. **Forbidden bulk files.** Each profile inherits a `forbiddenBulkFiles` list. The
-   broker will never name these in a packet, and `npm run context:audit` fails if a
-   packet manifest references one. They are the generated mirrors of data the broker
-   already returns in bounded form.
+Earlier measurements compared serialized packets with generated SQL dumps and
+SQLite database sizes. They demonstrate representation-size differences for the
+seeded example. A database's storage bytes are not model tokens, and a competent
+Git-and-Markdown workflow does not paste the database into a prompt.
 
-2. **Per-workflow caps.** A profile caps audit rows, backlog events, routes, and —
-   most importantly — `maxFiles`. The agent is told to read only the files the packet
-   names. A `route` packet is not allowed to balloon into the whole repo.
+The historical byte-divided-by-four figures are estimates, not provider token
+usage. They do not measure accepted correctness, avoided rework, end-to-end cost,
+or time. Similarly, stable output prefixes may help caching, but cache eligibility
+and actual cache hits depend on the runtime and provider; prefix stability alone
+is not a measured saving.
 
-3. **Query selection.** A profile lists which queries run (`routes_by_feature`,
-   `persona_workflows_by_feature`, `recent_audit`, ...). A docs task does not pull
-   route files; an RBAC task pulls persona workflows and negative-test anchors first.
+No controlled comparison currently establishes that the broker helps Astra or
+Fable 5.1 more than targeted search and concise Markdown. Historical snapshots in
+`docs/agent-guides/` remain provenance, not current performance claims.
 
-4. **TOON transport.** For uniform arrays (routes, items, audit rows) the broker can
-   emit [TOON](https://github.com/toon-format/toon): a compact, header-plus-rows table
-   format. JSON/SQL/SQLite stay canonical; TOON is a *transport* used only for the
-   LLM-facing packet, and only after measuring that it is actually smaller.
+## Reproduce representation sizes
 
-## Fast delivery mode
-
-Use the `delivery-slice` workflow when the repo is in complete-dev mode and speed
-matters:
-
-```sh
-npm run context:feature -- --feature S07 --workflow delivery-slice
-```
-
-The packet carries the operating sequence directly:
-
-1. Plan the feature slice and the exact backlog items in scope.
-2. Design the RBAC/scope/state behavior and the test seams.
-3. Build only the scoped files plus directly related tests.
-4. Test with targeted commands, record failed runs once with `npm run backlog:fail`,
-   and defer `npm run ci:governance` until feature/release checkpoints.
-
-This keeps the quality-improving checks while removing repeated full-gate runs and
-micro-event narration.
-
-## Measured locally (this repo, demo backlog)
-
-Generated with the seeded demo backlog (7 features, 57 items, 8 audit events):
-
-| Artifact | Size | Note |
-|---|---:|---|
-| `context:feature S07 route` (toon) | **~2.0 KB** | LLM-facing packet |
-| `context:feature S07 route` (markdown) | ~2.8 KB | human-facing packet |
-| `context:feature S07 route` (json) | ~7.5 KB | machine assertions |
-| `data/backlog-source.sql` (the SQL mirror) | ~26 KB | **forbidden bulk file** |
-| `data/backlog.sqlite` (the database) | ~164 KB | queried, never pasted |
-
-The packet is roughly **an order of magnitude smaller than the SQL dump and ~80×
-smaller than the database** — on a *tiny* demo backlog. The gap widens sharply with
-scale.
-
-### At real-project scale
-
-In the product repository this layer was extracted from, the generated tracker JSON,
-SQL dump, and HTML mirrors were **multiple megabytes each**. The recorded context
-budget there:
-
-- Normal instruction overhead (`AGENTS.md` + a skill + the pipeline note): **~4–7k tokens**.
-- Bulk-loading the generated planning/tracker artifacts: **hundreds of thousands to
-  millions of tokens**.
-
-A few-KB packet versus multi-MB mirrors is the difference between a request that fits
-comfortably and one that cannot run at all.
-
-## Reproduce a measurement
-
-A rough rule of thumb: **tokens ≈ bytes ÷ 4** for English/JSON text.
+In an isolated checkout with a seeded example database:
 
 ```sh
 npm run setup:demo
-
-# packet size in each format
 for fmt in markdown json toon; do
-  printf "%-9s " "$fmt"
   node scripts/agent-context.mjs feature --feature S07 --workflow route --format "$fmt" --no-manifest | wc -c
 done
-
-# the bulk file you are NOT loading
-wc -c data/backlog-source.sql data/backlog.sqlite
 ```
 
-## 1.0 measured wins
+This reports output bytes only. Do not run demo setup over a host repository's
+working backlog. Compare actual provider input, output, and cached-token usage
+separately, including orchestration and evaluator calls.
 
-All numbers below are measured with `node scripts/adg-tokens.mjs` (a deterministic,
-reproducible estimate applied identically before and after, so the delta is a
-measurement, not an assertion). See `docs/agent-guides/adg-1.0-baseline-tokens.json`.
+## Decide whether to keep it
 
-- MCP `context_packet` now defaults to TOON instead of JSON: 5048 to 1386 estimated
-  tokens for the same S07 packet, a 73% reduction per call. JSON stays available via
-  `format:'json'`.
-- `agent:evals` stdout is now a compact summary (counts plus failures only) with the
-  full per-scenario report kept in `data/agent-evals.json`: 1337 to 94 estimated
-  tokens, a 93% reduction, while the scenario set grew from 5 to 8 (three of which now
-  drive the real deterministic hook).
-- The context packet is prefix-stable: `generatedAt` moved from the top of every
-  format to a trailing `_meta` block, so the leading content is identical across
-  repeated same-feature calls. This is the precondition for prompt caching, where
-  cache reads cost about 0.1x base input price (Anthropic prompt-caching docs). The
-  per-call token count is unchanged; the saving is the cache hit on repeat calls.
-
-## Non-goals
-
-- No production RAG / vector database for the dev pipeline. SQL selection is enough
-  and is deterministic, diffable, and offline.
-- TOON never becomes a canonical stored artifact; it is render-only.
-- The broker never mutates the audit log or backlog; reducing tokens must not cost
-  traceability.
+Use the [Astra/Fable modernisation experiment](astra-fable-modernisation.md): matched
+tasks, blind outcome grading, recorded interventions, and measured runtime usage.
+A context-broker ablation must preserve the same requirements and tests in concise
+Markdown, rather than comparing a structured packet with a deliberately excessive
+dump. Retain the broker only where results or an explicit query/reporting
+requirement justify its maintenance cost.
