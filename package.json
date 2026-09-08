@@ -1,8 +1,8 @@
 {
   "name": "agentic-development-governance",
-  "version": "2.2.0",
+  "version": "2.2.1",
   "private": true,
-  "description": "Agentic Development Governance (ADG): a SQL-first, deny-by-default governance layer for agent-assisted software development with guardrails, append-only audit, AI-security evals, DORA metrics, and bounded context.",
+  "description": "Agentic Development Governance (ADG): shared task context, action controls, audit history, and release evidence for agent-assisted development.",
   "type": "module",
   "engines": {
     "node": ">=20"

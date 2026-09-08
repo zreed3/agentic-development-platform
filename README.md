@@ -1,23 +1,27 @@
 # Agentic Development Governance (ADG)
 
-Start with **Git, concise Markdown instructions and decisions, the agent runtime's
-native permissions, and focused application CI**. Add ADG only where an explicit
-requirement needs enforcement or structured reporting beyond that baseline.
+ADG adds task context, action controls, audit history, and release evidence to a
+Git-based development workflow. These records help teams coordinate work across
+agents and sessions while keeping code review and integration in Git.
 
-ADG provides optional deterministic controls and an advanced SQL governance profile.
-A more capable model does not replace permission boundaries or application tests;
-neither does it justify retaining orchestration that no longer improves outcomes.
-For Astra and Fable 5.1, the current recommendation is to simplify first and measure
-which components earn their cost. See the [modernisation and retirement decision
-plan](docs/astra-fable-modernisation.md).
+**Latest release: [v2.2.1](docs/release-notes-2.2.1.md).** The modernisation changes
+are implemented: native Git/Markdown setup, shared Claude instructions, safer
+updates and retirement, and evaluation planning and reporting.
 
-This is an adoption recommendation, not an automatic policy change. Existing ADG
-installations retain their configured controls, audit history, and release gates
-until an explicit migration preserves context and replaces any required enforcement.
-Fresh projects use `npm run adg:init -- --target /path/to/repo` to create only
-missing native Markdown instructions. Choose `--profile governed` explicitly for
-governed adoption. Existing governed installs keep their controls on reinitialization.
-Claude instructions use a thin `@AGENTS.md` adapter rather than a duplicated rulebook.
+Fresh projects use `npm run adg:init -- --target /path/to/repo` to create missing
+Markdown instructions. Choose `--profile governed` when the project needs ADG's
+managed controls and SQL records. Existing governed installations retain their
+controls and audit history until explicitly migrated. Claude reads the shared
+`AGENTS.md` through a thin adapter.
+
+ADG provides an additional coordination layer for multi-agent work: task claims,
+scoped context, recorded decisions, and evidence for review. The current local
+backlog does not synchronise separate machines or wake agents on other accounts.
+
+**Next minor version: v2.3.0.** Work is focused on improved multi-agent
+orchestration, including shared task ownership, handoffs across machines, and
+independent review with different agent context. These are planned improvements;
+see the [v2.3.0 direction](docs/multi-agent-orchestration.md).
 
 ## 1. What ADG provides
 
@@ -256,7 +260,7 @@ The generated `data/*.sqlite` databases are gitignored. A clean install starts e
 - **📊 Scorecard:** [`docs/adg-scorecard.md`](docs/adg-scorecard.md) — how ADG scores on each principle.
 - **🧭 Harness plan:** [`docs/adg-2.0-overhaul-plan.md`](docs/adg-2.0-overhaul-plan.md) — Phases 0–7, vendor-SDK mapping, deferred follow-ups.
 - **🔌 Surfaces & dual-harness:** [`docs/adg-surfaces.md`](docs/adg-surfaces.md) · [`docs/dual-harness.md`](docs/dual-harness.md) · [`docs/adg-adapter-contract.md`](docs/adg-adapter-contract.md) · [`docs/adg-distribution.md`](docs/adg-distribution.md).
-- **🚀 Release notes:** [`docs/release-notes-2.0.md`](docs/release-notes-2.0.md) · [`docs/release-notes-1.1.md`](docs/release-notes-1.1.md) · [`docs/release-notes-1.0.md`](docs/release-notes-1.0.md).
+- **Release notes:** [`v2.2.1`](docs/release-notes-2.2.1.md) · [`docs/release-notes-2.0.md`](docs/release-notes-2.0.md) · [`docs/release-notes-1.1.md`](docs/release-notes-1.1.md) · [`docs/release-notes-1.0.md`](docs/release-notes-1.0.md).
 - **🛡 Governance:** [`docs/governance-alignment.md`](docs/governance-alignment.md) — mapped to OWASP LLM Top 10, ISO/IEC 42001, the Three Lines model, ISO 31000.
 - **🗃 SQL layer:** [`docs/sql-data-layer.md`](docs/sql-data-layer.md) · [`docs/audit-chain.md`](docs/audit-chain.md).
 - **⚡ Lanes & tokens:** [`docs/proofline-delivery-lanes.md`](docs/proofline-delivery-lanes.md) · [`docs/token-reduction.md`](docs/token-reduction.md).
